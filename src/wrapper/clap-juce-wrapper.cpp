@@ -5,7 +5,7 @@
  * - midi out (try stochas perhaps?)
  * - why does TWS not work?
  * - why does dexed not work?
- * - playhead support
+ * - playhead support [started]
  * - midi monitor and more midi messages
  * - Finish populating the desc
  * - Cleanup and comment of course (including the CMake)
@@ -182,9 +182,16 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         uiParamChangeQ.push({CLAP_EVENT_PARAM_END_ADJUST, id, 0});
     }
 
+    /*
+     * According to the JUCE docs this is *only* called on the processing thread
+     */
     bool getCurrentPosition(juce::AudioPlayHead::CurrentPositionInfo &info) override
     {
-        return false;
+        if (hasTransportInfo)
+        {
+            info.bpm = transportInfo.tempo;
+        }
+        return hasTransportInfo;
     }
 
     void parameterValueChanged(int, float newValue) override
@@ -299,6 +306,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 case CLAP_EVENT_TRANSPORT:
                 {
                     // handle this case
+                    transportInfo = evt->time_info;
+                    hasTransportInfo = true;
                 }
                 break;
                 case CLAP_EVENT_PARAM_VALUE:
@@ -477,6 +486,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     std::unordered_set<clap_id> allClapIDs;
 
     juce::LegacyAudioParametersWrapper juceParameters;
+
+    clap_event_transport transportInfo;
+    bool hasTransportInfo{false};
 };
 
 clap_plugin_descriptor ClapJuceWrapper::desc = {CLAP_VERSION,

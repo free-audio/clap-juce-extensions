@@ -16,6 +16,22 @@ project(clap-juce-extensions VERSION 0.1 LANGUAGES C CXX)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 14)
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+  # Any Clang or any GCC
+  add_compile_options(
+          -Wno-multichar
+          # Targetting Windows with GCC/Clang is experimental
+          $<$<NOT:$<BOOL:${WIN32}>>:-Werror>
+
+          # PE/COFF doesn't support visibility
+          $<$<NOT:$<BOOL:${WIN32}>>:-fvisibility=hidden>
+          # Inlines visibility is only relevant with C++
+          $<$<AND:$<NOT:$<BOOL:${WIN32}>>,$<COMPILE_LANGUAGE:CXX>>:-fvisibility-inlines-hidden>
+  )
+endif()
+
+
+
 if(NOT CLAP_ROOT)
   message(FATAL_ERROR "Please specify CLAP_ROOT, a directory containing `clap` and `clap-helpers`")
 endif()
@@ -23,7 +39,7 @@ endif()
 add_subdirectory(${CLAP_ROOT}/clap clapjuceext_clap)
 add_subdirectory(${CLAP_ROOT}/clap-helpers clapjuceext_claphelpers)
 
-add_library(clap_juce_extensions src/extensions/clap-juce-extensions.cpp)
+add_library(clap_juce_extensions STATIC src/extensions/clap-juce-extensions.cpp)
 target_include_directories(clap_juce_extensions PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_definitions(clap_juce_extensions PUBLIC
         HAS_CLAP_JUCE_EXTENSIONS=1)
@@ -94,9 +110,9 @@ function(clap_juce_extensions_plugin)
     message(STATUS "Copy After Build" )
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
       add_custom_command(TARGET ${claptarget} POST_BUILD
-              COMMAND ${CMAKE_COMMAND} -E echo "Installing ${products_folder}/${product_name}.clap"
+              COMMAND ${CMAKE_COMMAND} -E echo "Installing ${products_folder}/${product_name}.clap to ~/Library/Audio/Plug-Ins/Clap/"
               COMMAND ${CMAKE_COMMAND} -E make_directory "~/Library/Audio/Plug-Ins/Clap"
-              COMMAND ${CMAKE_COMMAND} -E copy_directory "${products_folder}/${product_name}.clap" "~/Library/Audio/Plug-Ins/Clap/"
+              COMMAND ${CMAKE_COMMAND} -E copy_directory "${products_folder}/${product_name}.clap" "~/Library/Audio/Plug-Ins/Clap/${product_name}.clap"
               )
     endif()
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
