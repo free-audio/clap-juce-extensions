@@ -187,9 +187,31 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
      */
     bool getCurrentPosition(juce::AudioPlayHead::CurrentPositionInfo &info) override
     {
-        if (hasTransportInfo)
+        if (hasTransportInfo && transportInfo)
         {
-            info.bpm = transportInfo.tempo;
+            auto flags = transportInfo->flags;
+
+            if (flags & CLAP_TRANSPORT_HAS_TEMPO)
+                info.bpm = transportInfo->tempo;
+            if (flags & CLAP_TRANSPORT_HAS_TIME_SIGNATURE)
+            {
+                info.timeSigNumerator = transportInfo->tsig_num;
+                info.timeSigDenominator = transportInfo->tsig_denom;
+            }
+
+            if (flags & CLAP_TRANSPORT_HAS_BEATS_TIMELINE)
+            {
+                info.ppqPosition = 1.0 * transportInfo->song_pos_beats / CLAP_BEATTIME_FACTOR;
+                info.ppqPositionOfLastBarStart = 1.0 * transportInfo->bar_start / CLAP_BEATTIME_FACTOR;
+            }
+            if (flags & CLAP_TRANSPORT_HAS_SECONDS_TIMELINE)
+            {
+                info.timeInSeconds = 1.0 * transportInfo->song_pos_seconds / CLAP_SECTIME_FACTOR;
+            }
+            info.isPlaying = flags & CLAP_TRANSPORT_IS_PLAYING;
+            info.isRecording = flags & CLAP_TRANSPORT_IS_RECORDING;
+            info.isLooping = flags & CLAP_TRANSPORT_IS_LOOP_ACTIVE;
+
         }
         return hasTransportInfo;
     }
@@ -277,6 +299,19 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         auto ev = process->in_events;
         auto sz = ev->size(ev);
 
+        // Since the playhead is *only* good inside juce audio processor process,
+        // we can just keep this little transient pointer here
+        if (process->transport)
+        {
+            hasTransportInfo = true;
+            transportInfo = process->transport;
+        }
+        else
+        {
+            hasTransportInfo = false;
+            transportInfo = nullptr;
+        }
+
         juce::MidiBuffer mbuf;
         if (sz != 0)
         {
@@ -306,8 +341,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 case CLAP_EVENT_TRANSPORT:
                 {
                     // handle this case
-                    transportInfo = evt->time_info;
-                    hasTransportInfo = true;
                 }
                 break;
                 case CLAP_EVENT_PARAM_VALUE:
@@ -487,7 +520,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
     juce::LegacyAudioParametersWrapper juceParameters;
 
-    clap_event_transport transportInfo;
+    const clap_event_transport *transportInfo{nullptr};
     bool hasTransportInfo{false};
 };
 
