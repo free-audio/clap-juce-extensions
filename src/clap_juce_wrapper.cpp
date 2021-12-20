@@ -4,12 +4,12 @@
  * - leaks. oh so many leaks - i bet it is mac not detaching and me not handling deactivate
  * - busses and bus arrangement
  * - midi out (try stochas perhaps?)
- * - general cleanup and generally comment this code
  * - why does TWS not work?
  * - why does dexed not work?
  * - playhead support
- * - midi monitor
+ * - midi monitor and more midi messages
  * - Finish populating the desc
+ * - Cleanup and comment of course (including the CMake)
  */
 
 #include <memory>
@@ -23,6 +23,8 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/format_types/juce_LegacyAudioParameter.cpp>
+
+#include <clap-juce-extensions/clap-juce-extensions.h>
 
 /*
  * This is a utility lock free queue based on the JUCE abstract fifo
@@ -95,7 +97,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         const bool forceLegacyParamIDs = false;
 
         juceParameters.update(*processor, forceLegacyParamIDs);
-        auto numParameters = juceParameters.getNumParameters();
 
         int i = 0;
         for (auto *juceParam : juceParameters.params)
@@ -484,7 +485,9 @@ static const clap_plugin *clap_create_plugin(const clap_host *host, const char *
                   << std::endl;
         return nullptr;
     }
+    clap_juce_extensions::clap_properties::building_clap = true;
     auto *const pluginInstance = ::createPluginFilter();
+    clap_juce_extensions::clap_properties::building_clap = false;
     auto *wrapper = new ClapJuceWrapper(host, pluginInstance);
     return wrapper->clapPlugin();
 }
