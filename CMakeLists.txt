@@ -1,7 +1,7 @@
-project(clap-juce-extensions VERSION 0.99 LANGUAGES C CXX)
+project(clap-juce-extensions VERSION 0.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 
 if(NOT CLAP_ROOT)
   message(FATAL_ERROR "Please specify CLAP_ROOT, a directory containing `clap` and `clap-helpers`")
@@ -70,6 +70,8 @@ function(clap_juce_extensions_plugin)
           CLAP_ID="${CJA_CLAP_ID}"
           CLAP_MANUAL_URL="${CJA_CLAP_MANUAL_URL}"
           CLAP_SUPPORT_URL="${CJA_CLAP_SUPPORT_URL}")
+
+  target_link_libraries(${target} PUBLIC clap_juce_extensions)
 
   target_link_libraries(${claptarget} PUBLIC clap-core clap-helpers clap_juce_sources ${target})
 

@@ -63,6 +63,10 @@ template <typename T, int qSize = 4096> class PushPopQ
     T dq[qSize];
 };
 
+/*
+ * These functions are the JUCE VST2/3 NSView attachment functions. We compile them into
+ * our clap dll by, on macos, also linking clap_juce_mac.mm
+ */
 namespace juce
 {
 extern JUCE_API void initialiseMacVST();
@@ -103,8 +107,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         {
             uint32_t clap_id = generateClapIDForJuceParam(juceParam);
 
-            allParams.insert(clap_id);
-            paramMap[clap_id] = juceParam;
+            allClapIDs.insert(clap_id);
+            paramPtrByClapID[clap_id] = juceParam;
+            clapIDByParamPtr[juceParam] = clap_id;
         }
     }
 
@@ -141,27 +146,40 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         return clap_id;
     }
 
-    void audioProcessorParameterChanged(juce::AudioProcessor *, int index, float newValue) override
-    {
-        auto pbi = juceParameters.getParamForIndex(index);
-        auto id = generateClapIDForJuceParam(pbi); // a lookup obviously
-        uiParamChangeQ.push({CLAP_EVENT_PARAM_VALUE, id, newValue});
-    }
     void audioProcessorChanged(juce::AudioProcessor *processor,
                                const ChangeDetails &details) override
     {
+        static bool apc = false;
+        jassert(apc);
+        apc = true;
     }
-    void audioProcessorParameterChangeGestureBegin(juce::AudioProcessor *, int index) override
+
+    clap_id clapIdFromParameterIndex(int index)
     {
         auto pbi = juceParameters.getParamForIndex(index);
-        auto id = generateClapIDForJuceParam(pbi);
+        auto pf = clapIDByParamPtr.find(pbi);
+        if (pf != clapIDByParamPtr.end())
+            return pf->second;
+
+        auto id = generateClapIDForJuceParam(pbi); // a lookup obviously
+        return id;
+    }
+
+    void audioProcessorParameterChanged(juce::AudioProcessor *, int index, float newValue) override
+    {
+        auto id = clapIdFromParameterIndex(index);
+        uiParamChangeQ.push({CLAP_EVENT_PARAM_VALUE, id, newValue});
+    }
+
+    void audioProcessorParameterChangeGestureBegin(juce::AudioProcessor *, int index) override
+    {
+        auto id = clapIdFromParameterIndex(index);
         uiParamChangeQ.push({CLAP_EVENT_PARAM_BEGIN_ADJUST, id, 0});
     }
 
     void audioProcessorParameterChangeGestureEnd(juce::AudioProcessor *, int index) override
     {
-        auto pbi = juceParameters.getParamForIndex(index);
-        auto id = generateClapIDForJuceParam(pbi);
+        auto id = clapIdFromParameterIndex(index);
         uiParamChangeQ.push({CLAP_EVENT_PARAM_END_ADJUST, id, 0});
     }
 
@@ -210,9 +228,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     bool implementsParams() const noexcept override { return true; }
     bool isValidParamId(clap_id paramId) const noexcept override
     {
-        return allParams.find(paramId) != allParams.end();
+        return allClapIDs.find(paramId) != allClapIDs.end();
     }
-    uint32_t paramsCount() const noexcept override { return allParams.size(); }
+    uint32_t paramsCount() const noexcept override { return allClapIDs.size(); }
     bool paramsInfo(int32_t paramIndex, clap_param_info *info) const noexcept override
     {
         auto pbi = juceParameters.getParamForIndex(paramIndex);
@@ -243,7 +261,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
     bool paramsValue(clap_id paramId, double *value) noexcept override
     {
-        auto pbi = paramMap[paramId];
+        auto pbi = paramPtrByClapID[paramId];
         *value = pbi->getValue();
         return true;
     }
@@ -290,7 +308,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
                     auto id = v.param_id;
                     auto nf = v.value;
-                    jassert(v.cookie == paramMap[id]);
+                    jassert(v.cookie == paramPtrByClapID[id]);
                     auto jp = static_cast<juce::AudioProcessorParameter *>(v.cookie);
                     jp->setValue(nf);
                 }
@@ -443,8 +461,16 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     };
     PushPopQ<ParamChange, 4096 * 16> uiParamChangeQ;
 
-    std::unordered_map<uint32_t, juce::AudioProcessorParameter *> paramMap;
-    std::unordered_set<uint32_t> allParams;
+    /*
+     * Various maps for ID lookups
+     */
+    // clap_id to param *
+    std::unordered_map<clap_id, juce::AudioProcessorParameter *> paramPtrByClapID;
+    // param * to clap_id
+    std::unordered_map<juce::AudioProcessorParameter *, clap_id> clapIDByParamPtr;
+    // Every id we have issued
+    std::unordered_set<clap_id> allClapIDs;
+
     juce::LegacyAudioParametersWrapper juceParameters;
 };
 
