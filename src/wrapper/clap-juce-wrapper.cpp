@@ -1,7 +1,6 @@
 /*
  * BaconPaul's running todo
  *
- * - leaks. oh so many leaks - i bet it is mac not detaching and me not handling deactivate
  * - busses and bus arrangement
  * - midi out (try stochas perhaps?)
  * - why does TWS not work?
@@ -348,15 +347,21 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     bool implementsGui() const noexcept override { return processor->hasEditor(); }
     bool guiCanResize() const noexcept override { return true; }
 
+    std::unique_ptr<juce::ScopedJuceInitialiser_GUI> juceGuiInit;
     bool guiCreate() noexcept override
     {
+        juceGuiInit = std::make_unique<juce::ScopedJuceInitialiser_GUI>();
         const juce::MessageManagerLock mmLock;
         editor.reset(processor->createEditor());
         editor->addComponentListener(this);
         return editor != nullptr;
     }
 
-    void guiDestroy() noexcept override { editor.reset(nullptr); }
+    void guiDestroy() noexcept override
+    {
+        editor.reset(nullptr);
+        juceGuiInit.reset(nullptr);
+    }
     bool guiSize(uint32_t *width, uint32_t *height) noexcept override
     {
         const juce::MessageManagerLock mmLock;
@@ -503,7 +508,6 @@ const clap_plugin_descriptor *clap_get_plugin_descriptor(uint32_t w)
 
 static const clap_plugin *clap_create_plugin(const clap_host *host, const char *plugin_id)
 {
-    juce::MessageManager::getInstance();
     if (strcmp(plugin_id, ClapJuceWrapper::desc.id))
     {
         std::cout << "Warning: CLAP asked for plugin_id '" << plugin_id

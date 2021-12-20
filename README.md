@@ -1,7 +1,7 @@
 # JUCE6/CMake Clap Support
 
-This is a set of code which, combined with a JUCE6/CMake project, allows you to build a (buggy, leaky, feature
-incomplete, work in progress) clap.
+This is a set of code which, combined with a JUCE6/CMake project, allows you to build a (buggy, feature incomplete, work
+in progress) clap.
 
 To use these in your juce6 cmake project:
 
