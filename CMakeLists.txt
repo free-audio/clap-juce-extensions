@@ -28,14 +28,44 @@ function(clap_juce_extensions_plugin target)
   get_target_property(products_folder ${claptarget} LIBRARY_OUTPUT_DIRECTORY)
   set(product_name $<TARGET_PROPERTY:${target},JUCE_PRODUCT_NAME>)
 
-  #add_custom_command(TARGET ${claptarget}
-  #        POST_BUILD
-  #        COMMAND ${CMAKE_COMMAND} -E echo "Renaming $<TARGET_FILE:${claptarget}> to ${products_folder}/${product_name}.clap"
-  #        COMMAND ${CMAKE_COMMAND} -E rename "$<TARGET_FILE:${claptarget}>" "${products_folder}/${product_name}.clap"
-  #        )
+  if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+    set_target_properties(${claptarget} PROPERTIES
+            BUNDLE True
+            BUNDLE_EXTENSION clap
+            PREFIX ""
+            OUTPUT_NAME "${product_name}"
+            MACOSX_BUNDLE TRUE
+            )
+  else()
+    set_target_properties(${claptarget} PROPERTIES
+            PREFIX ""
+            SUFFIX ".clap"
+            OUTPUT_NAME "${product_name}"
+            )
+  endif()
 
   target_include_directories(${claptarget} PRIVATE
           $<TARGET_PROPERTY:${target},INCLUDE_DIRECTORIES>)
 
   target_link_libraries(${claptarget} PUBLIC clap-core clap-helpers clap_juce_sources ${target})
+
+  get_target_property(docopy "${target}" JUCE_COPY_PLUGIN_AFTER_BUILD)
+
+  if(docopy)
+    message(STATUS "Copy After Build" )
+    if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+      add_custom_command(TARGET ${claptarget} POST_BUILD
+              COMMAND ${CMAKE_COMMAND} -E echo "Installing ${products_folder}/${product_name}.clap"
+              COMMAND ${CMAKE_COMMAND} -E make_directory "~/Library/Audio/Plug-Ins/Clap"
+              COMMAND ${CMAKE_COMMAND} -E copy_directory "${products_folder}/${product_name}.clap" "~/Library/Audio/Plug-Ins/Clap/"
+              )
+    endif()
+    if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+      add_custom_command(TARGET ${claptarget} POST_BUILD
+              COMMAND ${CMAKE_COMMAND} -E echo "Installing ${products_folder}/${product_name}.clap"
+              COMMAND ${CMAKE_COMMAND} -E make_directory "~/.clap"
+              COMMAND ${CMAKE_COMMAND} -E copy "${products_folder}/${product_name}.clap" "~/.clap/"
+              )
+    endif()
+  endif()
 endfunction()
