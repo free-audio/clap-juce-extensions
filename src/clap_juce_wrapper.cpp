@@ -85,6 +85,30 @@ public:
         }
     }
 
+    ~ClapJuceWrapper() {
+#if JUCE_LINUX
+        if (_host.canUseTimerSupport()) {
+            _host.timerSupportUnregisterTimer(idleTimer);
+        }
+#endif
+
+    }
+
+  public:
+    bool implementsTimerSupport() const noexcept override { return true; }
+    void onTimer(clap_id timerId) noexcept override {
+#if LINUX
+        juce::MessageManager::getInstance()->setCurrentThreadAsMessageThread();
+        const juce::MessageMaangerLock mmLock;
+
+        while(juce::dispatchNextMessageOnSystemQueue(true)) {
+        }
+#endif
+    }
+
+    clap_id idleTimer{0};
+
+
     uint32_t generateClapIDForJuceParam(juce::AudioProcessorParameter *param) const
     {
         auto juceParamID = juce::LegacyAudioParameter::getParamID(param, false);
@@ -120,6 +144,275 @@ public:
     }
 
     void parameterGestureChanged(int, bool) override {}
+
+    bool activate(double sampleRate, uint32_t minFrameCount,
+                  uint32_t maxFrameCount) noexcept override
+    {
+        processor->prepareToPlay(sampleRate, maxFrameCount);
+        return true;
+    }
+
+    /* CLAP API */
+    uint32_t audioPortsCount(bool isInput) const noexcept override
+    {
+        return processor->getBusCount(isInput);
+    }
+    bool audioPortsInfo(uint32_t index, bool isInput,
+                        clap_audio_port_info *info) const noexcept override
+    {
+        // For now hardcode to stereo out. Fix this obviously.
+        if (isInput || index != 0)
+            return false;
+
+        info->id = 0;
+        strncpy(info->name, "main", sizeof(info->name));
+        info->is_main = true;
+        info->is_cv = false;
+        info->sample_size = 32;
+        info->in_place = true;
+        info->channel_count = 2;
+        info->channel_map = CLAP_CHMAP_STEREO;
+        return true;
+    }
+
+    bool implementsParams() const noexcept override { return true; }
+    bool isValidParamId(clap_id paramId) const noexcept override
+    {
+        return allParams.find(paramId) != allParams.end();
+    }
+    uint32_t paramsCount() const noexcept override { return allParams.size(); }
+    bool paramsInfo(int32_t paramIndex, clap_param_info *info) const noexcept override
+    {
+        auto pbi = juceParameters.getParamForIndex(paramIndex);
+
+        auto* parameterGroup = processor->getParameterTree().getGroupsForParameter (pbi).getLast();
+        juce::String group = "";
+        while (parameterGroup && parameterGroup->getParent() && parameterGroup->getParent()->getName().isNotEmpty())
+        {
+            group = parameterGroup->getName() + "/" + group;
+            parameterGroup = parameterGroup->getParent();
+        }
+
+        if (group.isNotEmpty())
+            group = "/" + group;
+
+        // Fixme - using parameter groups here would be lovely but until then
+        info->id = generateClapIDForJuceParam(pbi);
+        strncpy(info->name, (pbi->getName(CLAP_NAME_SIZE)).toRawUTF8(), CLAP_NAME_SIZE);
+        strncpy(info->module, group.toRawUTF8(), CLAP_NAME_SIZE);
+        info->min_value = 0; // FIXME
+        info->max_value = 1;
+        info->default_value = pbi->getDefaultValue();
+        info->cookie = pbi;
+
+        return true;
+    }
+
+    bool paramsValue(clap_id paramId, double *value) noexcept override
+    {
+        auto pbi = paramMap[paramId];
+        *value = pbi->getValue();
+        return true;
+    }
+
+    clap_process_status process(const clap_process *process) noexcept override
+    {
+        auto ev = process->in_events;
+        auto sz = ev->size(ev);
+
+        juce::MidiBuffer mbuf;
+        if (sz != 0)
+        {
+            for (auto i = 0; i < sz; ++i)
+            {
+                auto evt = ev->get(ev, i);
+
+                switch (evt->type)
+                {
+                case CLAP_EVENT_NOTE_ON:
+                {
+                    auto n = evt->note;
+
+                    mbuf.addEvent(juce::MidiMessage::noteOn(n.channel + 1, n.key, (float)n.velocity),
+                                  evt->time);
+                }
+                break;
+                case CLAP_EVENT_NOTE_OFF:
+                {
+                    auto n = evt->note;
+                    mbuf.addEvent(juce::MidiMessage::noteOff(n.channel + 1, n.key, (float)n.velocity),
+                                  evt->time); // how to get time
+                }
+                break;
+                case CLAP_EVENT_TRANSPORT:
+                {
+                    // handle this case
+                }
+                break;
+                case CLAP_EVENT_PARAM_VALUE:
+                {
+                    auto v = evt->param_value;
+
+                    auto id = v.param_id;
+                    auto nf = v.value;
+                    jassert(v.cookie == paramMap[id]);
+                    auto jp = static_cast<juce::AudioProcessorParameter *>(v.cookie);
+                    jp->setValue(nf);
+                }
+                break;
+                }
+            }
+        }
+
+
+        ParamChange pc;
+        while (uiParamChangeQ.pop(pc))
+        {
+            auto ov = process->out_events;
+            clap_event evt;
+            evt.type = pc.type;
+            evt.param_value.param_id = pc.id;
+            evt.param_value.value = pc.newval;
+            ov->push_back(ov, &evt);
+        }
+
+        // Obviously there is horrible bus stuff here to fix
+        float **out = process->audio_outputs[0].data32;
+        juce::AudioBuffer<float> buf(out, 2, process->frames_count);
+
+        processor->processBlock(buf, mbuf);
+
+        return CLAP_PROCESS_CONTINUE;
+    }
+
+    void componentMovedOrResized(juce::Component &component, bool wasMoved, bool wasResized) override {
+        if (wasResized)
+            _host.guiResize(component.getWidth(), component.getHeight());
+    }
+
+    std::unique_ptr<juce::AudioProcessorEditor> editor;
+    bool implementsGui() const noexcept override
+    {
+        return processor->hasEditor();
+    }
+    bool guiCanResize() const noexcept override { return true; }
+
+    bool guiCreate() noexcept override
+    {
+        const juce::MessageManagerLock mmLock;
+        editor.reset(processor->createEditor());
+        editor->addComponentListener(this);
+        return editor != nullptr;
+    }
+
+    void guiDestroy() noexcept override {
+        editor.reset(nullptr);
+    }
+    bool guiSize(uint32_t *width, uint32_t *height) noexcept override
+    {
+        const juce::MessageManagerLock mmLock;
+        if (editor)
+        {
+            auto b = editor->getBounds();
+            *width = b.getWidth();
+            *height = b.getHeight();
+            return true;
+        }
+        else
+        {
+            *width = 1000;
+            *height = 800;
+        }
+        return false;
+    }
+
+  protected:
+
+    juce::CriticalSection stateInformationLock;
+    juce::MemoryBlock chunkMemory;
+
+  public:
+
+    bool implementsState() const noexcept override {
+        return true;
+    }
+    bool stateSave(clap_ostream *stream) noexcept override {
+        if (processor == nullptr)
+            return false;
+
+        juce::ScopedLock lock (stateInformationLock);
+        chunkMemory.reset();
+
+        processor->getStateInformation (chunkMemory);
+
+        auto written = stream->write(stream, chunkMemory.getData(), chunkMemory.getSize());
+        return written == chunkMemory.getSize();
+    }
+    bool stateLoad(clap_istream *stream) noexcept override {
+        if (processor == nullptr)
+            return false;
+
+        juce::ScopedLock lock (stateInformationLock);
+        chunkMemory.reset();
+        // There must be a better way
+        char *block[256];
+        int64_t rd;
+        while ((rd = stream->read(stream, block, 256)) > 0)
+            chunkMemory.append(block, rd);
+
+        processor->setStateInformation (chunkMemory.getData(), chunkMemory.getSize());
+        chunkMemory.reset();
+        return true;
+    }
+
+  public:
+
+#if JUCE_MAC
+    bool implementsGuiCocoa() const noexcept override
+    {
+        return processor->hasEditor();
+    };
+    bool guiCocoaAttach(void *nsView) noexcept override
+    {
+        /*juce::initialiseMacVST();
+        auto hostWindow = juce::attachComponentToWindowRefVST(editor.get(), nsView, true);
+        return true;
+         */
+        return false;
+    }
+#endif
+
+#if JUCE_LINUX
+    bool implementsGuiX11() const noexcept override
+    {
+        return processor->hasEditor();
+    }
+    bool guiX11Attach(const char *displayName, unsigned long window) noexcept
+    {
+        const juce::MessageManagerLock mmLock;
+        editor->setVisible(false);
+        editor->addToDesktop(0, (void *)window);
+        auto *display = juce::XWindowSystem::getInstance()->getDisplay();
+        juce::X11Symbols::getInstance()->xReparentWindow(
+            display, (Window)editor->getWindowHandle(), window, 0, 0);
+        editor->setVisible(true);
+        return true;
+    }
+#endif
+
+#if JUCE_WINDOWS
+    bool implementsGuiWin32() const noexcept {
+        return processor->hasEditor();
+    }
+    bool guiWin32Attach(clap_hwnd window) noexcept {
+        editor->setVisible(false);
+        editor->setOpaque(true);
+        editor->setTopLeftPosition(0,0);
+        editor->addToDesktop(0, (void *)window);
+        editor->setVisible(true);
+        return true;
+    }
+#endif
 
   private:
     struct ParamChange
@@ -168,6 +461,7 @@ const clap_plugin_descriptor *clap_get_plugin_descriptor(uint32_t w)
 
 
 static const clap_plugin *clap_create_plugin(const clap_host *host, const char *plugin_id) {
+    juce::MessageManager::getInstance();
     if (strcmp(plugin_id, ClapJuceWrapper::desc.id))
     {
         std::cout << "Warning: CLAP asked for plugin_id '" << plugin_id
