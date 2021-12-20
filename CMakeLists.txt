@@ -1,3 +1,16 @@
+# CMAKE Support for out of tree clap plugin extensions to Juce 6
+#
+# To use these in your juce6 cmake project
+# 1. In your CMAKE build chain, define CLAP_ROOT as the directory containing
+#    both 'clap' and 'clap-helpers' from github.com/free-audio. These can be
+#    submodules or out of tree
+# 2. Include this cmake file in your build path
+# 3. Create your juce plugin as normal with formats VST3 etc...
+# 4. After that, add the following lines (or similar) to your cmake
+#    clap_juce_extensions_plugin(TARGET my-target
+#          CLAP_ID "com.my-cool-plugs.my-target")
+# 5. Reload your CMAKe file and my-target_CLAP will be a buildable target
+
 project(clap-juce-extensions VERSION 0.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -10,14 +23,14 @@ endif()
 add_subdirectory(${CLAP_ROOT}/clap clapjuceext_clap)
 add_subdirectory(${CLAP_ROOT}/clap-helpers clapjuceext_claphelpers)
 
-add_library(clap_juce_extensions src/clap-juce-extensions.cpp)
+add_library(clap_juce_extensions src/extensions/clap-juce-extensions.cpp)
 target_include_directories(clap_juce_extensions PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_definitions(clap_juce_extensions PUBLIC
         HAS_CLAP_JUCE_EXTENSIONS=1)
 
-add_library(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/clap_juce_wrapper.cpp)
+add_library(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/clap-juce-wrapper.cpp)
 if (APPLE)
-  target_sources(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/clap_juce_mac.mm)
+  target_sources(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/clap-juce-mac.mm)
 endif()
 target_include_directories(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
