@@ -16,10 +16,21 @@ if (APPLE)
 endif()
 target_include_directories(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-function(clap_juce_extensions_plugin target)
-  message(STATUS "Adding CLAP plugin extension to ${target}")
+function(clap_juce_extensions_plugin)
+  set(oneValueArgs TARGET)
+  set(multiValueArgs CLAP_ID CLAP_MANUAL_URL CLAP_SUPPORT_URL)
 
+  cmake_parse_arguments(CJA "" "${oneValueArgs}"
+          "${multiValueArgs}" ${ARGN} )
+  set(target ${CJA_TARGET})
   set(claptarget ${target}_CLAP)
+
+  message(STATUS "Creating CLAP ${claptarget} from ${target}")
+
+  if ("${CJA_CLAP_ID}" STREQUAL "")
+    message(FATAL_ERROR "You must specify CLAP_ID to add a clap" )
+  endif()
+
   get_property(SRC TARGET clap_juce_sources PROPERTY SOURCES)
   add_library(${claptarget} MODULE ${SRC})
 
@@ -49,6 +60,11 @@ function(clap_juce_extensions_plugin target)
 
   target_include_directories(${claptarget} PRIVATE
           $<TARGET_PROPERTY:${target},INCLUDE_DIRECTORIES>)
+
+  target_compile_definitions(${claptarget} PRIVATE
+          CLAP_ID="${CJA_CLAP_ID}"
+          CLAP_MANUAL_URL="${CJA_CLAP_MANUAL_URL}"
+          CLAP_SUPPORT_URL="${CJA_CLAP_SUPPORT_URL}")
 
   target_link_libraries(${claptarget} PUBLIC clap-core clap-helpers clap_juce_sources ${target})
 

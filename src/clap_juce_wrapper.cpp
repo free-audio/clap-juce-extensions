@@ -1,3 +1,17 @@
+/*
+ * BaconPaul's running todo
+ *
+ * - leaks. oh so many leaks - i bet it is mac not detaching and me not handling deactivate
+ * - busses and bus arrangement
+ * - midi out (try stochas perhaps?)
+ * - general cleanup and generally comment this code
+ * - why does TWS not work?
+ * - why does dexed not work?
+ * - playhead support
+ * - midi monitor
+ * - Finish populating the desc
+ */
+
 #include <memory>
 
 #include <clap/helpers/host-proxy.hh>
@@ -9,7 +23,6 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/format_types/juce_LegacyAudioParameter.cpp>
-
 
 /*
  * This is a utility lock free queue based on the JUCE abstract fifo
@@ -53,25 +66,27 @@ namespace juce
 extern JUCE_API void initialiseMacVST();
 extern JUCE_API void *attachComponentToWindowRefVST(Component *, void *parentWindowOrView,
                                                     bool isNSView);
-}
+} // namespace juce
 
 /*
  * The ClapJuceWrapper is a class which immplements a collection
  * of CLAP and JUCE APIs
  */
-class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate, clap::helpers::CheckingLevel::Minimal>,
+class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate,
+                                                     clap::helpers::CheckingLevel::Minimal>,
                         public juce::AudioProcessorListener,
                         public juce::AudioPlayHead,
                         public juce::AudioProcessorParameter::Listener,
                         public juce::ComponentListener
 {
-public:
+  public:
     static clap_plugin_descriptor desc;
     std::unique_ptr<juce::AudioProcessor> processor;
 
     ClapJuceWrapper(const clap_host *host, juce::AudioProcessor *p)
-    :clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate, clap::helpers::CheckingLevel::Minimal>(&desc, host),
-        processor(p)
+        : clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate,
+                                clap::helpers::CheckingLevel::Minimal>(&desc, host),
+          processor(p)
     {
         processor->setRateAndBufferSizeDetails(0, 0);
         processor->setPlayHead(this);
@@ -92,29 +107,31 @@ public:
         }
     }
 
-    ~ClapJuceWrapper() {
+    ~ClapJuceWrapper()
+    {
 #if JUCE_LINUX
-        if (_host.canUseTimerSupport()) {
+        if (_host.canUseTimerSupport())
+        {
             _host.timerSupportUnregisterTimer(idleTimer);
         }
 #endif
-
     }
 
   public:
     bool implementsTimerSupport() const noexcept override { return true; }
-    void onTimer(clap_id timerId) noexcept override {
+    void onTimer(clap_id timerId) noexcept override
+    {
 #if LINUX
         juce::MessageManager::getInstance()->setCurrentThreadAsMessageThread();
         const juce::MessageMaangerLock mmLock;
 
-        while(juce::dispatchNextMessageOnSystemQueue(true)) {
+        while (juce::dispatchNextMessageOnSystemQueue(true))
+        {
         }
 #endif
     }
 
     clap_id idleTimer{0};
-
 
     uint32_t generateClapIDForJuceParam(juce::AudioProcessorParameter *param) const
     {
@@ -123,27 +140,34 @@ public:
         return clap_id;
     }
 
-    void audioProcessorParameterChanged(juce::AudioProcessor *, int index, float newValue) override {
+    void audioProcessorParameterChanged(juce::AudioProcessor *, int index, float newValue) override
+    {
         auto pbi = juceParameters.getParamForIndex(index);
         auto id = generateClapIDForJuceParam(pbi); // a lookup obviously
         uiParamChangeQ.push({CLAP_EVENT_PARAM_VALUE, id, newValue});
     }
-    void audioProcessorChanged(juce::AudioProcessor *processor, const ChangeDetails &details) override {}
-    void audioProcessorParameterChangeGestureBegin (juce::AudioProcessor*, int index) override
+    void audioProcessorChanged(juce::AudioProcessor *processor,
+                               const ChangeDetails &details) override
+    {
+    }
+    void audioProcessorParameterChangeGestureBegin(juce::AudioProcessor *, int index) override
     {
         auto pbi = juceParameters.getParamForIndex(index);
         auto id = generateClapIDForJuceParam(pbi);
         uiParamChangeQ.push({CLAP_EVENT_PARAM_BEGIN_ADJUST, id, 0});
     }
 
-    void audioProcessorParameterChangeGestureEnd (juce::AudioProcessor*, int index) override
+    void audioProcessorParameterChangeGestureEnd(juce::AudioProcessor *, int index) override
     {
         auto pbi = juceParameters.getParamForIndex(index);
         auto id = generateClapIDForJuceParam(pbi);
         uiParamChangeQ.push({CLAP_EVENT_PARAM_END_ADJUST, id, 0});
     }
 
-    bool getCurrentPosition(juce::AudioPlayHead::CurrentPositionInfo &info) override { return false; }
+    bool getCurrentPosition(juce::AudioPlayHead::CurrentPositionInfo &info) override
+    {
+        return false;
+    }
 
     void parameterValueChanged(int, float newValue) override
     {
@@ -192,9 +216,10 @@ public:
     {
         auto pbi = juceParameters.getParamForIndex(paramIndex);
 
-        auto* parameterGroup = processor->getParameterTree().getGroupsForParameter (pbi).getLast();
+        auto *parameterGroup = processor->getParameterTree().getGroupsForParameter(pbi).getLast();
         juce::String group = "";
-        while (parameterGroup && parameterGroup->getParent() && parameterGroup->getParent()->getName().isNotEmpty())
+        while (parameterGroup && parameterGroup->getParent() &&
+               parameterGroup->getParent()->getName().isNotEmpty())
         {
             group = parameterGroup->getName() + "/" + group;
             parameterGroup = parameterGroup->getParent();
@@ -240,15 +265,17 @@ public:
                 {
                     auto n = evt->note;
 
-                    mbuf.addEvent(juce::MidiMessage::noteOn(n.channel + 1, n.key, (float)n.velocity),
-                                  evt->time);
+                    mbuf.addEvent(
+                        juce::MidiMessage::noteOn(n.channel + 1, n.key, (float)n.velocity),
+                        evt->time);
                 }
                 break;
                 case CLAP_EVENT_NOTE_OFF:
                 {
                     auto n = evt->note;
-                    mbuf.addEvent(juce::MidiMessage::noteOff(n.channel + 1, n.key, (float)n.velocity),
-                                  evt->time); // how to get time
+                    mbuf.addEvent(
+                        juce::MidiMessage::noteOff(n.channel + 1, n.key, (float)n.velocity),
+                        evt->time); // how to get time
                 }
                 break;
                 case CLAP_EVENT_TRANSPORT:
@@ -271,7 +298,6 @@ public:
             }
         }
 
-
         ParamChange pc;
         while (uiParamChangeQ.pop(pc))
         {
@@ -292,16 +318,15 @@ public:
         return CLAP_PROCESS_CONTINUE;
     }
 
-    void componentMovedOrResized(juce::Component &component, bool wasMoved, bool wasResized) override {
+    void componentMovedOrResized(juce::Component &component, bool wasMoved,
+                                 bool wasResized) override
+    {
         if (wasResized)
             _host.guiResize(component.getWidth(), component.getHeight());
     }
 
     std::unique_ptr<juce::AudioProcessorEditor> editor;
-    bool implementsGui() const noexcept override
-    {
-        return processor->hasEditor();
-    }
+    bool implementsGui() const noexcept override { return processor->hasEditor(); }
     bool guiCanResize() const noexcept override { return true; }
 
     bool guiCreate() noexcept override
@@ -312,9 +337,7 @@ public:
         return editor != nullptr;
     }
 
-    void guiDestroy() noexcept override {
-        editor.reset(nullptr);
-    }
+    void guiDestroy() noexcept override { editor.reset(nullptr); }
     bool guiSize(uint32_t *width, uint32_t *height) noexcept override
     {
         const juce::MessageManagerLock mmLock;
@@ -334,32 +357,30 @@ public:
     }
 
   protected:
-
     juce::CriticalSection stateInformationLock;
     juce::MemoryBlock chunkMemory;
 
   public:
-
-    bool implementsState() const noexcept override {
-        return true;
-    }
-    bool stateSave(clap_ostream *stream) noexcept override {
+    bool implementsState() const noexcept override { return true; }
+    bool stateSave(clap_ostream *stream) noexcept override
+    {
         if (processor == nullptr)
             return false;
 
-        juce::ScopedLock lock (stateInformationLock);
+        juce::ScopedLock lock(stateInformationLock);
         chunkMemory.reset();
 
-        processor->getStateInformation (chunkMemory);
+        processor->getStateInformation(chunkMemory);
 
         auto written = stream->write(stream, chunkMemory.getData(), chunkMemory.getSize());
         return written == chunkMemory.getSize();
     }
-    bool stateLoad(clap_istream *stream) noexcept override {
+    bool stateLoad(clap_istream *stream) noexcept override
+    {
         if (processor == nullptr)
             return false;
 
-        juce::ScopedLock lock (stateInformationLock);
+        juce::ScopedLock lock(stateInformationLock);
         chunkMemory.reset();
         // There must be a better way
         char *block[256];
@@ -367,18 +388,14 @@ public:
         while ((rd = stream->read(stream, block, 256)) > 0)
             chunkMemory.append(block, rd);
 
-        processor->setStateInformation (chunkMemory.getData(), chunkMemory.getSize());
+        processor->setStateInformation(chunkMemory.getData(), chunkMemory.getSize());
         chunkMemory.reset();
         return true;
     }
 
   public:
-
 #if JUCE_MAC
-    bool implementsGuiCocoa() const noexcept override
-    {
-        return processor->hasEditor();
-    };
+    bool implementsGuiCocoa() const noexcept override { return processor->hasEditor(); };
     bool guiCocoaAttach(void *nsView) noexcept override
     {
         juce::initialiseMacVST();
@@ -389,31 +406,27 @@ public:
 #endif
 
 #if JUCE_LINUX
-    bool implementsGuiX11() const noexcept override
-    {
-        return processor->hasEditor();
-    }
+    bool implementsGuiX11() const noexcept override { return processor->hasEditor(); }
     bool guiX11Attach(const char *displayName, unsigned long window) noexcept
     {
         const juce::MessageManagerLock mmLock;
         editor->setVisible(false);
         editor->addToDesktop(0, (void *)window);
         auto *display = juce::XWindowSystem::getInstance()->getDisplay();
-        juce::X11Symbols::getInstance()->xReparentWindow(
-            display, (Window)editor->getWindowHandle(), window, 0, 0);
+        juce::X11Symbols::getInstance()->xReparentWindow(display, (Window)editor->getWindowHandle(),
+                                                         window, 0, 0);
         editor->setVisible(true);
         return true;
     }
 #endif
 
 #if JUCE_WINDOWS
-    bool implementsGuiWin32() const noexcept {
-        return processor->hasEditor();
-    }
-    bool guiWin32Attach(clap_hwnd window) noexcept {
+    bool implementsGuiWin32() const noexcept { return processor->hasEditor(); }
+    bool guiWin32Attach(clap_hwnd window) noexcept
+    {
         editor->setVisible(false);
         editor->setOpaque(true);
-        editor->setTopLeftPosition(0,0);
+        editor->setTopLeftPosition(0, 0);
         editor->addToDesktop(0, (void *)window);
         editor->setVisible(true);
         return true;
@@ -427,30 +440,26 @@ public:
         uint32_t id;
         float newval;
     };
-    PushPopQ<ParamChange, 4096*16> uiParamChangeQ;
-
+    PushPopQ<ParamChange, 4096 * 16> uiParamChangeQ;
 
     std::unordered_map<uint32_t, juce::AudioProcessorParameter *> paramMap;
     std::unordered_set<uint32_t> allParams;
     juce::LegacyAudioParametersWrapper juceParameters;
-
 };
 
 clap_plugin_descriptor ClapJuceWrapper::desc = {CLAP_VERSION,
-                                                "fix.me.with.id",
+                                                CLAP_ID,
                                                 JucePlugin_Name,
                                                 JucePlugin_Manufacturer,
                                                 JucePlugin_ManufacturerWebsite,
-                                                "FIXME",
-                                                "FIXME",
+                                                CLAP_MANUAL_URL,
+                                                CLAP_SUPPORT_URL,
                                                 JucePlugin_VersionString,
                                                 JucePlugin_Desc,
                                                 "FIXME",
                                                 CLAP_PLUGIN_INSTRUMENT};
 
-
-juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter();
-
+juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter();
 
 namespace ClapAdapter
 {
@@ -465,8 +474,8 @@ const clap_plugin_descriptor *clap_get_plugin_descriptor(uint32_t w)
     return &ClapJuceWrapper::desc;
 }
 
-
-static const clap_plugin *clap_create_plugin(const clap_host *host, const char *plugin_id) {
+static const clap_plugin *clap_create_plugin(const clap_host *host, const char *plugin_id)
+{
     juce::MessageManager::getInstance();
     if (strcmp(plugin_id, ClapJuceWrapper::desc.id))
     {
@@ -475,7 +484,7 @@ static const clap_plugin *clap_create_plugin(const clap_host *host, const char *
                   << std::endl;
         return nullptr;
     }
-    auto* const pluginInstance = ::createPluginFilter();
+    auto *const pluginInstance = ::createPluginFilter();
     auto *wrapper = new ClapJuceWrapper(host, pluginInstance);
     return wrapper->clapPlugin();
 }
