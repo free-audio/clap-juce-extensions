@@ -48,6 +48,13 @@ template <typename T, int qSize = 4096> class PushPopQ
     T dq[qSize];
 };
 
+namespace juce
+{
+extern JUCE_API void initialiseMacVST();
+extern JUCE_API void *attachComponentToWindowRefVST(Component *, void *parentWindowOrView,
+                                                    bool isNSView);
+}
+
 /*
  * The ClapJuceWrapper is a class which immplements a collection
  * of CLAP and JUCE APIs
@@ -374,10 +381,9 @@ public:
     };
     bool guiCocoaAttach(void *nsView) noexcept override
     {
-        /*juce::initialiseMacVST();
+        juce::initialiseMacVST();
         auto hostWindow = juce::attachComponentToWindowRefVST(editor.get(), nsView, true);
         return true;
-         */
         return false;
     }
 #endif

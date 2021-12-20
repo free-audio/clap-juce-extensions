@@ -11,6 +11,9 @@ add_subdirectory(${CLAP_ROOT}/clap clapjuceext_clap)
 add_subdirectory(${CLAP_ROOT}/clap-helpers clapjuceext_claphelpers)
 
 add_library(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/clap_juce_wrapper.cpp)
+if (APPLE)
+  target_sources(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/clap_juce_mac.mm)
+endif()
 target_include_directories(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 function(clap_juce_extensions_plugin target)
