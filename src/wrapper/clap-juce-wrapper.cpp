@@ -105,7 +105,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         juceParameters.update(*processor, forceLegacyParamIDs);
 
         int i = 0;
-        for (auto *juceParam : juceParameters.params)
+        for (auto *juceParam :
+#if JUCE_VERSION >= 0x060103
+             juceParameters
+#else
+             juceParameters.params
+#endif
+
+        )
         {
             uint32_t clap_id = generateClapIDForJuceParam(juceParam);
 
