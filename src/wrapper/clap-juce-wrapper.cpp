@@ -551,14 +551,14 @@ bool clap_init(const char *p) { return true; }
 
 void clap_deinit(void) {}
 
-uint32_t clap_get_plugin_count() { return 1; }
+uint32_t clap_get_plugin_count(const struct clap_plugin_factory *) { return 1; }
 
-const clap_plugin_descriptor *clap_get_plugin_descriptor(uint32_t w)
+const clap_plugin_descriptor *clap_get_plugin_descriptor(const struct clap_plugin_factory *, uint32_t w)
 {
     return &ClapJuceWrapper::desc;
 }
 
-static const clap_plugin *clap_create_plugin(const clap_host *host, const char *plugin_id)
+static const clap_plugin *clap_create_plugin(const struct clap_plugin_factory *, const clap_host *host, const char *plugin_id)
 {
     if (strcmp(plugin_id, ClapJuceWrapper::desc.id))
     {
@@ -574,27 +574,26 @@ static const clap_plugin *clap_create_plugin(const clap_host *host, const char *
     return wrapper->clapPlugin();
 }
 
-static uint32_t clap_get_invalidation_sources_count(void) { return 0; }
 
-static const clap_plugin_invalidation_source *clap_get_invalidation_sources(uint32_t index)
-{
+const struct clap_plugin_factory juce_clap_plugin_factory = {
+    ClapAdapter::clap_get_plugin_count,
+    ClapAdapter::clap_get_plugin_descriptor,
+    ClapAdapter::clap_create_plugin,
+};
+
+const void* clap_get_factory(const char* factory_id) {
+    if (strcmp(factory_id, CLAP_PLUGIN_FACTORY_ID) == 0)
+    {
+        return &juce_clap_plugin_factory;
+    }
+
     return nullptr;
 }
 
-static void clap_refresh(void) {}
 } // namespace ClapAdapter
 
 extern "C"
 {
-    const CLAP_EXPORT struct clap_plugin_entry clap_plugin_entry = {
-        CLAP_VERSION,
-        ClapAdapter::clap_init,
-        ClapAdapter::clap_deinit,
-        ClapAdapter::clap_get_plugin_count,
-        ClapAdapter::clap_get_plugin_descriptor,
-        ClapAdapter::clap_create_plugin,
-        ClapAdapter::clap_get_invalidation_sources_count,
-        ClapAdapter::clap_get_invalidation_sources,
-        ClapAdapter::clap_refresh,
-    };
+    const CLAP_EXPORT struct clap_plugin_entry clap_entry = {CLAP_VERSION, ClapAdapter::clap_init, ClapAdapter::clap_deinit,
+                                                                    ClapAdapter::clap_get_factory};
 }
