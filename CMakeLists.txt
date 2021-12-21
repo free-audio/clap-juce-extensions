@@ -43,6 +43,7 @@ add_library(clap_juce_extensions STATIC src/extensions/clap-juce-extensions.cpp)
 target_include_directories(clap_juce_extensions PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_definitions(clap_juce_extensions PUBLIC
         HAS_CLAP_JUCE_EXTENSIONS=1)
+target_link_libraries(clap_juce_extensions PUBLIC clap-core)
 
 add_library(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/clap-juce-wrapper.cpp)
 if (APPLE)

@@ -87,6 +87,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
   public:
     static clap_plugin_descriptor desc;
     std::unique_ptr<juce::AudioProcessor> processor;
+    clap_juce_extensions::clap_properties *processorAsClapProperties{nullptr};
 
     ClapJuceWrapper(const clap_host *host, juce::AudioProcessor *p)
         : clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate,
@@ -96,6 +97,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         processor->setRateAndBufferSizeDetails(0, 0);
         processor->setPlayHead(this);
         processor->addListener(this);
+
+        processorAsClapProperties = dynamic_cast<clap_juce_extensions::clap_properties *>(p);
 
         const bool forceLegacyParamIDs = false;
 
@@ -311,6 +314,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             hasTransportInfo = false;
             transportInfo = nullptr;
         }
+
+
+        if (processorAsClapProperties)
+            processorAsClapProperties->clap_transport = process->transport;
 
         juce::MidiBuffer mbuf;
         if (sz != 0)
