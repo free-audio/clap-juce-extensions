@@ -205,7 +205,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             if (flags & CLAP_TRANSPORT_HAS_BEATS_TIMELINE)
             {
                 info.ppqPosition = 1.0 * transportInfo->song_pos_beats / CLAP_BEATTIME_FACTOR;
-                info.ppqPositionOfLastBarStart = 1.0 * transportInfo->bar_start / CLAP_BEATTIME_FACTOR;
+                info.ppqPositionOfLastBarStart =
+                    1.0 * transportInfo->bar_start / CLAP_BEATTIME_FACTOR;
             }
             if (flags & CLAP_TRANSPORT_HAS_SECONDS_TIMELINE)
             {
@@ -214,7 +215,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             info.isPlaying = flags & CLAP_TRANSPORT_IS_PLAYING;
             info.isRecording = flags & CLAP_TRANSPORT_IS_RECORDING;
             info.isLooping = flags & CLAP_TRANSPORT_IS_LOOP_ACTIVE;
-
         }
         return hasTransportInfo;
     }
@@ -315,7 +315,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             transportInfo = nullptr;
         }
 
-
         if (processorAsClapProperties)
             processorAsClapProperties->clap_transport = process->transport;
 
@@ -343,6 +342,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                     mbuf.addEvent(
                         juce::MidiMessage::noteOff(n.channel + 1, n.key, (float)n.velocity),
                         evt->time); // how to get time
+                }
+                break;
+                case CLAP_EVENT_MIDI:
+                {
+                    mbuf.addEvent(juce::MidiMessage(evt->midi.data[0], evt->midi.data[1],
+                                                    evt->midi.data[2], evt->time),
+                                  evt->time);
                 }
                 break;
                 case CLAP_EVENT_TRANSPORT:
@@ -553,12 +559,14 @@ void clap_deinit(void) {}
 
 uint32_t clap_get_plugin_count(const struct clap_plugin_factory *) { return 1; }
 
-const clap_plugin_descriptor *clap_get_plugin_descriptor(const struct clap_plugin_factory *, uint32_t w)
+const clap_plugin_descriptor *clap_get_plugin_descriptor(const struct clap_plugin_factory *,
+                                                         uint32_t w)
 {
     return &ClapJuceWrapper::desc;
 }
 
-static const clap_plugin *clap_create_plugin(const struct clap_plugin_factory *, const clap_host *host, const char *plugin_id)
+static const clap_plugin *clap_create_plugin(const struct clap_plugin_factory *,
+                                             const clap_host *host, const char *plugin_id)
 {
     if (strcmp(plugin_id, ClapJuceWrapper::desc.id))
     {
@@ -574,14 +582,14 @@ static const clap_plugin *clap_create_plugin(const struct clap_plugin_factory *,
     return wrapper->clapPlugin();
 }
 
-
 const struct clap_plugin_factory juce_clap_plugin_factory = {
     ClapAdapter::clap_get_plugin_count,
     ClapAdapter::clap_get_plugin_descriptor,
     ClapAdapter::clap_create_plugin,
 };
 
-const void* clap_get_factory(const char* factory_id) {
+const void *clap_get_factory(const char *factory_id)
+{
     if (strcmp(factory_id, CLAP_PLUGIN_FACTORY_ID) == 0)
     {
         return &juce_clap_plugin_factory;
@@ -594,6 +602,7 @@ const void* clap_get_factory(const char* factory_id) {
 
 extern "C"
 {
-    const CLAP_EXPORT struct clap_plugin_entry clap_entry = {CLAP_VERSION, ClapAdapter::clap_init, ClapAdapter::clap_deinit,
-                                                                    ClapAdapter::clap_get_factory};
+    const CLAP_EXPORT struct clap_plugin_entry clap_entry = {CLAP_VERSION, ClapAdapter::clap_init,
+                                                             ClapAdapter::clap_deinit,
+                                                             ClapAdapter::clap_get_factory};
 }
