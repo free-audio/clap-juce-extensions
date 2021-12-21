@@ -575,6 +575,8 @@ const clap_plugin_descriptor *clap_get_plugin_descriptor(const struct clap_plugi
 static const clap_plugin *clap_create_plugin(const struct clap_plugin_factory *,
                                              const clap_host *host, const char *plugin_id)
 {
+    juce::ScopedJuceInitialiser_GUI libraryInitialiser;
+
     if (strcmp(plugin_id, ClapJuceWrapper::desc.id))
     {
         std::cout << "Warning: CLAP asked for plugin_id '" << plugin_id
