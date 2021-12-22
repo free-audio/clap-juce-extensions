@@ -673,6 +673,9 @@ const void *clap_get_factory(const char *factory_id)
 
 extern "C"
 {
+#if JUCE_LINUX
+#pragma GCC diagnostic ignored "-Wattributes"
+#endif
     const CLAP_EXPORT struct clap_plugin_entry clap_entry = {CLAP_VERSION, ClapAdapter::clap_init,
                                                              ClapAdapter::clap_deinit,
                                                              ClapAdapter::clap_get_factory};
