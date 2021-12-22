@@ -34,6 +34,10 @@
 
 #include <clap-juce-extensions/clap-juce-extensions.h>
 
+#if JUCE_LINUX
+#include <juce_audio_plugin_client/utility/juce_LinuxMessageThread.h>
+#endif
+
 /*
  * This is a utility lock free queue based on the JUCE abstract fifo
  */
@@ -141,13 +145,23 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 #endif
     }
 
+     bool init() noexcept override {
+
+#if JUCE_LINUX
+        if (_host.canUseTimerSupport()) {
+          _host.timerSupportRegisterTimer(1000 / 50, &idleTimer);
+        }
+#endif
+      return true;
+    }
+
   public:
     bool implementsTimerSupport() const noexcept override { return true; }
     void onTimer(clap_id timerId) noexcept override
     {
 #if LINUX
-        juce::MessageManager::getInstance()->setCurrentThreadAsMessageThread();
-        const juce::MessageMaangerLock mmLock;
+        juce::ScopedJuceInitialiser_GUI libraryInitialiser;
+        const juce::MessageManagerLock mmLock;
 
         while (juce::dispatchNextMessageOnSystemQueue(true))
         {
@@ -410,8 +424,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             ov->push_back(ov, &evt);
         }
 
-        jassert(process->audio_inputs_count == processor->getBusCount(true));
-        jassert(process->audio_outputs_count == processor->getBusCount(false));
+        // jassert(process->audio_inputs_count == processor->getBusCount(true));
+        // jassert(process->audio_outputs_count == processor->getBusCount(false));
 
         // We process in place so
         static constexpr uint32_t maxBuses = 1024;
