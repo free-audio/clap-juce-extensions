@@ -1,14 +1,10 @@
 /*
  * BaconPaul's running todo
  *
- * - busses and bus arrangement
  * - midi out (try stochas perhaps?)
- * - why does TWS not work?
  * - why does dexed not work?
- * - playhead support [started]
- * - midi monitor and more midi messages
  * - Finish populating the desc
- * - Cleanup and comment of course (including the CMake)
+ * - Cleanup and comment of course (including the CMake) including what's skipped
  */
 
 #include <memory>
@@ -17,6 +13,19 @@
 #include <clap/helpers/host-proxy.hxx>
 #include <clap/helpers/plugin.hh>
 #include <clap/helpers/plugin.hxx>
+
+#define FIXME(x)                                                                                   \
+    {                                                                                              \
+        static bool onetime_ = false;                                                              \
+        if (!onetime_)                                                                             \
+        {                                                                                          \
+            std::ostringstream oss;                                                                \
+            oss << "FIXME: " << x << " @" << __LINE__;                                             \
+            DBG(oss.str());                                                                        \
+        }                                                                                          \
+        jassert(onetime_);                                                                         \
+        onetime_ = true;                                                                           \
+    }
 
 #define JUCE_GUI_BASICS_INCLUDE_XHEADERS 1
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -158,9 +167,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     void audioProcessorChanged(juce::AudioProcessor *processor,
                                const ChangeDetails &details) override
     {
-        static bool apc = false;
-        jassert(apc);
-        apc = true;
+        FIXME("audio processor changed");
     }
 
     clap_id clapIdFromParameterIndex(int index)
@@ -228,10 +235,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
     void parameterValueChanged(int, float newValue) override
     {
+        FIXME("parameter value changed");
         // this can only come from the bypass parameter
     }
 
-    void parameterGestureChanged(int, bool) override {}
+    void parameterGestureChanged(int, bool) override { FIXME("parameter gesture changed"); }
 
     bool activate(double sampleRate, uint32_t minFrameCount,
                   uint32_t maxFrameCount) noexcept override
@@ -241,25 +249,37 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     }
 
     /* CLAP API */
+
+    bool implementsAudioPorts() const noexcept override { return true; }
     uint32_t audioPortsCount(bool isInput) const noexcept override
     {
+        DBG("audioPortsCount - for " << (isInput ? "Input" : "Output") << " returning "
+                                     << processor->getBusCount(isInput));
         return processor->getBusCount(isInput);
     }
+
     bool audioPortsInfo(uint32_t index, bool isInput,
                         clap_audio_port_info *info) const noexcept override
     {
         // For now hardcode to stereo out. Fix this obviously.
-        if (isInput || index != 0)
-            return false;
+        DBG("audioPortsInfo " << (int)index << " " << (isInput ? "INPUT" : "OUTPUT"));
+        auto clob = processor->getChannelLayoutOfBus(isInput, index);
 
-        info->id = 0;
-        strncpy(info->name, "main", sizeof(info->name));
-        info->is_main = true;
+        // For now we only support stereo channels
+        jassert(clob.size() == 1 || clob.size() == 2);
+        jassert(clob.size() == 1 || (clob.getTypeOfChannel(0) == juce::AudioChannelSet::left &&
+                                     clob.getTypeOfChannel(1) == juce::AudioChannelSet::right));
+        // if (isInput || index != 0) return false;
+        info->id = (isInput ? 1 << 15 : 1) + index;
+        strncpy(info->name, clob.getDescription().toRawUTF8(), sizeof(info->name));
+        info->is_main = (index == 0);
         info->is_cv = false;
+
+        FIXME("Float vs Double Precisions busses");
         info->sample_size = 32;
         info->in_place = true;
-        info->channel_count = 2;
-        info->channel_map = CLAP_CHMAP_STEREO;
+        info->channel_count = clob.size();
+        info->channel_map = clob.size() == 1 ? CLAP_CHMAP_MONO : CLAP_CHMAP_STEREO;
         return true;
     }
 
@@ -289,6 +309,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         info->id = generateClapIDForJuceParam(pbi);
         strncpy(info->name, (pbi->getName(CLAP_NAME_SIZE)).toRawUTF8(), CLAP_NAME_SIZE);
         strncpy(info->module, group.toRawUTF8(), CLAP_NAME_SIZE);
+
         info->min_value = 0; // FIXME
         info->max_value = 1;
         info->default_value = pbi->getDefaultValue();
@@ -389,10 +410,37 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             ov->push_back(ov, &evt);
         }
 
-        // Obviously there is horrible bus stuff here to fix
-        float **out = process->audio_outputs[0].data32;
-        juce::AudioBuffer<float> buf(out, 2, process->frames_count);
+        jassert(process->audio_inputs_count == processor->getBusCount(true));
+        jassert(process->audio_outputs_count == processor->getBusCount(false));
 
+        // We process in place so
+        static constexpr uint32_t maxBuses = 1024;
+        std::array<float *, maxBuses> busses{};
+        auto mx =
+            std::min(std::max(process->audio_inputs_count, process->audio_outputs_count), maxBuses);
+
+        int kpos = 0;
+        for (auto idx = 0; idx < mx; ++idx)
+        {
+            if (idx < process->audio_outputs_count)
+            {
+                for (int ch = 0; ch < process->audio_outputs[idx].channel_count; ++ch)
+                {
+                    busses[kpos++] = process->audio_outputs[idx].data32[ch];
+                }
+            }
+            else
+            {
+                for (int ch = 0; ch < process->audio_inputs[idx].channel_count; ++ch)
+                {
+                    busses[kpos++] = process->audio_inputs[idx].data32[ch];
+                }
+            }
+        }
+
+        juce::AudioBuffer<float> buf(busses.data(), kpos, process->frames_count);
+
+        FIXME("Handle bypass and deactivated states");
         processor->processBlock(buf, mbuf);
 
         return CLAP_PROCESS_CONTINUE;
