@@ -438,12 +438,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             }
         }
 
-        ParamChange pc;
+        auto pc = ParamChange();
+        auto ov = process->out_events;
+        auto evt = clap_event();
+
         while (uiParamChangeQ.pop(pc))
         {
-            auto ov = process->out_events;
-            clap_event evt;
             evt.type = pc.type;
+            evt.time = 0; // for now
             evt.param_value.param_id = pc.id;
             evt.param_value.value = pc.newval;
             ov->push_back(ov, &evt);
