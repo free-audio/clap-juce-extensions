@@ -1,6 +1,7 @@
 /*
  * BaconPaul's running todo
  *
+ * - We always say we are an instrument....
  * - midi out (try stochas perhaps?)
  * - why does dexed not work?
  * - Finish populating the desc
@@ -298,8 +299,28 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         info->in_place = true;
         info->channel_count = clob.size();
         info->channel_map = clob.size() == 1 ? CLAP_CHMAP_MONO : CLAP_CHMAP_STEREO;
+
+        FIXME("Channel Set; and this threading of bus layout");
+        auto requested = processor->getBusesLayout();
+        if (clob.size() == 1)
+            requested.getChannelSet(isInput, index) = juce::AudioChannelSet::mono();
+        if (clob.size() == 2)
+            requested.getChannelSet(isInput, index) = juce::AudioChannelSet::stereo();
+        processor->setBusesLayoutWithoutEnabling(requested);
+
         return true;
     }
+    uint32_t audioPortsConfigCount() const noexcept override
+    {
+        DBG("audioPortsConfigCount CALLED - returning 0Por");
+        return 0;
+    }
+    bool audioPortsGetConfig(uint32_t index,
+                             clap_audio_ports_config *config) const noexcept override
+    {
+        return false;
+    }
+    bool audioPortsSetConfig(clap_id configId) noexcept override { return false; }
 
     bool implementsParams() const noexcept override { return true; }
     bool isValidParamId(clap_id paramId) const noexcept override
@@ -428,35 +449,64 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             ov->push_back(ov, &evt);
         }
 
-        // jassert(process->audio_inputs_count == processor->getBusCount(true));
-        // jassert(process->audio_outputs_count == processor->getBusCount(false));
-
         // We process in place so
-        static constexpr uint32_t maxBuses = 1024;
+        static constexpr uint32_t maxBuses = 128;
         std::array<float *, maxBuses> busses{};
-        auto mx =
-            std::min(std::max(process->audio_inputs_count, process->audio_outputs_count), maxBuses);
+        busses.fill(nullptr);
 
-        int kpos = 0;
-        for (auto idx = 0; idx < mx; ++idx)
+        /*DBG("IO Configuration: I=" << (int)process->audio_inputs_count << " O="
+                                   << (int)process->audio_outputs_count << " MX=" << (int)mx);
+        DBG("Plugin Configuration: IC=" << processor->getTotalNumInputChannels()
+                                        << " OC=" << processor->getTotalNumOutputChannels());
+        */
+
+        /*
+         * OK so here is what JUCE expects in its audio buffer. It *always* uses input as output
+         * buffer so we need to create a buffer where each channel is the channel of the associated
+         * output pointer (fine) and then the inputs need to either check they are the same or copy.
+         */
+
+        /*
+         * So first lets load up with our outputs
+         */
+        uint32_t ochans = 0;
+        for (auto idx = 0; idx < process->audio_outputs_count && ochans < maxBuses; ++idx)
         {
-            if (idx < process->audio_outputs_count)
+            for (int ch = 0; ch < process->audio_outputs[idx].channel_count; ++ch)
             {
-                for (int ch = 0; ch < process->audio_outputs[idx].channel_count; ++ch)
-                {
-                    busses[kpos++] = process->audio_outputs[idx].data32[ch];
-                }
-            }
-            else
-            {
-                for (int ch = 0; ch < process->audio_inputs[idx].channel_count; ++ch)
-                {
-                    busses[kpos++] = process->audio_inputs[idx].data32[ch];
-                }
+                busses[ochans] = process->audio_outputs[idx].data32[ch];
+                ochans++;
             }
         }
 
-        juce::AudioBuffer<float> buf(busses.data(), kpos, process->frames_count);
+        uint32_t ichans = 0;
+        for (auto idx = 0; idx < process->audio_inputs_count && ichans < maxBuses; ++idx)
+        {
+            for (int ch = 0; ch < process->audio_inputs[idx].channel_count; ++ch)
+            {
+                auto *ic = process->audio_inputs[idx].data32[ch];
+                if (ichans < ochans)
+                {
+                    if (ic == busses[ichans])
+                    {
+                        // The buffers overlap - no need to do anything
+                    }
+                    else
+                    {
+                        juce::FloatVectorOperations::copy(busses[ichans], ic,
+                                                          process->frames_count);
+                    }
+                }
+                else
+                {
+                    busses[ichans] = ic;
+                }
+                ichans++;
+            }
+        }
+
+        auto totalChans = std::max(ichans, ochans);
+        juce::AudioBuffer<float> buf(busses.data(), totalChans, process->frames_count);
 
         FIXME("Handle bypass and deactivated states");
         processor->processBlock(buf, mbuf);
