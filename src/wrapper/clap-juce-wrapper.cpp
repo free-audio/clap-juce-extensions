@@ -145,14 +145,16 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 #endif
     }
 
-     bool init() noexcept override {
+    bool init() noexcept override
+    {
 
 #if JUCE_LINUX
-        if (_host.canUseTimerSupport()) {
-          _host.timerSupportRegisterTimer(1000 / 50, &idleTimer);
+        if (_host.canUseTimerSupport())
+        {
+            _host.timerSupportRegisterTimer(1000 / 50, &idleTimer);
         }
 #endif
-      return true;
+        return true;
     }
 
   public:
@@ -278,6 +280,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         // For now hardcode to stereo out. Fix this obviously.
         DBG("audioPortsInfo " << (int)index << " " << (isInput ? "INPUT" : "OUTPUT"));
         auto clob = processor->getChannelLayoutOfBus(isInput, index);
+        auto bus = processor->getBus(isInput, index);
 
         // For now we only support stereo channels
         jassert(clob.size() == 1 || clob.size() == 2);
@@ -285,7 +288,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                                      clob.getTypeOfChannel(1) == juce::AudioChannelSet::right));
         // if (isInput || index != 0) return false;
         info->id = (isInput ? 1 << 15 : 1) + index;
-        strncpy(info->name, clob.getDescription().toRawUTF8(), sizeof(info->name));
+        strncpy(info->name, bus->getName().toRawUTF8(), sizeof(info->name));
+        DBG("Constructing port '" << bus->getName() << "'");
         info->is_main = (index == 0);
         info->is_cv = false;
 
