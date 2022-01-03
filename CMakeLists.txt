@@ -70,9 +70,9 @@ function(clap_juce_extensions_plugin)
   add_library(${claptarget} MODULE ${SRC})
 
   set_target_properties(${claptarget} PROPERTIES
-          ARCHIVE_OUTPUT_DIRECTORY "$<GENEX_EVAL:$<TARGET_PROPERTY:${target},ARCHIVE_OUTPUT_DIRECTORY>>/Clap"
-          LIBRARY_OUTPUT_DIRECTORY "$<GENEX_EVAL:$<TARGET_PROPERTY:${target},LIBRARY_OUTPUT_DIRECTORY>>/Clap"
-          RUNTIME_OUTPUT_DIRECTORY "$<GENEX_EVAL:$<TARGET_PROPERTY:${target},RUNTIME_OUTPUT_DIRECTORY>>/Clap")
+          ARCHIVE_OUTPUT_DIRECTORY "$<GENEX_EVAL:$<TARGET_PROPERTY:${target},ARCHIVE_OUTPUT_DIRECTORY>>/CLAP"
+          LIBRARY_OUTPUT_DIRECTORY "$<GENEX_EVAL:$<TARGET_PROPERTY:${target},LIBRARY_OUTPUT_DIRECTORY>>/CLAP"
+          RUNTIME_OUTPUT_DIRECTORY "$<GENEX_EVAL:$<TARGET_PROPERTY:${target},RUNTIME_OUTPUT_DIRECTORY>>/CLAP")
 
   get_target_property(products_folder ${claptarget} LIBRARY_OUTPUT_DIRECTORY)
   set(product_name $<TARGET_PROPERTY:${target},JUCE_PRODUCT_NAME>)
@@ -111,9 +111,9 @@ function(clap_juce_extensions_plugin)
     message(STATUS "Copy After Build" )
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
       add_custom_command(TARGET ${claptarget} POST_BUILD
-              COMMAND ${CMAKE_COMMAND} -E echo "Installing ${products_folder}/${product_name}.clap to ~/Library/Audio/Plug-Ins/Clap/"
-              COMMAND ${CMAKE_COMMAND} -E make_directory "~/Library/Audio/Plug-Ins/Clap"
-              COMMAND ${CMAKE_COMMAND} -E copy_directory "${products_folder}/${product_name}.clap" "~/Library/Audio/Plug-Ins/Clap/${product_name}.clap"
+              COMMAND ${CMAKE_COMMAND} -E echo "Installing ${products_folder}/${product_name}.clap to ~/Library/Audio/Plug-Ins/CLAP/"
+              COMMAND ${CMAKE_COMMAND} -E make_directory "~/Library/Audio/Plug-Ins/CLAP"
+              COMMAND ${CMAKE_COMMAND} -E copy_directory "${products_folder}/${product_name}.clap" "~/Library/Audio/Plug-Ins/CLAP/${product_name}.clap"
               )
     endif()
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")

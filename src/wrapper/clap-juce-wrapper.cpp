@@ -587,7 +587,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         juce::ScopedLock lock(stateInformationLock);
         chunkMemory.reset();
         // There must be a better way
-        char *block[256];
+        char block[256];
         int64_t rd;
         while ((rd = stream->read(stream, block, 256)) > 0)
             chunkMemory.append(block, rd);
