@@ -392,6 +392,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             {
                 auto evt = ev->get(ev, i);
 
+                if (evt->space_id != CLAP_CORE_EVENT_SPACE_ID)
+                    continue;
+
                 switch (evt->type)
                 {
                 case CLAP_EVENT_NOTE_ON:
@@ -675,7 +678,7 @@ clap_plugin_descriptor ClapJuceWrapper::desc = {CLAP_VERSION,
                                                 CLAP_SUPPORT_URL,
                                                 JucePlugin_VersionString,
                                                 JucePlugin_Desc,
-                                                "FIXME"};
+                                                CLAP_FEATURES};
 
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter();
 
