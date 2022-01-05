@@ -261,6 +261,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     bool activate(double sampleRate, uint32_t minFrameCount,
                   uint32_t maxFrameCount) noexcept override
     {
+        auto g = juce::ScopedJuceInitialiser_GUI();
         processor->prepareToPlay(sampleRate, maxFrameCount);
         return true;
     }
