@@ -207,13 +207,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     void audioProcessorParameterChangeGestureBegin(juce::AudioProcessor *, int index) override
     {
         auto id = clapIdFromParameterIndex(index);
-        uiParamChangeQ.push({CLAP_EVENT_PARAM_BEGIN_ADJUST, id, 0});
+        uiParamChangeQ.push({CLAP_EVENT_BEGIN_ADJUST, id, 0});
     }
 
     void audioProcessorParameterChangeGestureEnd(juce::AudioProcessor *, int index) override
     {
         auto id = clapIdFromParameterIndex(index);
-        uiParamChangeQ.push({CLAP_EVENT_PARAM_END_ADJUST, id, 0});
+        uiParamChangeQ.push({CLAP_EVENT_END_ADJUST, id, 0});
     }
 
     /*
@@ -396,26 +396,27 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 {
                 case CLAP_EVENT_NOTE_ON:
                 {
-                    auto n = evt->note;
+                    auto nevt = reinterpret_cast<const clap_event_note *>(evt);
 
-                    mbuf.addEvent(
-                        juce::MidiMessage::noteOn(n.channel + 1, n.key, (float)n.velocity),
-                        evt->time);
+                    mbuf.addEvent(juce::MidiMessage::noteOn(nevt->channel + 1, nevt->key,
+                                                            (float)nevt->velocity),
+                                  nevt->header.time);
                 }
                 break;
                 case CLAP_EVENT_NOTE_OFF:
                 {
-                    auto n = evt->note;
-                    mbuf.addEvent(
-                        juce::MidiMessage::noteOff(n.channel + 1, n.key, (float)n.velocity),
-                        evt->time); // how to get time
+                    auto nevt = reinterpret_cast<const clap_event_note *>(evt);
+                    mbuf.addEvent(juce::MidiMessage::noteOff(nevt->channel + 1, nevt->key,
+                                                             (float)nevt->velocity),
+                                  nevt->header.time);
                 }
                 break;
                 case CLAP_EVENT_MIDI:
                 {
-                    mbuf.addEvent(juce::MidiMessage(evt->midi.data[0], evt->midi.data[1],
-                                                    evt->midi.data[2], evt->time),
-                                  evt->time);
+                    auto mevt = reinterpret_cast<const clap_event_midi *>(evt);
+                    mbuf.addEvent(juce::MidiMessage(mevt->data[0], mevt->data[1], mevt->data[2],
+                                                    mevt->header.time),
+                                  mevt->header.time);
                 }
                 break;
                 case CLAP_EVENT_TRANSPORT:
@@ -425,12 +426,12 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 break;
                 case CLAP_EVENT_PARAM_VALUE:
                 {
-                    auto v = evt->param_value;
+                    auto pevt = reinterpret_cast<const clap_event_param_value *>(evt);
 
-                    auto id = v.param_id;
-                    auto nf = v.value;
-                    jassert(v.cookie == paramPtrByClapID[id]);
-                    auto jp = static_cast<juce::AudioProcessorParameter *>(v.cookie);
+                    auto id = pevt->param_id;
+                    auto nf = pevt->value;
+                    jassert(pevt->cookie == paramPtrByClapID[id]);
+                    auto jp = static_cast<juce::AudioProcessorParameter *>(pevt->cookie);
                     jp->setValue(nf);
                 }
                 break;
@@ -440,15 +441,18 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
         auto pc = ParamChange();
         auto ov = process->out_events;
-        auto evt = clap_event();
+        auto evt = clap_event_param_value();
 
         while (uiParamChangeQ.pop(pc))
         {
-            evt.type = pc.type;
-            evt.time = 0; // for now
-            evt.param_value.param_id = pc.id;
-            evt.param_value.value = pc.newval;
-            ov->push_back(ov, &evt);
+            evt.header.size = sizeof(clap_event_param_value);
+            evt.header.type = pc.type;
+            evt.header.time = 0; // for now
+            evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+            evt.header.flags = 0;
+            evt.param_id = pc.id;
+            evt.value = pc.newval;
+            ov->push_back(ov, reinterpret_cast<const clap_event_header *>(&evt));
         }
 
         // We process in place so
@@ -520,7 +524,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                                  bool wasResized) override
     {
         if (wasResized)
-            _host.guiResize(component.getWidth(), component.getHeight());
+            _host.guiRequestResize(component.getWidth(), component.getHeight());
     }
 
     std::unique_ptr<juce::AudioProcessorEditor> editor;
@@ -671,8 +675,7 @@ clap_plugin_descriptor ClapJuceWrapper::desc = {CLAP_VERSION,
                                                 CLAP_SUPPORT_URL,
                                                 JucePlugin_VersionString,
                                                 JucePlugin_Desc,
-                                                "FIXME",
-                                                CLAP_PLUGIN_INSTRUMENT};
+                                                "FIXME"};
 
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter();
 
