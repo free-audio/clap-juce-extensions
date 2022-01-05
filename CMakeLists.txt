@@ -53,7 +53,7 @@ target_include_directories(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DI
 
 function(clap_juce_extensions_plugin)
   set(oneValueArgs TARGET)
-  set(multiValueArgs CLAP_ID CLAP_MANUAL_URL CLAP_SUPPORT_URL CLAP_FEATURES)
+  set(multiValueArgs CLAP_ID CLAP_MANUAL_URL CLAP_SUPPORT_URL)
 
   cmake_parse_arguments(CJA "" "${oneValueArgs}"
           "${multiValueArgs}" ${ARGN} )
@@ -66,12 +66,8 @@ function(clap_juce_extensions_plugin)
     message(FATAL_ERROR "You must specify CLAP_ID to add a clap" )
   endif()
 
-  if ("${CJA_CLAP_FEATURES}" STREQUAL "")
-    # message(WARNING "You did not specify features; setting to 'instrument'" )
-    set(CJA_CLAP_FEATURES "instrument")
-  endif()
-
-  set(CJA_CLAP_FEATURES "instrument")
+  get_property(SRC TARGET clap_juce_sources PROPERTY SOURCES)
+  add_library(${claptarget} MODULE ${SRC})
 
   set_target_properties(${claptarget} PROPERTIES
           ARCHIVE_OUTPUT_DIRECTORY "$<GENEX_EVAL:$<TARGET_PROPERTY:${target},ARCHIVE_OUTPUT_DIRECTORY>>/CLAP"
@@ -100,9 +96,10 @@ function(clap_juce_extensions_plugin)
   target_include_directories(${claptarget} PRIVATE
           $<TARGET_PROPERTY:${target},INCLUDE_DIRECTORIES>)
 
+  message( STATUS "Setting CLAP_FEATURES to instrument for all plugins" )
   target_compile_definitions(${claptarget} PRIVATE
           CLAP_ID="${CJA_CLAP_ID}"
-          CLAP_FEATURES="${CJA_CLAP_FEATURES}"
+          CLAP_FEATURES="instrument" # FIXME
           CLAP_MANUAL_URL="${CJA_CLAP_MANUAL_URL}"
           CLAP_SUPPORT_URL="${CJA_CLAP_SUPPORT_URL}")
 
