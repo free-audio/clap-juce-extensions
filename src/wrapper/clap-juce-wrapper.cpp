@@ -141,18 +141,17 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 #if JUCE_LINUX
         if (_host.canUseTimerSupport())
         {
-            _host.timerSupportUnregisterTimer(idleTimer);
+            _host.timerSupportUnregister(idleTimer);
         }
 #endif
     }
 
     bool init() noexcept override
     {
-
 #if JUCE_LINUX
         if (_host.canUseTimerSupport())
         {
-            _host.timerSupportRegisterTimer(1000 / 50, &idleTimer);
+            _host.timerSupportRegister(1000 / 50, &idleTimer);
         }
 #endif
         return true;
