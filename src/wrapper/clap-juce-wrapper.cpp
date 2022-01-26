@@ -291,14 +291,19 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         info->id = (isInput ? 1 << 15 : 1) + index;
         strncpy(info->name, bus->getName().toRawUTF8(), sizeof(info->name));
         DBG("Constructing port '" << bus->getName() << "'");
-        info->is_main = (index == 0);
-        info->is_cv = false;
+        if (index == 0)
+            info->flags = CLAP_AUDIO_PORT_IS_MAIN;
+        else
+            info->flags = 0;
 
         FIXME("Float vs Double Precisions busses");
-        info->sample_size = 32;
-        info->in_place = true;
+        info->in_place_pair = info->id;
         info->channel_count = clob.size();
-        info->channel_map = clob.size() == 1 ? CLAP_CHMAP_MONO : CLAP_CHMAP_STEREO;
+
+        if (clob.size() == 1)
+            info->port_type = CLAP_PORT_MONO;
+        else
+            info->port_type = CLAP_PORT_STEREO;
 
         FIXME("Channel Set; and this threading of bus layout");
         auto requested = processor->getBusesLayout();
@@ -328,7 +333,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         return allClapIDs.find(paramId) != allClapIDs.end();
     }
     uint32_t paramsCount() const noexcept override { return allClapIDs.size(); }
-    bool paramsInfo(int32_t paramIndex, clap_param_info *info) const noexcept override
+    bool paramsInfo(uint32_t paramIndex, clap_param_info *info) const noexcept override
     {
         auto pbi = juceParameters.getParamForIndex(paramIndex);
 
@@ -669,6 +674,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     bool hasTransportInfo{false};
 };
 
+const char *features[] = {CLAP_FEATURES, 0};
 clap_plugin_descriptor ClapJuceWrapper::desc = {CLAP_VERSION,
                                                 CLAP_ID,
                                                 JucePlugin_Name,
@@ -678,7 +684,7 @@ clap_plugin_descriptor ClapJuceWrapper::desc = {CLAP_VERSION,
                                                 CLAP_SUPPORT_URL,
                                                 JucePlugin_VersionString,
                                                 JucePlugin_Desc,
-                                                CLAP_FEATURES};
+                                                features};
 
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter();
 
