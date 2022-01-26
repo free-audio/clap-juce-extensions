@@ -272,16 +272,34 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     {
         DBG("audioPortsCount - for " << (isInput ? "Input" : "Output") << " returning "
                                      << processor->getBusCount(isInput));
-        return processor->getBusCount(isInput);
+        /*
+         * FIXME : This needs way more careful consideration but for now only
+         * show activated busses
+         */
+        auto maxBusCount = processor->getBusCount(isInput);
+        int enabledCount = 0;
+        for (int index = 0; index < maxBusCount; ++index)
+        {
+            auto clob = processor->getChannelLayoutOfBus(isInput, index);
+            auto bus = processor->getBus(isInput, index);
+            if (bus->isEnabled())
+                enabledCount++;
+        }
+
+        DBG("audioPortsCount - for " << (isInput ? "Input" : "Output") << " returning "
+                                     << processor->getBusCount(isInput) << " enabled=" << enabledCount);
+
+        return enabledCount;
     }
 
     bool audioPortsInfo(uint32_t index, bool isInput,
                         clap_audio_port_info *info) const noexcept override
     {
         // For now hardcode to stereo out. Fix this obviously.
-        DBG("audioPortsInfo " << (int)index << " " << (isInput ? "INPUT" : "OUTPUT"));
         auto clob = processor->getChannelLayoutOfBus(isInput, index);
         auto bus = processor->getBus(isInput, index);
+        DBG("audioPortsInfo " << (int)index << " " << (isInput ? "INPUT" : "OUTPUT")
+                              << " sz=" << clob.size() << " enabled=" << (int)(bus->isEnabled()));
 
         // For now we only support stereo channels
         jassert(clob.size() == 1 || clob.size() == 2);
@@ -311,6 +329,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             requested.getChannelSet(isInput, index) = juce::AudioChannelSet::mono();
         if (clob.size() == 2)
             requested.getChannelSet(isInput, index) = juce::AudioChannelSet::stereo();
+
         processor->setBusesLayoutWithoutEnabling(requested);
 
         return true;
