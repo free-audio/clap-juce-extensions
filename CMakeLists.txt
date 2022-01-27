@@ -1,49 +1,31 @@
 # CMAKE Support for out of tree clap plugin extensions to Juce 6
 #
 # To use these in your juce6 cmake project
-# 1. In your CMAKE build chain, define CLAP_ROOT as the directory containing
-#    both 'clap' and 'clap-helpers' from github.com/free-audio. These can be
-#    submodules or out of tree
-# 2. Include this cmake file in your build path
-# 3. Create your juce plugin as normal with formats VST3 etc...
-# 4. After that, add the following lines (or similar) to your cmake
+# 1. Include this cmake file in your build path
+# 2. Create your juce plugin as normal with formats VST3 etc...
+# 3. After that, add the following lines (or similar) to your cmake
 #    clap_juce_extensions_plugin(TARGET my-target
 #          CLAP_ID "com.my-cool-plugs.my-target")
-# 5. Reload your CMAKe file and my-target_CLAP will be a buildable target
+# 4. Reload your CMAKe file and my-target_CLAP will be a buildable target
 
 project(clap-juce-extensions VERSION 0.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 14)
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-  # Any Clang or any GCC
-  add_compile_options(
-          -Wno-multichar
-          # Targetting Windows with GCC/Clang is experimental
-          $<$<NOT:$<BOOL:${WIN32}>>:-Werror>
 
-          # PE/COFF doesn't support visibility
-          $<$<NOT:$<BOOL:${WIN32}>>:-fvisibility=hidden>
-          # Inlines visibility is only relevant with C++
-          $<$<AND:$<NOT:$<BOOL:${WIN32}>>,$<COMPILE_LANGUAGE:CXX>>:-fvisibility-inlines-hidden>
-  )
-endif()
-
-
-
-if(NOT CLAP_ROOT)
-  message(FATAL_ERROR "Please specify CLAP_ROOT, a directory containing `clap` and `clap-helpers`")
-endif()
-
-add_subdirectory(${CLAP_ROOT}/clap clapjuceext_clap)
-add_subdirectory(${CLAP_ROOT}/clap-helpers clapjuceext_claphelpers)
+add_subdirectory(clap-libs/clap clapjuceext_clap EXCLUDE_FROM_ALL)
+add_subdirectory(clap-libs/clap-helpers clapjuceext_claphelpers EXCLUDE_FROM_ALL)
 
 add_library(clap_juce_extensions STATIC src/extensions/clap-juce-extensions.cpp)
 target_include_directories(clap_juce_extensions PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_definitions(clap_juce_extensions PUBLIC
         HAS_CLAP_JUCE_EXTENSIONS=1)
 target_link_libraries(clap_juce_extensions PUBLIC clap-core)
+
+set_property(TARGET clap_juce_extensions PROPERTY C_VISIBILITY_PRESET hidden)
+set_property(TARGET clap_juce_extensions PROPERTY VISIBILITY_INLINES_HIDDEN ON)
+
 
 add_library(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/clap-juce-wrapper.cpp)
 if (APPLE)

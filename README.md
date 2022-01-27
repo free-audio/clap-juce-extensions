@@ -15,7 +15,7 @@ Requirements:
 Issues:
 
 * We support plugin creation only, not hosting.
-* We aim to have currently incomplete features set up as github issues before Mid-January
+* We aim to have currently incomplete features set up as github issues before 1 Feb 2022
 * Many bus and parameter features are unsupported still
 * Synths using older deprecated JUCE APIs still don't work
 
@@ -25,6 +25,9 @@ There's a couple of ways we could have gone adding experimental JUCE support. Th
 requires a forked JUCE which places LV2 support fully inside the JUCE ecosystem at the cost of maintaining a fork (and
 not allowing folks with their own forks to easily use LV2). We instead chose an 'out-of-juce' approach which has the
 following pros and cons
+
+As of Jan 26, 2022, we modified the forkless approach to make the extensions a consistent self contained git repo with
+the rest of clap as a sub-module. If you built with these tools before, please read the changed instructions below.
 
 Pros:
 
@@ -46,19 +49,19 @@ so on using CMake. If you are in this state, building a Clap is a simple exercis
 somewhere in your dev environment, setting a few CMake variables, and adding a couple of lines to your CMake file. The
 instructions are as follows:
 
-1. In a directory of your choosing, clone https://github.com/free-audio/clap https://github.com/free-audio/clap-helpers
-   and
-   https://github.com/free-audio/clap-juce-extensions
-3. Load the `clap-juce-extension` in your CMake after you have loaded juce. For instance you could do
+1. Add `https://github.com/free-audio/clap-juce-extensions.git` as a submodule of your project, or otherwise make the
+   source available to your cmake (CPM, side by side check out in CI, etc...).
+2. Load the `clap-juce-extension` in your CMake after you have loaded juce. For instance you could do
 
 ```
 add_subdirectory(libs/JUCE) # this is however you load juce
-add_subdirectory(/usr/Me/dev/CLAP/clap-juce-extensions EXCLUDE_FROM_ALL)` 
+add_subdirectory(libs/clap-juce-extensions EXCLUDE_FROM_ALL)` 
 ```
 
-In Surge we chose to make this juce extensions location a variable which triggers the build
+In surge we clap extensions are a sub module side by side with juce.
 
-3. Create your juce plugin as normal with formats VST3 etc... 4After that `juce_plugin` code, add the following lines (
+3. Create your juce plugin as normal with formats VST3 etc...
+4. After that `juce_plugin` code, add the following lines (
    or similar) to your cmake
 
 ```
@@ -66,14 +69,11 @@ In Surge we chose to make this juce extensions location a variable which trigger
           CLAP_ID "com.my-cool-plugs.my-target")
 ```
 
-5. In your CMAKE build chain, define CLAP_ROOT as the directory containing both 'clap' and 'clap-helpers'. For instance
-   if the directory you picked was `/usr/Me/dev/CLAP_STUFF` you would add to your first
-   CMake `-DCLAP_ROOT=/usr/Me/dev/CLAP_STUFF`
-6. Reload your CMake file and my-target_CLAP will be a buildable target
+5Reload your CMake file and my-target_CLAP will be a buildable target
 
 ## The one missing API from "Forkless"
 
 As mentioned above `wrapperType` will be set to `Undefined` using this method. There's two things you can do about this
 
 1. Live with it. It's probably OK! But if you do need to know your wrapper type
-2. Use the extension mechanism (to be documented)
+2. Use the extension mechanism. (ToDo: Document this)
