@@ -23,9 +23,12 @@ target_compile_definitions(clap_juce_extensions PUBLIC
         HAS_CLAP_JUCE_EXTENSIONS=1)
 target_link_libraries(clap_juce_extensions PUBLIC clap-core)
 
-set_property(TARGET clap_juce_extensions PROPERTY C_VISIBILITY_PRESET hidden)
-set_property(TARGET clap_juce_extensions PROPERTY VISIBILITY_INLINES_HIDDEN ON)
-
+set_target_properties(clap_juce_extensions PROPERTIES
+    POSITION_INDEPENDENT_CODE TRUE
+    VISIBILITY_INLINES_HIDDEN TRUE
+    C_VISBILITY_PRESET hidden
+    CXX_VISIBILITY_PRESET hidden
+)
 
 add_library(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/clap-juce-wrapper.cpp)
 if (APPLE)
@@ -99,6 +102,13 @@ function(clap_juce_extensions_plugin)
   target_link_libraries(${target} PUBLIC clap_juce_extensions)
 
   target_link_libraries(${claptarget} PUBLIC clap-core clap-helpers clap_juce_sources ${target})
+
+  set_target_properties(${claptarget} PROPERTIES
+      POSITION_INDEPENDENT_CODE TRUE
+      VISIBILITY_INLINES_HIDDEN TRUE
+      C_VISBILITY_PRESET hidden
+      CXX_VISIBILITY_PRESET hidden
+  )
 
   get_target_property(docopy "${target}" JUCE_COPY_PLUGIN_AFTER_BUILD)
 
