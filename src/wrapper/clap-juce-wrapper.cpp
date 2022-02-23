@@ -287,7 +287,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         }
 
         DBG("audioPortsCount - for " << (isInput ? "Input" : "Output") << " returning "
-                                     << processor->getBusCount(isInput) << " enabled=" << enabledCount);
+                                     << processor->getBusCount(isInput)
+                                     << " enabled=" << enabledCount);
 
         return enabledCount;
     }
@@ -527,7 +528,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                     else
                     {
                         juce::FloatVectorOperations::copy(busses[ichans], ic,
-                                                          process->frames_count);
+                                                          (int)process->frames_count);
                     }
                 }
                 else

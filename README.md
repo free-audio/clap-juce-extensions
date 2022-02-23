@@ -53,27 +53,52 @@ instructions are as follows:
    source available to your cmake (CPM, side by side check out in CI, etc...).
 2. Load the `clap-juce-extension` in your CMake after you have loaded juce. For instance you could do
 
-```
+```cmake
 add_subdirectory(libs/JUCE) # this is however you load juce
-add_subdirectory(libs/clap-juce-extensions EXCLUDE_FROM_ALL)` 
+add_subdirectory(libs/clap-juce-extensions EXCLUDE_FROM_ALL) 
 ```
 
 In surge we clap extensions are a sub module side by side with juce.
 
 3. Create your juce plugin as normal with formats VST3 etc...
-4. After that `juce_plugin` code, add the following lines (
-   or similar) to your cmake
+4. After that `juce_plugin` code, add the following lines (or similar)
+   to your cmake (a list of pre-defined CLAP
+   features can be found [here](https://github.com/free-audio/clap/blob/main/include/clap/plugin.h#L27)):
 
-```
+```cmake
     clap_juce_extensions_plugin(TARGET my-target
-          CLAP_ID "com.my-cool-plugs.my-target")
+          CLAP_ID "com.my-cool-plugs.my-target"
+          CLAP_FEATURES equalizer audio_effect)
 ```
 
-5Reload your CMake file and my-target_CLAP will be a buildable target
+5. Reload your CMake file and my-target_CLAP will be a buildable target
 
 ## The one missing API from "Forkless"
 
 As mentioned above `wrapperType` will be set to `Undefined` using this method. There's two things you can do about this
 
 1. Live with it. It's probably OK! But if you do need to know your wrapper type
-2. Use the extension mechanism. (ToDo: Document this)
+2. Use the extension mechanism:
+  - `#include "clap-juce-extensions/clap-juce-extensions.h"`
+  - Make your main plugin `juce::AudioProcessor` derive from `clap_juce_extensions::clap_properties`
+  - Use the `is_clap` member variable to figure out the correct wrapper type.
+
+Here's a minimal example:
+```cpp
+#include <JuceHeader.h>
+#include "clap-juce-extensions/clap-juce-extensions.h"
+
+class MyCoolPlugin : public juce::AudioProcessor,
+                     public clap_juce_extensions::clap_properties
+{
+    String getWrapperTypeString()
+    {
+        if (wrapperType == wrapperType_Undefined && is_clap)
+            return "Clap";
+    
+        return juce::AudioProcessor::getWrapperTypeDescription (wrapperType);
+    }
+    
+    ...
+};
+```

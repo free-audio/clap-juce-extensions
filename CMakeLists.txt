@@ -35,7 +35,7 @@ target_include_directories(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DI
 
 function(clap_juce_extensions_plugin)
   set(oneValueArgs TARGET)
-  set(multiValueArgs CLAP_ID CLAP_MANUAL_URL CLAP_SUPPORT_URL)
+  set(multiValueArgs CLAP_ID CLAP_FEATURES CLAP_MANUAL_URL CLAP_SUPPORT_URL)
 
   cmake_parse_arguments(CJA "" "${oneValueArgs}"
           "${multiValueArgs}" ${ARGN} )
@@ -47,6 +47,18 @@ function(clap_juce_extensions_plugin)
   if ("${CJA_CLAP_ID}" STREQUAL "")
     message(FATAL_ERROR "You must specify CLAP_ID to add a clap" )
   endif()
+
+  if ("${CJA_CLAP_FEATURES}" STREQUAL "")
+    message(WARNING "No CLAP_FEATURES were specified! Using \"instrument\" by default.")
+    set(CJA_CLAP_FEATURES instrument)
+  endif()
+
+  # Parse CLAP_FEATURES into a comma-separated strings (is there an easier way to do this?)
+  set(CJA_CLAP_FEATURES_PARSED "")
+  foreach(FEATURE IN LISTS CJA_CLAP_FEATURES)
+    set(CJA_CLAP_FEATURES_PARSED "${CJA_CLAP_FEATURES_PARSED}\"${FEATURE}\",")
+  endforeach()
+  STRING(REGEX REPLACE "(,)[^,]*$" "" CJA_CLAP_FEATURES_PARSED ${CJA_CLAP_FEATURES_PARSED}) # strip trailing comma
 
   get_property(SRC TARGET clap_juce_sources PROPERTY SOURCES)
   add_library(${claptarget} MODULE ${SRC})
@@ -78,10 +90,9 @@ function(clap_juce_extensions_plugin)
   target_include_directories(${claptarget} PRIVATE
           $<TARGET_PROPERTY:${target},INCLUDE_DIRECTORIES>)
 
-  message( STATUS "Setting CLAP_FEATURES to instrument for all plugins" )
   target_compile_definitions(${claptarget} PRIVATE
           CLAP_ID="${CJA_CLAP_ID}"
-          CLAP_FEATURES="instrument" # FIXME
+          CLAP_FEATURES=${CJA_CLAP_FEATURES_PARSED}
           CLAP_MANUAL_URL="${CJA_CLAP_MANUAL_URL}"
           CLAP_SUPPORT_URL="${CJA_CLAP_SUPPORT_URL}")
 
