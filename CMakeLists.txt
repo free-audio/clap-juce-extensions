@@ -99,6 +99,8 @@ function(clap_juce_extensions_plugin)
   target_link_libraries(${target} PUBLIC clap_juce_extensions)
 
   target_link_libraries(${claptarget} PUBLIC clap-core clap-helpers clap_juce_sources ${target})
+  set_property(TARGET ${claptarget} PROPERTY C_VISIBILITY_PRESET hidden)
+  set_property(TARGET ${claptarget} PROPERTY VISIBILITY_INLINES_HIDDEN ON)
 
   get_target_property(docopy "${target}" JUCE_COPY_PLUGIN_AFTER_BUILD)
 
