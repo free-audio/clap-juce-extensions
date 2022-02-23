@@ -53,7 +53,7 @@ function(clap_juce_extensions_plugin)
     set(CJA_CLAP_FEATURES instrument)
   endif()
 
-  # Parsing CLAP_FEATURES (this is a little messy...)
+  # Parse CLAP_FEATURES into a comma-separated strings (is there an easier way to do this?)
   set(CJA_CLAP_FEATURES_PARSED "")
   foreach(FEATURE IN LISTS CJA_CLAP_FEATURES)
     set(CJA_CLAP_FEATURES_PARSED "${CJA_CLAP_FEATURES_PARSED}\"${FEATURE}\",")
