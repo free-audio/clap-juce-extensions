@@ -50,8 +50,15 @@ function(clap_juce_extensions_plugin)
 
   if ("${CJA_CLAP_FEATURES}" STREQUAL "")
     message(WARNING "No CLAP_FEATURES were specified! Using \"instrument\" by default.")
-    set(CJA_CLAP_FEATURES "instrument")
+    set(CJA_CLAP_FEATURES instrument)
   endif()
+
+  # Parsing CLAP_FEATURES (this is a little messy...)
+  set(CJA_CLAP_FEATURES_PARSED "")
+  foreach(FEATURE IN LISTS CJA_CLAP_FEATURES)
+    set(CJA_CLAP_FEATURES_PARSED "${CJA_CLAP_FEATURES_PARSED}\"${FEATURE}\",")
+  endforeach()
+  STRING(REGEX REPLACE "(,)[^,]*$" "" CJA_CLAP_FEATURES_PARSED ${CJA_CLAP_FEATURES_PARSED}) # strip trailing comma
 
   get_property(SRC TARGET clap_juce_sources PROPERTY SOURCES)
   add_library(${claptarget} MODULE ${SRC})
@@ -85,7 +92,7 @@ function(clap_juce_extensions_plugin)
 
   target_compile_definitions(${claptarget} PRIVATE
           CLAP_ID="${CJA_CLAP_ID}"
-          CLAP_FEATURES=${CJA_CLAP_FEATURES}
+          CLAP_FEATURES=${CJA_CLAP_FEATURES_PARSED}
           CLAP_MANUAL_URL="${CJA_CLAP_MANUAL_URL}"
           CLAP_SUPPORT_URL="${CJA_CLAP_SUPPORT_URL}")
 

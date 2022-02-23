@@ -68,7 +68,7 @@ In surge we clap extensions are a sub module side by side with juce.
 ```cmake
     clap_juce_extensions_plugin(TARGET my-target
           CLAP_ID "com.my-cool-plugs.my-target"
-          CLAP_FEATURES "\"equalizer\", \"audio_effect\"")
+          CLAP_FEATURES equalizer audio_effect)
 ```
 
 5. Reload your CMake file and my-target_CLAP will be a buildable target
