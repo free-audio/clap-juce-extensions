@@ -643,7 +643,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
 #if JUCE_LINUX
     bool implementsGuiX11() const noexcept override { return processor->hasEditor(); }
-    bool guiX11Attach(const char *displayName, unsigned long window) noexcept
+    bool guiX11Attach(const char *displayName, unsigned long window) noexcept override
     {
         const juce::MessageManagerLock mmLock;
         editor->setVisible(false);
