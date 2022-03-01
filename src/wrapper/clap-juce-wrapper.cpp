@@ -10,10 +10,24 @@
 
 #include <memory>
 
+#define JUCE_GUI_BASICS_INCLUDE_XHEADERS 1
+#include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_gui_basics/juce_gui_basics.h>
+#include <juce_audio_processors/format_types/juce_LegacyAudioParameter.cpp>
+
+#include <clap-juce-extensions/clap-juce-extensions.h>
+
+#if JUCE_LINUX
+#include <juce_audio_plugin_client/utility/juce_LinuxMessageThread.h>
+#endif
+
+JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter",
+                                    "-Wsign-conversion")
 #include <clap/helpers/host-proxy.hh>
 #include <clap/helpers/host-proxy.hxx>
 #include <clap/helpers/plugin.hh>
 #include <clap/helpers/plugin.hxx>
+JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 
 #define FIXME(x)                                                                                   \
     {                                                                                              \
@@ -27,17 +41,6 @@
         jassert(onetime_);                                                                         \
         onetime_ = true;                                                                           \
     }
-
-#define JUCE_GUI_BASICS_INCLUDE_XHEADERS 1
-#include <juce_audio_processors/juce_audio_processors.h>
-#include <juce_gui_basics/juce_gui_basics.h>
-#include <juce_audio_processors/format_types/juce_LegacyAudioParameter.cpp>
-
-#include <clap-juce-extensions/clap-juce-extensions.h>
-
-#if JUCE_LINUX
-#include <juce_audio_plugin_client/utility/juce_LinuxMessageThread.h>
-#endif
 
 /*
  * This is a utility lock free queue based on the JUCE abstract fifo
@@ -118,7 +121,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
         juceParameters.update(*processor, forceLegacyParamIDs);
 
-        int i = 0;
         for (auto *juceParam :
 #if JUCE_VERSION >= 0x060103
              juceParameters
@@ -136,7 +138,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         }
     }
 
-    ~ClapJuceWrapper()
+    ~ClapJuceWrapper() override
     {
 #if JUCE_LINUX
         if (_host.canUseTimerSupport())
@@ -161,6 +163,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     bool implementsTimerSupport() const noexcept override { return true; }
     void onTimer(clap_id timerId) noexcept override
     {
+        juce::ignoreUnused(timerId);
 #if LINUX
         juce::ScopedJuceInitialiser_GUI libraryInitialiser;
         const juce::MessageManagerLock mmLock;
@@ -180,9 +183,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         return clap_id;
     }
 
-    void audioProcessorChanged(juce::AudioProcessor *processor,
+    void audioProcessorChanged(juce::AudioProcessor *proc,
                                const ChangeDetails &details) override
     {
+        juce::ignoreUnused(proc, details);
         FIXME("audio processor changed");
     }
 
@@ -251,6 +255,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
     void parameterValueChanged(int, float newValue) override
     {
+        juce::ignoreUnused(newValue);
         FIXME("parameter value changed");
         // this can only come from the bypass parameter
     }
@@ -260,8 +265,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     bool activate(double sampleRate, uint32_t minFrameCount,
                   uint32_t maxFrameCount) noexcept override
     {
+        juce::ignoreUnused(minFrameCount);
         auto g = juce::ScopedJuceInitialiser_GUI();
-        processor->prepareToPlay(sampleRate, maxFrameCount);
+        processor->prepareToPlay(sampleRate, (int)maxFrameCount);
         return true;
     }
 
@@ -290,15 +296,15 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                                      << processor->getBusCount(isInput)
                                      << " enabled=" << enabledCount);
 
-        return enabledCount;
+        return (uint32_t)enabledCount;
     }
 
     bool audioPortsInfo(uint32_t index, bool isInput,
                         clap_audio_port_info *info) const noexcept override
     {
         // For now hardcode to stereo out. Fix this obviously.
-        auto clob = processor->getChannelLayoutOfBus(isInput, index);
-        auto bus = processor->getBus(isInput, index);
+        auto clob = processor->getChannelLayoutOfBus(isInput, (int)index);
+        auto bus = processor->getBus(isInput, (int)index);
         DBG("audioPortsInfo " << (int)index << " " << (isInput ? "INPUT" : "OUTPUT")
                               << " sz=" << clob.size() << " enabled=" << (int)(bus->isEnabled()));
 
@@ -317,7 +323,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
         FIXME("Float vs Double Precisions busses");
         info->in_place_pair = info->id;
-        info->channel_count = clob.size();
+        info->channel_count = (uint32_t)clob.size();
 
         if (clob.size() == 1)
             info->port_type = CLAP_PORT_MONO;
@@ -327,9 +333,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         FIXME("Channel Set; and this threading of bus layout");
         auto requested = processor->getBusesLayout();
         if (clob.size() == 1)
-            requested.getChannelSet(isInput, index) = juce::AudioChannelSet::mono();
+            requested.getChannelSet(isInput, (int)index) = juce::AudioChannelSet::mono();
         if (clob.size() == 2)
-            requested.getChannelSet(isInput, index) = juce::AudioChannelSet::stereo();
+            requested.getChannelSet(isInput, (int)index) = juce::AudioChannelSet::stereo();
 
         processor->setBusesLayoutWithoutEnabling(requested);
 
@@ -340,22 +346,22 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         DBG("audioPortsConfigCount CALLED - returning 0Por");
         return 0;
     }
-    bool audioPortsGetConfig(uint32_t index,
-                             clap_audio_ports_config *config) const noexcept override
+    bool audioPortsGetConfig(uint32_t /*index*/,
+                             clap_audio_ports_config * /*config*/) const noexcept override
     {
         return false;
     }
-    bool audioPortsSetConfig(clap_id configId) noexcept override { return false; }
+    bool audioPortsSetConfig(clap_id /*configId*/) noexcept override { return false; }
 
     bool implementsParams() const noexcept override { return true; }
     bool isValidParamId(clap_id paramId) const noexcept override
     {
         return allClapIDs.find(paramId) != allClapIDs.end();
     }
-    uint32_t paramsCount() const noexcept override { return allClapIDs.size(); }
+    uint32_t paramsCount() const noexcept override { return (uint32_t)allClapIDs.size(); }
     bool paramsInfo(uint32_t paramIndex, clap_param_info *info) const noexcept override
     {
-        auto pbi = juceParameters.getParamForIndex(paramIndex);
+        auto pbi = juceParameters.getParamForIndex((int)paramIndex);
 
         auto *parameterGroup = processor->getParameterTree().getGroupsForParameter(pbi).getLast();
         juce::String group = "";
@@ -413,7 +419,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         juce::MidiBuffer mbuf;
         if (sz != 0)
         {
-            for (auto i = 0; i < sz; ++i)
+            for (uint32_t i = 0; i < sz; ++i)
             {
                 auto evt = ev->get(ev, i);
 
@@ -428,7 +434,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
                     mbuf.addEvent(juce::MidiMessage::noteOn(nevt->channel + 1, nevt->key,
                                                             (float)nevt->velocity),
-                                  nevt->header.time);
+                                  (int)nevt->header.time);
                 }
                 break;
                 case CLAP_EVENT_NOTE_OFF:
@@ -436,7 +442,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                     auto nevt = reinterpret_cast<const clap_event_note *>(evt);
                     mbuf.addEvent(juce::MidiMessage::noteOff(nevt->channel + 1, nevt->key,
                                                              (float)nevt->velocity),
-                                  nevt->header.time);
+                                  (int)nevt->header.time);
                 }
                 break;
                 case CLAP_EVENT_MIDI:
@@ -444,7 +450,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                     auto mevt = reinterpret_cast<const clap_event_midi *>(evt);
                     mbuf.addEvent(juce::MidiMessage(mevt->data[0], mevt->data[1], mevt->data[2],
                                                     mevt->header.time),
-                                  mevt->header.time);
+                                  (int)mevt->header.time);
                 }
                 break;
                 case CLAP_EVENT_TRANSPORT:
@@ -460,7 +466,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                     auto nf = pevt->value;
                     jassert(pevt->cookie == paramPtrByClapID[id]);
                     auto jp = static_cast<juce::AudioProcessorParameter *>(pevt->cookie);
-                    jp->setValue(nf);
+                    jp->setValue((float)nf);
                 }
                 break;
                 }
@@ -474,7 +480,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         while (uiParamChangeQ.pop(pc))
         {
             evt.header.size = sizeof(clap_event_param_value);
-            evt.header.type = pc.type;
+            evt.header.type = (uint16_t)pc.type;
             evt.header.time = 0; // for now
             evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
             evt.header.flags = 0;
@@ -504,9 +510,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
          * So first lets load up with our outputs
          */
         uint32_t ochans = 0;
-        for (auto idx = 0; idx < process->audio_outputs_count && ochans < maxBuses; ++idx)
+        for (uint32_t idx = 0; idx < process->audio_outputs_count && ochans < maxBuses; ++idx)
         {
-            for (int ch = 0; ch < process->audio_outputs[idx].channel_count; ++ch)
+            for (uint32_t ch = 0; ch < process->audio_outputs[idx].channel_count; ++ch)
             {
                 busses[ochans] = process->audio_outputs[idx].data32[ch];
                 ochans++;
@@ -514,9 +520,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         }
 
         uint32_t ichans = 0;
-        for (auto idx = 0; idx < process->audio_inputs_count && ichans < maxBuses; ++idx)
+        for (uint32_t idx = 0; idx < process->audio_inputs_count && ichans < maxBuses; ++idx)
         {
-            for (int ch = 0; ch < process->audio_inputs[idx].channel_count; ++ch)
+            for (uint32_t ch = 0; ch < process->audio_inputs[idx].channel_count; ++ch)
             {
                 auto *ic = process->audio_inputs[idx].data32[ch];
                 if (ichans < ochans)
@@ -540,7 +546,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         }
 
         auto totalChans = std::max(ichans, ochans);
-        juce::AudioBuffer<float> buf(busses.data(), totalChans, process->frames_count);
+        juce::AudioBuffer<float> buf(busses.data(), (int)totalChans, (int)process->frames_count);
 
         FIXME("Handle bypass and deactivated states");
         processor->processBlock(buf, mbuf);
@@ -551,8 +557,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     void componentMovedOrResized(juce::Component &component, bool wasMoved,
                                  bool wasResized) override
     {
+        juce::ignoreUnused(wasMoved);
         if (wasResized)
-            _host.guiRequestResize(component.getWidth(), component.getHeight());
+            _host.guiRequestResize((uint32_t)component.getWidth(), (uint32_t)component.getHeight());
     }
 
     std::unique_ptr<juce::AudioProcessorEditor> editor;
@@ -580,8 +587,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         if (editor)
         {
             auto b = editor->getBounds();
-            *width = b.getWidth();
-            *height = b.getHeight();
+            *width = (uint32_t)b.getWidth();
+            *height = (uint32_t)b.getHeight();
             return true;
         }
         else
@@ -609,7 +616,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         processor->getStateInformation(chunkMemory);
 
         auto written = stream->write(stream, chunkMemory.getData(), chunkMemory.getSize());
-        return written == chunkMemory.getSize();
+        return written == (int64_t)chunkMemory.getSize();
     }
     bool stateLoad(clap_istream *stream) noexcept override
     {
@@ -622,22 +629,22 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         char block[256];
         int64_t rd;
         while ((rd = stream->read(stream, block, 256)) > 0)
-            chunkMemory.append(block, rd);
+            chunkMemory.append(block, (size_t)rd);
 
-        processor->setStateInformation(chunkMemory.getData(), chunkMemory.getSize());
+        processor->setStateInformation(chunkMemory.getData(), (int)chunkMemory.getSize());
         chunkMemory.reset();
         return true;
     }
 
   public:
 #if JUCE_MAC
-    bool implementsGuiCocoa() const noexcept override { return processor->hasEditor(); };
+    bool implementsGuiCocoa() const noexcept override { return processor->hasEditor(); }
     bool guiCocoaAttach(void *nsView) noexcept override
     {
         juce::initialiseMacVST();
         auto hostWindow = juce::attachComponentToWindowRefVST(editor.get(), nsView, true);
+        juce::ignoreUnused(hostWindow);
         return true;
-        return false;
     }
 #endif
 
@@ -694,7 +701,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     bool hasTransportInfo{false};
 };
 
-const char *features[] = {CLAP_FEATURES, 0};
+const char *features[] = {CLAP_FEATURES, nullptr};
 clap_plugin_descriptor ClapJuceWrapper::desc = {CLAP_VERSION,
                                                 CLAP_ID,
                                                 JucePlugin_Name,
@@ -710,14 +717,14 @@ juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter();
 
 namespace ClapAdapter
 {
-bool clap_init(const char *p) { return true; }
+bool clap_init(const char *) { return true; }
 
 void clap_deinit(void) {}
 
 uint32_t clap_get_plugin_count(const struct clap_plugin_factory *) { return 1; }
 
 const clap_plugin_descriptor *clap_get_plugin_descriptor(const struct clap_plugin_factory *,
-                                                         uint32_t w)
+                                                         uint32_t)
 {
     return &ClapJuceWrapper::desc;
 }
