@@ -23,10 +23,12 @@
 
 JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter",
                                     "-Wsign-conversion")
+JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4100 4127)
 #include <clap/helpers/host-proxy.hh>
 #include <clap/helpers/host-proxy.hxx>
 #include <clap/helpers/plugin.hh>
 #include <clap/helpers/plugin.hxx>
+JUCE_END_IGNORE_WARNINGS_MSVC
 JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 
 #define FIXME(x)                                                                                   \
@@ -89,6 +91,8 @@ extern JUCE_API void initialiseMacVST();
 extern JUCE_API void *attachComponentToWindowRefVST(Component *, void *parentWindowOrView,
                                                     bool isNSView);
 } // namespace juce
+
+JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 
 /*
  * The ClapJuceWrapper is a class which immplements a collection
@@ -700,6 +704,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     const clap_event_transport *transportInfo{nullptr};
     bool hasTransportInfo{false};
 };
+
+JUCE_END_IGNORE_WARNINGS_MSVC
 
 const char *features[] = {CLAP_FEATURES, nullptr};
 clap_plugin_descriptor ClapJuceWrapper::desc = {CLAP_VERSION,
