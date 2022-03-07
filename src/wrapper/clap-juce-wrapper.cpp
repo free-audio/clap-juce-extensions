@@ -10,6 +10,12 @@
 
 #include <memory>
 
+#include <clap/helpers/checking-level.hh>
+#include <clap/helpers/host-proxy.hh>
+#include <clap/helpers/host-proxy.hxx>
+#include <clap/helpers/plugin.hh>
+#include <clap/helpers/plugin.hxx>
+
 #define JUCE_GUI_BASICS_INCLUDE_XHEADERS 1
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -21,13 +27,8 @@
 #include <juce_audio_plugin_client/utility/juce_LinuxMessageThread.h>
 #endif
 
-JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter",
-                                    "-Wsign-conversion")
+JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter", "-Wsign-conversion")
 JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4100 4127)
-#include <clap/helpers/host-proxy.hh>
-#include <clap/helpers/host-proxy.hxx>
-#include <clap/helpers/plugin.hh>
-#include <clap/helpers/plugin.hxx>
 JUCE_END_IGNORE_WARNINGS_MSVC
 JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 
@@ -187,8 +188,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         return clap_id;
     }
 
-    void audioProcessorChanged(juce::AudioProcessor *proc,
-                               const ChangeDetails &details) override
+    void audioProcessorChanged(juce::AudioProcessor *proc, const ChangeDetails &details) override
     {
         juce::ignoreUnused(proc, details);
         FIXME("audio processor changed");
@@ -388,6 +388,15 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         info->max_value = 1;
         info->default_value = pbi->getDefaultValue();
         info->cookie = pbi;
+        info->flags = 0;
+
+        if (pbi->isAutomatable())
+            info->flags = info->flags | CLAP_PARAM_IS_AUTOMATABLE;
+
+        if (pbi->isBoolean() || pbi->isDiscrete())
+        {
+            info->flags = info->flags | CLAP_PARAM_IS_STEPPED;
+        }
 
         return true;
     }
@@ -397,6 +406,21 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         auto pbi = paramPtrByClapID[paramId];
         *value = pbi->getValue();
         return true;
+    }
+
+    bool paramsTextToValue(clap_id paramId, const char *display, double *value) noexcept override
+    {
+        auto pbi = paramPtrByClapID[paramId];
+        *value = pbi->getValueForText(display);
+        return true;
+    }
+
+    void paramSetValueAndNotifyIfChanged(juce::AudioProcessorParameter &param, float newValue)
+    {
+        if (param.getValue() == newValue)
+            return;
+
+        param.setValueNotifyingHost(newValue);
     }
 
     clap_process_status process(const clap_process *process) noexcept override
@@ -470,7 +494,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                     auto nf = pevt->value;
                     jassert(pevt->cookie == paramPtrByClapID[id]);
                     auto jp = static_cast<juce::AudioProcessorParameter *>(pevt->cookie);
-                    jp->setValue((float)nf);
+                    paramSetValueAndNotifyIfChanged(*jp, nf);
                 }
                 break;
                 }
@@ -490,7 +514,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             evt.header.flags = 0;
             evt.param_id = pc.id;
             evt.value = pc.newval;
-            ov->push_back(ov, reinterpret_cast<const clap_event_header *>(&evt));
+            ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
         }
 
         // We process in place so
@@ -571,8 +595,24 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     bool guiCanResize() const noexcept override { return true; }
 
     std::unique_ptr<juce::ScopedJuceInitialiser_GUI> juceGuiInit;
-    bool guiCreate() noexcept override
+    bool guiIsApiSupported(const char *api, bool isFloating) noexcept override
     {
+        if (isFloating)
+            return false;
+
+        if (strcmp(api, CLAP_WINDOW_API_WIN32) == 0 || strcmp(api, CLAP_WINDOW_API_COCOA) == 0 ||
+            strcmp(api, CLAP_WINDOW_API_X11) == 0)
+            return true;
+
+        return false;
+    }
+
+    bool guiCreate(const char *api, bool isFloating) noexcept override
+    {
+        // Should never happen
+        if (isFloating)
+            return false;
+
         juceGuiInit = std::make_unique<juce::ScopedJuceInitialiser_GUI>();
         const juce::MessageManagerLock mmLock;
         editor.reset(processor->createEditor());
@@ -585,7 +625,21 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         editor.reset(nullptr);
         juceGuiInit.reset(nullptr);
     }
-    bool guiSize(uint32_t *width, uint32_t *height) noexcept override
+
+    bool guiSetParent(const clap_window *window) noexcept override
+    {
+#if MAC
+        return guiCocoaAttach(window->cocoa);
+#elif LINUX
+        return guiX11Attach(NULL, window->x11);
+#elif WINDOWS
+        return guiWin32Attach(window->win32);
+#else
+        return false;
+#endif
+    }
+
+    bool guiGetSize(uint32_t *width, uint32_t *height) noexcept override
     {
         const juce::MessageManagerLock mmLock;
         if (editor)
@@ -642,8 +696,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
   public:
 #if JUCE_MAC
-    bool implementsGuiCocoa() const noexcept override { return processor->hasEditor(); }
-    bool guiCocoaAttach(void *nsView) noexcept override
+    bool guiCocoaAttach(void *nsView) noexcept
     {
         juce::initialiseMacVST();
         auto hostWindow = juce::attachComponentToWindowRefVST(editor.get(), nsView, true);
@@ -653,8 +706,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 #endif
 
 #if JUCE_LINUX
-    bool implementsGuiX11() const noexcept override { return processor->hasEditor(); }
-    bool guiX11Attach(const char *displayName, unsigned long window) noexcept override
+    bool guiX11Attach(const char *displayName, unsigned long window) noexcept
     {
         const juce::MessageManagerLock mmLock;
         editor->setVisible(false);
@@ -668,7 +720,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 #endif
 
 #if JUCE_WINDOWS
-    bool implementsGuiWin32() const noexcept { return processor->hasEditor(); }
     bool guiWin32Attach(clap_hwnd window) noexcept
     {
         editor->setVisible(false);
@@ -748,6 +799,9 @@ static const clap_plugin *clap_create_plugin(const struct clap_plugin_factory *,
         return nullptr;
     }
     clap_juce_extensions::clap_properties::building_clap = true;
+    clap_juce_extensions::clap_properties::clap_version_major = CLAP_VERSION_MAJOR;
+    clap_juce_extensions::clap_properties::clap_version_minor = CLAP_VERSION_MINOR;
+    clap_juce_extensions::clap_properties::clap_version_revision = CLAP_VERSION_REVISION;
     auto *const pluginInstance = ::createPluginFilter();
     clap_juce_extensions::clap_properties::building_clap = false;
     auto *wrapper = new ClapJuceWrapper(host, pluginInstance);
