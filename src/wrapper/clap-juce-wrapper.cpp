@@ -272,7 +272,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                   uint32_t maxFrameCount) noexcept override
     {
         juce::ignoreUnused(minFrameCount);
-        auto g = juce::ScopedJuceInitialiser_GUI();
         processor->prepareToPlay(sampleRate, (int)maxFrameCount);
         return true;
     }
@@ -596,7 +595,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     bool implementsGui() const noexcept override { return processor->hasEditor(); }
     bool guiCanResize() const noexcept override { return true; }
 
-    std::unique_ptr<juce::ScopedJuceInitialiser_GUI> juceGuiInit;
     bool guiIsApiSupported(const char *api, bool isFloating) noexcept override
     {
         if (isFloating)
@@ -615,18 +613,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         if (isFloating)
             return false;
 
-        juceGuiInit = std::make_unique<juce::ScopedJuceInitialiser_GUI>();
         const juce::MessageManagerLock mmLock;
         editor.reset(processor->createEditor());
         editor->addComponentListener(this);
         return editor != nullptr;
     }
 
-    void guiDestroy() noexcept override
-    {
-        editor.reset(nullptr);
-        juceGuiInit.reset(nullptr);
-    }
+    void guiDestroy() noexcept override { editor.reset(nullptr); }
 
     bool guiSetParent(const clap_window *window) noexcept override
     {
@@ -662,6 +655,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
   protected:
     juce::CriticalSection stateInformationLock;
     juce::MemoryBlock chunkMemory;
+    juce::ScopedJuceInitialiser_GUI libraryInitializer;
 
   public:
     bool implementsState() const noexcept override { return true; }
