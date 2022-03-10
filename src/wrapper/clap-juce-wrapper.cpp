@@ -208,19 +208,21 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     void audioProcessorParameterChanged(juce::AudioProcessor *, int index, float newValue) override
     {
         auto id = clapIdFromParameterIndex(index);
-        uiParamChangeQ.push({CLAP_EVENT_PARAM_VALUE, id, newValue});
+        uiParamChangeQ.push({CLAP_EVENT_SHOULD_RECORD, id, newValue});
     }
 
     void audioProcessorParameterChangeGestureBegin(juce::AudioProcessor *, int index) override
     {
         auto id = clapIdFromParameterIndex(index);
-        uiParamChangeQ.push({CLAP_EVENT_BEGIN_ADJUST, id, 0});
+        auto p = paramPtrByClapID[id];
+        uiParamChangeQ.push({CLAP_EVENT_BEGIN_ADJUST, id, p->getValue()});
     }
 
     void audioProcessorParameterChangeGestureEnd(juce::AudioProcessor *, int index) override
     {
         auto id = clapIdFromParameterIndex(index);
-        uiParamChangeQ.push({CLAP_EVENT_END_ADJUST, id, 0});
+        auto p = paramPtrByClapID[id];
+        uiParamChangeQ.push({CLAP_EVENT_END_ADJUST, id, p->getValue()});
     }
 
     /*
@@ -508,10 +510,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         while (uiParamChangeQ.pop(pc))
         {
             evt.header.size = sizeof(clap_event_param_value);
-            evt.header.type = (uint16_t)pc.type;
+            evt.header.type = (uint16_t)CLAP_EVENT_PARAM_VALUE;
             evt.header.time = 0; // for now
             evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-            evt.header.flags = 0;
+            evt.header.flags = pc.flag;
             evt.param_id = pc.id;
             evt.value = pc.newval;
             ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
@@ -734,7 +736,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
   private:
     struct ParamChange
     {
-        int type;
+        int flag;
         uint32_t id;
         float newval;
     };
