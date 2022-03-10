@@ -9,6 +9,7 @@ namespace clap_juce_extensions
 struct clap_properties
 {
     static bool building_clap;
+    static uint32_t clap_version_major, clap_version_minor, clap_version_revision;
 
     clap_properties();
 
