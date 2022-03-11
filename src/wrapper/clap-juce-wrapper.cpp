@@ -215,14 +215,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     {
         auto id = clapIdFromParameterIndex(index);
         auto p = paramPtrByClapID[id];
-        uiParamChangeQ.push({CLAP_EVENT_BEGIN_ADJUST, id, p->getValue()});
+        uiParamChangeQ.push({CLAP_EVENT_BEGIN_ADJUST | CLAP_EVENT_SHOULD_RECORD, id, p->getValue()});
     }
 
     void audioProcessorParameterChangeGestureEnd(juce::AudioProcessor *, int index) override
     {
         auto id = clapIdFromParameterIndex(index);
         auto p = paramPtrByClapID[id];
-        uiParamChangeQ.push({CLAP_EVENT_END_ADJUST, id, p->getValue()});
+        uiParamChangeQ.push({CLAP_EVENT_END_ADJUST | CLAP_EVENT_SHOULD_RECORD, id, p->getValue()});
     }
 
     /*
