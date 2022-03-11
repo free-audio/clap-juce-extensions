@@ -623,11 +623,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
     bool guiSetParent(const clap_window *window) noexcept override
     {
-#if MAC
+#if JUCE_MAC
         return guiCocoaAttach(window->cocoa);
-#elif LINUX
+#elif JUCE_LINUX
         return guiX11Attach(NULL, window->x11);
-#elif WINDOWS
+#elif JUCE_WINDOWS
         return guiWin32Attach(window->win32);
 #else
         return false;
