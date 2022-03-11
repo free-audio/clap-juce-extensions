@@ -10,27 +10,26 @@
 
 #include <memory>
 
+#define JUCE_GUI_BASICS_INCLUDE_XHEADERS 1
+#include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_gui_basics/juce_gui_basics.h>
+#include <juce_audio_processors/format_types/juce_LegacyAudioParameter.cpp>
+
+JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter", "-Wsign-conversion")
+JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4100 4127)
 #include <clap/helpers/checking-level.hh>
 #include <clap/helpers/host-proxy.hh>
 #include <clap/helpers/host-proxy.hxx>
 #include <clap/helpers/plugin.hh>
 #include <clap/helpers/plugin.hxx>
-
-#define JUCE_GUI_BASICS_INCLUDE_XHEADERS 1
-#include <juce_audio_processors/juce_audio_processors.h>
-#include <juce_gui_basics/juce_gui_basics.h>
-#include <juce_audio_processors/format_types/juce_LegacyAudioParameter.cpp>
+JUCE_END_IGNORE_WARNINGS_MSVC
+JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 
 #include <clap-juce-extensions/clap-juce-extensions.h>
 
 #if JUCE_LINUX
 #include <juce_audio_plugin_client/utility/juce_LinuxMessageThread.h>
 #endif
-
-JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter", "-Wsign-conversion")
-JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4100 4127)
-JUCE_END_IGNORE_WARNINGS_MSVC
-JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 
 #define FIXME(x)                                                                                   \
     {                                                                                              \
@@ -622,6 +621,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
     bool guiCreate(const char *api, bool isFloating) noexcept override
     {
+        juce::ignoreUnused (api);
+
         // Should never happen
         if (isFloating)
             return false;
