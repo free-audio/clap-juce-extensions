@@ -614,12 +614,16 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             return false;
 
         const juce::MessageManagerLock mmLock;
-        editor.reset(processor->createEditor());
+        editor.reset(processor->createEditorIfNeeded());
         editor->addComponentListener(this);
         return editor != nullptr;
     }
 
-    void guiDestroy() noexcept override { editor.reset(nullptr); }
+    void guiDestroy() noexcept override
+    {
+        processor->editorBeingDeleted (editor.get());
+        editor.reset(nullptr);
+    }
 
     bool guiSetParent(const clap_window *window) noexcept override
     {
