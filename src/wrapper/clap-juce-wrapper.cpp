@@ -17,6 +17,12 @@
 
 JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter", "-Wsign-conversion")
 JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4100 4127)
+// Sigh - X11.h eventually does a #define None 0L which doesn't work
+// with an enum in clap land being called None, so just undef it 
+// post the JUCE installs
+#ifdef None
+#undef None
+#endif
 #include <clap/helpers/checking-level.hh>
 #include <clap/helpers/host-proxy.hh>
 #include <clap/helpers/host-proxy.hxx>
