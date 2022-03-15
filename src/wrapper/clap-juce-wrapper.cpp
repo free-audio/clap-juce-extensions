@@ -505,15 +505,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 break;
                 case CLAP_EVENT_PARAM_MOD:
                 {
-                    auto pevt = reinterpret_cast<const clap_event_param_mod *>(evt);
-
-                    // This is, of course, unsatisfactory basically treating CLAP like
-                    // a VST2, but for now it's what JUCE API allows.
-                    auto id = pevt->param_id;
-                    jassert(pevt->cookie == paramPtrByClapID[id]);
-                    auto jp = static_cast<juce::AudioProcessorParameter *>(pevt->cookie);
-                    auto nf = pevt->amount + jp->getValue();
-                    paramSetValueAndNotifyIfChanged(*jp, nf);
+                    // In theory I should never get this.
+                    // jassertfalse
                 }
                 break;
                 }
