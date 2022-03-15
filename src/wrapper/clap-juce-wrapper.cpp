@@ -18,7 +18,7 @@
 JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter", "-Wsign-conversion")
 JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4100 4127)
 // Sigh - X11.h eventually does a #define None 0L which doesn't work
-// with an enum in clap land being called None, so just undef it 
+// with an enum in clap land being called None, so just undef it
 // post the JUCE installs
 #ifdef None
 #undef None
@@ -213,21 +213,21 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     void audioProcessorParameterChanged(juce::AudioProcessor *, int index, float newValue) override
     {
         auto id = clapIdFromParameterIndex(index);
-        uiParamChangeQ.push({CLAP_EVENT_SHOULD_RECORD, id, newValue});
+        uiParamChangeQ.push({CLAP_EVENT_PARAM_VALUE, 0, id, newValue});
     }
 
     void audioProcessorParameterChangeGestureBegin(juce::AudioProcessor *, int index) override
     {
         auto id = clapIdFromParameterIndex(index);
         auto p = paramPtrByClapID[id];
-        uiParamChangeQ.push({CLAP_EVENT_BEGIN_ADJUST | CLAP_EVENT_SHOULD_RECORD, id, p->getValue()});
+        uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_BEGIN, 0, id, p->getValue()});
     }
 
     void audioProcessorParameterChangeGestureEnd(juce::AudioProcessor *, int index) override
     {
         auto id = clapIdFromParameterIndex(index);
         auto p = paramPtrByClapID[id];
-        uiParamChangeQ.push({CLAP_EVENT_END_ADJUST | CLAP_EVENT_SHOULD_RECORD, id, p->getValue()});
+        uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_END, 0, id, p->getValue()});
     }
 
     /*
@@ -522,18 +522,34 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
         auto pc = ParamChange();
         auto ov = process->out_events;
-        auto evt = clap_event_param_value();
 
         while (uiParamChangeQ.pop(pc))
         {
-            evt.header.size = sizeof(clap_event_param_value);
-            evt.header.type = (uint16_t)CLAP_EVENT_PARAM_VALUE;
-            evt.header.time = 0; // for now
-            evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-            evt.header.flags = pc.flag;
-            evt.param_id = pc.id;
-            evt.value = pc.newval;
-            ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
+            if (pc.type == CLAP_EVENT_PARAM_VALUE)
+            {
+                auto evt = clap_event_param_value();
+                evt.header.size = sizeof(clap_event_param_value);
+                evt.header.type = (uint16_t)CLAP_EVENT_PARAM_VALUE;
+                evt.header.time = 0; // for now
+                evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+                evt.header.flags = pc.flag;
+                evt.param_id = pc.id;
+                evt.value = pc.newval;
+                ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
+            }
+
+            if (pc.type == CLAP_EVENT_PARAM_GESTURE_END ||
+                pc.type == CLAP_EVENT_PARAM_GESTURE_BEGIN)
+            {
+                auto evt = clap_event_param_gesture();
+                evt.header.size = sizeof(clap_event_param_gesture);
+                evt.header.type = (uint16_t)pc.type;
+                evt.header.time = 0; // for now
+                evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+                evt.header.flags = pc.flag;
+                evt.param_id = pc.id;
+                ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
+            }
         }
 
         // We process in place so
@@ -627,7 +643,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
     bool guiCreate(const char *api, bool isFloating) noexcept override
     {
-        juce::ignoreUnused (api);
+        juce::ignoreUnused(api);
 
         // Should never happen
         if (isFloating)
@@ -683,7 +699,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
   public:
     bool implementsState() const noexcept override { return true; }
-    bool stateSave(clap_ostream *stream) noexcept override
+    bool stateSave(const clap_ostream *stream) noexcept override
     {
         if (processor == nullptr)
             return false;
@@ -696,7 +712,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         auto written = stream->write(stream, chunkMemory.getData(), chunkMemory.getSize());
         return written == (int64_t)chunkMemory.getSize();
     }
-    bool stateLoad(clap_istream *stream) noexcept override
+    bool stateLoad(const clap_istream *stream) noexcept override
     {
         if (processor == nullptr)
             return false;
@@ -754,9 +770,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
   private:
     struct ParamChange
     {
+        int type;
         int flag;
         uint32_t id;
-        float newval;
+        float newval{0};
     };
     PushPopQ<ParamChange, 4096 * 16> uiParamChangeQ;
 
