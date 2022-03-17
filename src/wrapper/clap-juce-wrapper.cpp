@@ -621,7 +621,22 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
     std::unique_ptr<juce::AudioProcessorEditor> editor;
     bool implementsGui() const noexcept override { return processor->hasEditor(); }
-    bool guiCanResize() const noexcept override { return true; }
+    bool guiCanResize() const noexcept override {
+        if (editor)
+            return editor->isResizable();
+        return true;
+    }
+    bool guiAdjustSize(uint32_t *w, uint32_t *h) noexcept override
+    {
+        if (!editor)
+            return false;
+
+        if (!editor->isResizable())
+            return false;
+
+        editor->setSize(*w, *h);
+        return true;
+    }
 
     bool guiIsApiSupported(const char *api, bool isFloating) noexcept override
     {
