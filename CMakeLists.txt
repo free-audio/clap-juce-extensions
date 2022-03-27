@@ -58,7 +58,11 @@ function(clap_juce_extensions_plugin)
     set(CJA_CLAP_FEATURES instrument)
   endif()
 
-  list (JOIN CJA_CLAP_FEATURES ", " CJA_CLAP_FEATURES_PARSED)
+  # we need the list of features as comma separated quoted strings
+  foreach(feature IN LISTS CJA_CLAP_FEATURES)
+    list (APPEND CJA_CLAP_FEATURES_PARSED "\"${feature}\"")
+  endforeach()
+  list (JOIN CJA_CLAP_FEATURES_PARSED ", " CJA_CLAP_FEATURES_PARSED)
 
   get_property(SRC TARGET clap_juce_sources PROPERTY SOURCES)
   add_library(${claptarget} MODULE ${SRC})
