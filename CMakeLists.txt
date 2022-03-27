@@ -8,6 +8,8 @@
 #          CLAP_ID "com.my-cool-plugs.my-target")
 # 4. Reload your CMAKe file and my-target_CLAP will be a buildable target
 
+cmake_minimum_required (VERSION 3.15 FATAL_ERROR)
+
 project(clap-juce-extensions VERSION 0.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -56,12 +58,11 @@ function(clap_juce_extensions_plugin)
     set(CJA_CLAP_FEATURES instrument)
   endif()
 
-  # Parse CLAP_FEATURES into a comma-separated strings (is there an easier way to do this?)
-  set(CJA_CLAP_FEATURES_PARSED "")
-  foreach(FEATURE IN LISTS CJA_CLAP_FEATURES)
-    set(CJA_CLAP_FEATURES_PARSED "${CJA_CLAP_FEATURES_PARSED}\"${FEATURE}\",")
+  # we need the list of features as comma separated quoted strings
+  foreach(feature IN LISTS CJA_CLAP_FEATURES)
+    list (APPEND CJA_CLAP_FEATURES_PARSED "\"${feature}\"")
   endforeach()
-  STRING(REGEX REPLACE "(,)[^,]*$" "" CJA_CLAP_FEATURES_PARSED ${CJA_CLAP_FEATURES_PARSED}) # strip trailing comma
+  list (JOIN CJA_CLAP_FEATURES_PARSED ", " CJA_CLAP_FEATURES_PARSED)
 
   get_property(SRC TARGET clap_juce_sources PROPERTY SOURCES)
   add_library(${claptarget} MODULE ${SRC})
