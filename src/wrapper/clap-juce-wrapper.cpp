@@ -256,6 +256,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             if (flags & CLAP_TRANSPORT_HAS_SECONDS_TIMELINE)
             {
                 info.timeInSeconds = 1.0 * transportInfo->song_pos_seconds / CLAP_SECTIME_FACTOR;
+                info.timeInSamples = (int64_t)(info.timeInSeconds * sampleRate());
             }
             info.isPlaying = flags & CLAP_TRANSPORT_IS_PLAYING;
             info.isRecording = flags & CLAP_TRANSPORT_IS_RECORDING;
@@ -277,7 +278,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                   uint32_t maxFrameCount) noexcept override
     {
         juce::ignoreUnused(minFrameCount);
+        processor->setRateAndBufferSizeDetails(sampleRate, maxFrameCount);
         processor->prepareToPlay(sampleRate, (int)maxFrameCount);
+        midiBuffer.ensureSize(2048);
+        midiBuffer.clear();
         return true;
     }
 
@@ -429,6 +433,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         param.setValueNotifyingHost(newValue);
     }
 
+    juce::MidiBuffer midiBuffer;
+
     clap_process_status process(const clap_process *process) noexcept override
     {
         auto ev = process->in_events;
@@ -450,7 +456,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         if (processorAsClapProperties)
             processorAsClapProperties->clap_transport = process->transport;
 
-        juce::MidiBuffer mbuf;
         if (sz != 0)
         {
             for (uint32_t i = 0; i < sz; ++i)
@@ -466,25 +471,25 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 {
                     auto nevt = reinterpret_cast<const clap_event_note *>(evt);
 
-                    mbuf.addEvent(juce::MidiMessage::noteOn(nevt->channel + 1, nevt->key,
-                                                            (float)nevt->velocity),
-                                  (int)nevt->header.time);
+                    midiBuffer.addEvent(juce::MidiMessage::noteOn(nevt->channel + 1, nevt->key,
+                                                                  (float)nevt->velocity),
+                                        (int)nevt->header.time);
                 }
                 break;
                 case CLAP_EVENT_NOTE_OFF:
                 {
                     auto nevt = reinterpret_cast<const clap_event_note *>(evt);
-                    mbuf.addEvent(juce::MidiMessage::noteOff(nevt->channel + 1, nevt->key,
-                                                             (float)nevt->velocity),
-                                  (int)nevt->header.time);
+                    midiBuffer.addEvent(juce::MidiMessage::noteOff(nevt->channel + 1, nevt->key,
+                                                                   (float)nevt->velocity),
+                                        (int)nevt->header.time);
                 }
                 break;
                 case CLAP_EVENT_MIDI:
                 {
                     auto mevt = reinterpret_cast<const clap_event_midi *>(evt);
-                    mbuf.addEvent(juce::MidiMessage(mevt->data[0], mevt->data[1], mevt->data[2],
-                                                    mevt->header.time),
-                                  (int)mevt->header.time);
+                    midiBuffer.addEvent(juce::MidiMessage(mevt->data[0], mevt->data[1],
+                                                          mevt->data[2], mevt->header.time),
+                                        (int)mevt->header.time);
                 }
                 break;
                 case CLAP_EVENT_TRANSPORT:
@@ -606,8 +611,27 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         juce::AudioBuffer<float> buf(busses.data(), (int)totalChans, (int)process->frames_count);
 
         FIXME("Handle bypass and deactivated states");
-        processor->processBlock(buf, mbuf);
+        processor->processBlock(buf, midiBuffer);
 
+        if (processor->producesMidi())
+        {
+            for (auto meta : midiBuffer)
+            {
+                auto msg = meta.getMessage();
+                if (msg.getRawDataSize() == 3)
+                {
+                    auto evt = clap_event_midi();
+                    evt.header.size = sizeof(clap_event_midi);
+                    evt.header.type = (uint16_t)CLAP_EVENT_MIDI;
+                    evt.header.time = meta.samplePosition; // for now
+                    evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+                    evt.header.flags = 0;
+                    evt.port_index = 0;
+                    memcpy(&evt.data, msg.getRawData(), 3 * sizeof(uint8_t));
+                    ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
+                }
+            }
+        }
         return CLAP_PROCESS_CONTINUE;
     }
 
@@ -621,7 +645,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
     std::unique_ptr<juce::AudioProcessorEditor> editor;
     bool implementsGui() const noexcept override { return processor->hasEditor(); }
-    bool guiCanResize() const noexcept override {
+    bool guiCanResize() const noexcept override
+    {
         if (editor)
             return editor->isResizable();
         return true;
