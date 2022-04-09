@@ -18,6 +18,16 @@ struct clap_properties
 
     const clap_event_transport *clap_transport{nullptr};
 };
+struct clap_extensions
+{
+    virtual bool isInputMain(int input)
+    {
+        if (input == 0)
+            return true;
+        else
+            return false;
+    }
+};
 } // namespace clap_juce_extensions
 
 #endif // SURGE_CLAP_JUCE_EXTENSIONS_H

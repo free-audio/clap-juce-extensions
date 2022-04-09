@@ -115,6 +115,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     static clap_plugin_descriptor desc;
     std::unique_ptr<juce::AudioProcessor> processor;
     clap_juce_extensions::clap_properties *processorAsClapProperties{nullptr};
+    clap_juce_extensions::clap_extensions *processorAsClapExtensions{nullptr};
 
     ClapJuceWrapper(const clap_host *host, juce::AudioProcessor *p)
         : clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate,
@@ -126,6 +127,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         processor->addListener(this);
 
         processorAsClapProperties = dynamic_cast<clap_juce_extensions::clap_properties *>(p);
+        processorAsClapExtensions = dynamic_cast<clap_juce_extensions::clap_extensions *>(p);
 
         const bool forceLegacyParamIDs = false;
 
@@ -329,13 +331,23 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         // if (isInput || index != 0) return false;
         info->id = (isInput ? 1 << 15 : 1) + index;
         strncpy(info->name, bus->getName().toRawUTF8(), sizeof(info->name));
-        DBG("Constructing port '" << bus->getName() << "'");
-        if (index == 0)
-            info->flags = CLAP_AUDIO_PORT_IS_MAIN;
-        else
-            info->flags = 0;
+        DBG("  - Constructing port '" << bus->getName() << "'");
 
-        FIXME("Float vs Double Precisions busses");
+        bool couldBeMain = true;
+        if (isInput && processorAsClapExtensions)
+            couldBeMain = processorAsClapExtensions->isInputMain(index);
+        if (index == 0 && couldBeMain)
+        {
+            DBG("  - Port is MAIN");
+            info->flags = CLAP_AUDIO_PORT_IS_MAIN;
+        }
+        else
+        {
+            DBG("  - Port has no flags");
+            info->flags = 0;
+        }
+
+        FIXME("   - Float vs Double Precisions busses");
         info->in_place_pair = info->id;
         info->channel_count = (uint32_t)clob.size();
 
@@ -344,7 +356,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         else
             info->port_type = CLAP_PORT_STEREO;
 
-        FIXME("Channel Set; and this threading of bus layout");
+        FIXME("   - Channel Set; and this threading of bus layout");
         auto requested = processor->getBusesLayout();
         if (clob.size() == 1)
             requested.getChannelSet(isInput, (int)index) = juce::AudioChannelSet::mono();
