@@ -644,6 +644,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 }
             }
         }
+
+        if (!midiBuffer.isEmpty())
+            midiBuffer.clear();
+
         return CLAP_PROCESS_CONTINUE;
     }
 
