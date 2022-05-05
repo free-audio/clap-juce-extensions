@@ -379,6 +379,49 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     }
     bool audioPortsSetConfig(clap_id /*configId*/) noexcept override { return false; }
 
+    bool implementsNotePorts() const noexcept override { return true; }
+    uint32_t notePortsCount(bool is_input) const noexcept override
+    {
+        std::cout << "NOTE PORTS COUNT " << is_input << std::endl;
+        if (is_input)
+        {
+            if (processor->acceptsMidi())
+                return 1;
+        }
+        else
+        {
+            if (processor->producesMidi())
+                return 1;
+        }
+        std::cout << "RETURNING 0" << std::endl;
+        return 0;
+    }
+    bool notePortsInfo(uint32_t index, bool is_input,
+                       clap_note_port_info *info) const noexcept override
+    {
+        std::cout << "Calling notePortsInfo " << index << " " << is_input << std::endl;
+        if (is_input)
+        {
+            info->id = 1 << 5U;
+            info->supported_dialects = CLAP_NOTE_DIALECT_MIDI;
+            if (processor->supportsMPE())
+                info->supported_dialects = CLAP_NOTE_DIALECT_MIDI_MPE;
+            info->preferred_dialect = CLAP_NOTE_DIALECT_MIDI;
+            strncpy(info->name, "JUCE Midi Input", CLAP_NAME_SIZE);
+            // TODO : NOTE DIALEXTS WHEN I DO NOTE EXPRESSIONS etc
+        }
+        else
+        {
+            info->id = 1 << 2U;
+            info->supported_dialects = CLAP_NOTE_DIALECT_MIDI;
+            if (processor->supportsMPE())
+                info->supported_dialects = CLAP_NOTE_DIALECT_MIDI_MPE;
+            info->preferred_dialect = CLAP_NOTE_DIALECT_MIDI;
+            strncpy(info->name, "JUCE Midi Output", CLAP_NAME_SIZE);
+        }
+        return true;
+    }
+
     bool implementsParams() const noexcept override { return true; }
     bool isValidParamId(clap_id paramId) const noexcept override
     {
