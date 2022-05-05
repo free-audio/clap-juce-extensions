@@ -382,7 +382,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     bool implementsNotePorts() const noexcept override { return true; }
     uint32_t notePortsCount(bool is_input) const noexcept override
     {
-        std::cout << "NOTE PORTS COUNT " << is_input << std::endl;
         if (is_input)
         {
             if (processor->acceptsMidi())
@@ -393,13 +392,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             if (processor->producesMidi())
                 return 1;
         }
-        std::cout << "RETURNING 0" << std::endl;
         return 0;
     }
     bool notePortsInfo(uint32_t index, bool is_input,
                        clap_note_port_info *info) const noexcept override
     {
-        std::cout << "Calling notePortsInfo " << index << " " << is_input << std::endl;
         if (is_input)
         {
             info->id = 1 << 5U;
