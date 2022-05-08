@@ -402,23 +402,38 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             info->id = 1 << 5U;
             info->supported_dialects = CLAP_NOTE_DIALECT_MIDI;
             if (processor->supportsMPE())
-                info->supported_dialects = CLAP_NOTE_DIALECT_MIDI_MPE;
+                info->supported_dialects |= CLAP_NOTE_DIALECT_MIDI_MPE;
+
             info->preferred_dialect = CLAP_NOTE_DIALECT_MIDI;
             strncpy(info->name, "JUCE Midi Input", CLAP_NAME_SIZE);
-            // TODO : NOTE DIALEXTS WHEN I DO NOTE EXPRESSIONS etc
         }
         else
         {
             info->id = 1 << 2U;
             info->supported_dialects = CLAP_NOTE_DIALECT_MIDI;
             if (processor->supportsMPE())
-                info->supported_dialects = CLAP_NOTE_DIALECT_MIDI_MPE;
+                info->supported_dialects |= CLAP_NOTE_DIALECT_MIDI_MPE;
             info->preferred_dialect = CLAP_NOTE_DIALECT_MIDI;
             strncpy(info->name, "JUCE Midi Output", CLAP_NAME_SIZE);
         }
         return true;
     }
 
+    bool implementsVoiceInfo() const noexcept override
+    {
+        if (processorAsClapExtensions)
+            return processorAsClapExtensions->supportsVoiceInfo();
+        return false;
+    }
+
+    bool voiceInfoGet(clap_voice_info *info) noexcept override
+    {
+        if (processorAsClapExtensions)
+            return processorAsClapExtensions->voiceInfoGet(info);
+        return Plugin::voiceInfoGet(info);
+    }
+
+  public:
     bool implementsParams() const noexcept override { return true; }
     bool isValidParamId(clap_id paramId) const noexcept override
     {
@@ -460,6 +475,22 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             info->flags = info->flags | CLAP_PARAM_IS_STEPPED;
         }
 
+        auto cpe = dynamic_cast<clap_juce_extensions::clap_param_extensions *>(pbi);
+        if (cpe)
+        {
+            if (cpe->supportsMonophonicModulation())
+            {
+                info->flags = info->flags | CLAP_PARAM_IS_MODULATABLE;
+            }
+            if (cpe->supportsPolyphonicModulation())
+            {
+                info->flags =
+                    info->flags | CLAP_PARAM_IS_MODULATABLE |
+                    CLAP_PARAM_IS_MODULATABLE_PER_CHANNEL | CLAP_PARAM_IS_MODULATABLE_PER_KEY |
+                    CLAP_PARAM_IS_AUTOMATABLE_PER_NOTE_ID | CLAP_PARAM_IS_AUTOMATABLE_PER_PORT;
+            }
+        }
+
         return true;
     }
 
@@ -489,9 +520,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
     clap_process_status process(const clap_process *process) noexcept override
     {
-        auto ev = process->in_events;
-        auto sz = ev->size(ev);
-
         // Since the playhead is *only* good inside juce audio processor process,
         // we can just keep this little transient pointer here
         if (process->transport)
@@ -507,6 +535,44 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
         if (processorAsClapProperties)
             processorAsClapProperties->clap_transport = process->transport;
+
+        auto pc = ParamChange();
+        auto ov = process->out_events;
+
+        while (uiParamChangeQ.pop(pc))
+        {
+            if (pc.type == CLAP_EVENT_PARAM_VALUE)
+            {
+                auto evt = clap_event_param_value();
+                evt.header.size = sizeof(clap_event_param_value);
+                evt.header.type = (uint16_t)CLAP_EVENT_PARAM_VALUE;
+                evt.header.time = 0; // for now
+                evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+                evt.header.flags = pc.flag;
+                evt.param_id = pc.id;
+                evt.value = pc.newval;
+                ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
+            }
+
+            if (pc.type == CLAP_EVENT_PARAM_GESTURE_END ||
+                pc.type == CLAP_EVENT_PARAM_GESTURE_BEGIN)
+            {
+                auto evt = clap_event_param_gesture();
+                evt.header.size = sizeof(clap_event_param_gesture);
+                evt.header.type = (uint16_t)pc.type;
+                evt.header.time = 0; // for now
+                evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+                evt.header.flags = pc.flag;
+                evt.param_id = pc.id;
+                ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
+            }
+        }
+
+        if (processorAsClapExtensions && processorAsClapExtensions->supportsDirectProcess())
+            return processorAsClapExtensions->clap_direct_process(process);
+
+        auto ev = process->in_events;
+        auto sz = ev->size(ev);
 
         if (sz != 0)
         {
@@ -563,43 +629,21 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 break;
                 case CLAP_EVENT_PARAM_MOD:
                 {
+                }
+                break;
+                case CLAP_EVENT_NOTE_END:
+                {
+                    // Why do you send me this, Alex?
+                }
+                break;
+                default:
+                {
+                    DBG("Unknown message type " << (int)evt->type);
                     // In theory I should never get this.
                     // jassertfalse
                 }
                 break;
                 }
-            }
-        }
-
-        auto pc = ParamChange();
-        auto ov = process->out_events;
-
-        while (uiParamChangeQ.pop(pc))
-        {
-            if (pc.type == CLAP_EVENT_PARAM_VALUE)
-            {
-                auto evt = clap_event_param_value();
-                evt.header.size = sizeof(clap_event_param_value);
-                evt.header.type = (uint16_t)CLAP_EVENT_PARAM_VALUE;
-                evt.header.time = 0; // for now
-                evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-                evt.header.flags = pc.flag;
-                evt.param_id = pc.id;
-                evt.value = pc.newval;
-                ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
-            }
-
-            if (pc.type == CLAP_EVENT_PARAM_GESTURE_END ||
-                pc.type == CLAP_EVENT_PARAM_GESTURE_BEGIN)
-            {
-                auto evt = clap_event_param_gesture();
-                evt.header.size = sizeof(clap_event_param_gesture);
-                evt.header.type = (uint16_t)pc.type;
-                evt.header.time = 0; // for now
-                evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-                evt.header.flags = pc.flag;
-                evt.param_id = pc.id;
-                ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
             }
         }
 
