@@ -198,7 +198,17 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     void audioProcessorChanged(juce::AudioProcessor *proc, const ChangeDetails &details) override
     {
         juce::ignoreUnused(proc, details);
-        FIXME("audio processor changed");
+        DBG("audio processor changed");
+        if (details.latencyChanged)
+            DBG("   Unsupported currently - latencyChanged");
+        if (details.programChanged)
+            DBG("   Unsupported currently - withProgramChanged");
+        if (details.nonParameterStateChanged)
+            DBG("   Unsupported currently - nonParameterStateChanged");
+        if (details.parameterInfoChanged)
+        {
+            DBG("   FIXME - Rescan Param Info");
+        }
     }
 
     clap_id clapIdFromParameterIndex(int index)
@@ -229,6 +239,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     {
         auto id = clapIdFromParameterIndex(index);
         auto p = paramPtrByClapID[id];
+        uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_END, 0, id, p->getValue()});
         uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_END, 0, id, p->getValue()});
     }
 
@@ -290,39 +301,18 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     /* CLAP API */
 
     bool implementsAudioPorts() const noexcept override { return true; }
+    bool blabbedIn{false}, blabbedOut{false};
     uint32_t audioPortsCount(bool isInput) const noexcept override
     {
-        DBG("audioPortsCount - for " << (isInput ? "Input" : "Output") << " returning "
-                                     << processor->getBusCount(isInput));
-        /*
-         * FIXME : This needs way more careful consideration but for now only
-         * show activated busses
-         */
-        auto maxBusCount = processor->getBusCount(isInput);
-        int enabledCount = 0;
-        for (int index = 0; index < maxBusCount; ++index)
-        {
-            auto clob = processor->getChannelLayoutOfBus(isInput, index);
-            auto bus = processor->getBus(isInput, index);
-            if (bus->isEnabled())
-                enabledCount++;
-        }
-
-        DBG("audioPortsCount - for " << (isInput ? "Input" : "Output") << " returning "
-                                     << processor->getBusCount(isInput)
-                                     << " enabled=" << enabledCount);
-
-        return (uint32_t)enabledCount;
+        return (uint32_t)processor->getBusCount(isInput);
     }
 
     bool audioPortsInfo(uint32_t index, bool isInput,
                         clap_audio_port_info *info) const noexcept override
     {
         // For now hardcode to stereo out. Fix this obviously.
-        auto clob = processor->getChannelLayoutOfBus(isInput, (int)index);
         auto bus = processor->getBus(isInput, (int)index);
-        DBG("audioPortsInfo " << (int)index << " " << (isInput ? "INPUT" : "OUTPUT")
-                              << " sz=" << clob.size() << " enabled=" << (int)(bus->isEnabled()));
+        auto clob = bus->getDefaultLayout();
 
         // For now we only support stereo channels
         jassert(clob.size() == 1 || clob.size() == 2);
@@ -331,23 +321,19 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         // if (isInput || index != 0) return false;
         info->id = (isInput ? 1 << 15 : 1) + index;
         strncpy(info->name, bus->getName().toRawUTF8(), sizeof(info->name));
-        DBG("  - Constructing port '" << bus->getName() << "'");
 
         bool couldBeMain = true;
         if (isInput && processorAsClapExtensions)
             couldBeMain = processorAsClapExtensions->isInputMain(index);
         if (index == 0 && couldBeMain)
         {
-            DBG("  - Port is MAIN");
             info->flags = CLAP_AUDIO_PORT_IS_MAIN;
         }
         else
         {
-            DBG("  - Port has no flags");
             info->flags = 0;
         }
 
-        FIXME("   - Float vs Double Precisions busses");
         info->in_place_pair = info->id;
         info->channel_count = (uint32_t)clob.size();
 
@@ -356,7 +342,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         else
             info->port_type = CLAP_PORT_STEREO;
 
-        FIXME("   - Channel Set; and this threading of bus layout");
         auto requested = processor->getBusesLayout();
         if (clob.size() == 1)
             requested.getChannelSet(isInput, (int)index) = juce::AudioChannelSet::mono();
@@ -365,11 +350,16 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
         processor->setBusesLayoutWithoutEnabling(requested);
 
+        DBG("audioPortsInfo " << (isInput ? "INPUT " : "OUTPUT ") << (int)index << " '"
+                              << bus->getName()
+                              << "' isMain=" << ((index == 0 && couldBeMain) ? "T" : "F")
+                              << " sz=" << clob.size() << " enabled=" << (int)(bus->isEnabled()));
+
         return true;
     }
     uint32_t audioPortsConfigCount() const noexcept override
     {
-        DBG("audioPortsConfigCount CALLED - returning 0Por");
+        DBG("audioPortsConfigCount CALLED - returning 0");
         return 0;
     }
     bool audioPortsGetConfig(uint32_t /*index*/,
