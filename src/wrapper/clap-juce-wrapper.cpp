@@ -491,6 +491,15 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         return true;
     }
 
+    bool paramsValueToText(clap_id paramId, double value, char *display,
+                           uint32_t size) noexcept override
+    {
+        auto pbi = paramPtrByClapID[paramId];
+        auto res = pbi->getText(value, size);
+        strncpy(display, res.toStdString().c_str(), size);
+        return true;
+    }
+
     bool paramsTextToValue(clap_id paramId, const char *display, double *value) noexcept override
     {
         auto pbi = paramPtrByClapID[paramId];
