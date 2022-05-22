@@ -387,6 +387,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     bool notePortsInfo(uint32_t index, bool is_input,
                        clap_note_port_info *info) const noexcept override
     {
+        juce::ignoreUnused (index);
+
         if (is_input)
         {
             info->id = 1 << 5U;
