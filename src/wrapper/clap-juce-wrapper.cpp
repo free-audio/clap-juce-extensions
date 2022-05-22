@@ -152,6 +152,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
     ~ClapJuceWrapper() override
     {
+        processor->editorBeingDeleted(editor.get());
+
 #if JUCE_LINUX
         if (_host.canUseTimerSupport())
         {
@@ -197,17 +199,36 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
     void audioProcessorChanged(juce::AudioProcessor *proc, const ChangeDetails &details) override
     {
-        juce::ignoreUnused(proc, details);
-        DBG("audio processor changed");
+        juce::ignoreUnused(proc);
         if (details.latencyChanged)
-            DBG("   Unsupported currently - latencyChanged");
+        {
+            runOnMainThread([this] {
+                if (isBeingDestroyed())
+                    return;
+
+                _host.latencyChanged();
+            });
+        }
         if (details.programChanged)
-            DBG("   Unsupported currently - withProgramChanged");
+        {
+            // At the moment, CLAP doesn't have a sense of programs (to my knowledge).
+            // (I think) what makes most sense is to tell the host to update the parameters
+            // as though a preset has been loaded.
+            _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES);
+        }
         if (details.nonParameterStateChanged)
-            DBG("   Unsupported currently - nonParameterStateChanged");
+        {
+            _host.stateMarkDirty();
+        }
         if (details.parameterInfoChanged)
         {
-            DBG("   FIXME - Rescan Param Info");
+            // JUCE documentations states that, `parameterInfoChanged` means
+            // "Indicates that some attributes of the AudioProcessor's parameters have changed."
+            // For now, I'm going to assume this means the parameter's name or value->text
+            // conversion has changed, and tell the clap host to rescan those.
+            //
+            // We could do CLAP_PARAM_RESCAN_ALL, but then the plugin would have to be deactivated.
+            _host.paramsRescan(CLAP_PARAM_RESCAN_INFO | CLAP_PARAM_RESCAN_TEXT);
         }
     }
 
@@ -239,7 +260,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     {
         auto id = clapIdFromParameterIndex(index);
         auto p = paramPtrByClapID[id];
-        uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_END, 0, id, p->getValue()});
         uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_END, 0, id, p->getValue()});
     }
 
@@ -301,7 +321,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     /* CLAP API */
 
     bool implementsAudioPorts() const noexcept override { return true; }
-    bool blabbedIn{false}, blabbedOut{false};
     uint32_t audioPortsCount(bool isInput) const noexcept override
     {
         return (uint32_t)processor->getBusCount(isInput);
@@ -515,6 +534,19 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             return;
 
         param.setValueNotifyingHost(newValue);
+    }
+
+    bool implementsLatency() const noexcept override { return true; }
+    uint32_t latencyGet() const noexcept override
+    {
+        return (uint32_t)processor->getLatencySamples();
+    }
+
+    bool implementsTail() const noexcept override { return true; }
+    uint32_t tailGet(const clap_plugin_t *) const noexcept override
+    {
+        return uint32_t(
+            juce::roundToIntAccurate((double)sampleRate() * processor->getTailLengthSeconds()));
     }
 
     juce::MidiBuffer midiBuffer;
