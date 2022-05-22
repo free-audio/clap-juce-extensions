@@ -58,7 +58,7 @@ struct clap_extensions
      * in the voice-info clap extension.
      */
     virtual bool supportsVoiceInfo() { return false; }
-    virtual bool voiceInfoGet(clap_voice_info *info) { return false; }
+    virtual bool voiceInfoGet(clap_voice_info * /*info*/) { return false; }
 
     /*
      * Do you want to receive note expression messages? Note that if you return true
@@ -82,7 +82,7 @@ struct clap_extensions
      * directly.
      */
     virtual bool supportsDirectProcess() { return false; }
-    virtual clap_process_status clap_direct_process(const clap_process *process) noexcept
+    virtual clap_process_status clap_direct_process(const clap_process * /*process*/) noexcept
     {
         return CLAP_PROCESS_CONTINUE;
     }
