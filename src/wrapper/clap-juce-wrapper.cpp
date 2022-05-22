@@ -624,8 +624,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                     auto nf = pevt->value;
                     jassert(pevt->cookie == paramPtrByClapID[id]);
                     auto jp = static_cast<juce::AudioProcessorParameter *>(pevt->cookie);
-                    // paramSetValueAndNotifyIfChanged(*jp, nf);
-                    jp->setValue(nf);
+                    paramSetValueAndNotifyIfChanged(*jp, nf);
                 }
                 break;
                 case CLAP_EVENT_PARAM_MOD:
