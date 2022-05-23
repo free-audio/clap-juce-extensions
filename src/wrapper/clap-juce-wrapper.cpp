@@ -214,11 +214,21 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             // At the moment, CLAP doesn't have a sense of programs (to my knowledge).
             // (I think) what makes most sense is to tell the host to update the parameters
             // as though a preset has been loaded.
-            _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES);
+            runOnMainThread([this] {
+                if (isBeingDestroyed())
+                    return;
+
+                _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES);
+            });
         }
         if (details.nonParameterStateChanged)
         {
-            _host.stateMarkDirty();
+            runOnMainThread([this] {
+                if (isBeingDestroyed())
+                    return;
+
+                _host.stateMarkDirty();
+            });
         }
         if (details.parameterInfoChanged)
         {
@@ -228,7 +238,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             // conversion has changed, and tell the clap host to rescan those.
             //
             // We could do CLAP_PARAM_RESCAN_ALL, but then the plugin would have to be deactivated.
-            _host.paramsRescan(CLAP_PARAM_RESCAN_INFO | CLAP_PARAM_RESCAN_TEXT);
+            runOnMainThread([this] {
+                if (isBeingDestroyed())
+                    return;
+
+                _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES | CLAP_PARAM_RESCAN_INFO |
+                                   CLAP_PARAM_RESCAN_TEXT);
+            });
         }
     }
 
@@ -406,7 +422,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     bool notePortsInfo(uint32_t index, bool is_input,
                        clap_note_port_info *info) const noexcept override
     {
-        juce::ignoreUnused (index);
+        juce::ignoreUnused(index);
 
         if (is_input)
         {
