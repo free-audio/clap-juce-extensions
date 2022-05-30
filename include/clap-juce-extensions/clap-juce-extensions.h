@@ -1,7 +1,8 @@
 /*
- * This file contains interface extensions which allow your AudioProcessor or AudioProcessorParameter
- * to implement additional clap-specific API points, and then allows the CLAP wrapper to detect those
- * implementation points and activate advanced features beyond the base JUCE model.
+ * This file contains interface extensions which allow your AudioProcessor or
+ * AudioProcessorParameter to implement additional clap-specific API points, and then allows the
+ * CLAP wrapper to detect those implementation points and activate advanced features beyond the base
+ * JUCE model.
  */
 
 #ifndef SURGE_CLAP_JUCE_EXTENSIONS_H
@@ -86,6 +87,22 @@ struct clap_extensions
     {
         return CLAP_PROCESS_CONTINUE;
     }
+
+    /*
+     * Do I support the CLAP_NOTE_DIALECT_CLAP? And prefer it if so? By default this
+     * is true if I support either note expressions, direct processing, or voice info,
+     * but you can override it for other reasons also, including not liking that default.
+     *
+     * The strictest hosts will not send note expression without this dialect, and so
+     * if you override this to return false, hosts may not give you NE or Voice level
+     * modulators in clap_direct_process.
+     */
+    virtual bool supportsNoteDialectClap(bool /* isInput */)
+    {
+        return supportsNoteExpressions() || supportsVoiceInfo() || supportsDirectProcess();
+    }
+
+    virtual bool prefersNoteDialectClap(bool isInput) { return supportsNoteDialectClap(isInput); }
 };
 
 /*

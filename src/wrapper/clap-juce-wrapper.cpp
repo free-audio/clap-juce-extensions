@@ -432,7 +432,19 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 info->supported_dialects |= CLAP_NOTE_DIALECT_MIDI_MPE;
 
             info->preferred_dialect = CLAP_NOTE_DIALECT_MIDI;
-            strncpy(info->name, "JUCE Midi Input", CLAP_NAME_SIZE);
+
+            if (processorAsClapExtensions)
+            {
+                if (processorAsClapExtensions->supportsNoteDialectClap(true))
+                {
+                    info->supported_dialects |= CLAP_NOTE_DIALECT_CLAP;
+                }
+                if (processorAsClapExtensions->prefersNoteDialectClap(true))
+                {
+                    info->preferred_dialect = CLAP_NOTE_DIALECT_CLAP;
+                }
+            }
+            strncpy(info->name, "JUCE Note Input", CLAP_NAME_SIZE);
         }
         else
         {
@@ -441,7 +453,20 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             if (processor->supportsMPE())
                 info->supported_dialects |= CLAP_NOTE_DIALECT_MIDI_MPE;
             info->preferred_dialect = CLAP_NOTE_DIALECT_MIDI;
-            strncpy(info->name, "JUCE Midi Output", CLAP_NAME_SIZE);
+
+            if (processorAsClapExtensions)
+            {
+                if (processorAsClapExtensions->supportsNoteDialectClap(false))
+                {
+                    info->supported_dialects |= CLAP_NOTE_DIALECT_CLAP;
+                }
+                if (processorAsClapExtensions->prefersNoteDialectClap(false))
+                {
+                    info->preferred_dialect = CLAP_NOTE_DIALECT_CLAP;
+                }
+            }
+
+            strncpy(info->name, "JUCE Note Output", CLAP_NAME_SIZE);
         }
         return true;
     }
