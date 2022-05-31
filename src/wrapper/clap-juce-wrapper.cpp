@@ -112,6 +112,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                         public juce::ComponentListener
 {
   public:
+    // this needs to be the very last thing to get deleted!
+    juce::ScopedJuceInitialiser_GUI libraryInitializer;
+
     static clap_plugin_descriptor desc;
     std::unique_ptr<juce::AudioProcessor> processor;
     clap_juce_extensions::clap_properties *processorAsClapProperties{nullptr};
@@ -901,7 +904,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
   protected:
     juce::CriticalSection stateInformationLock;
     juce::MemoryBlock chunkMemory;
-    juce::ScopedJuceInitialiser_GUI libraryInitializer;
 
   public:
     bool implementsState() const noexcept override { return true; }
