@@ -242,8 +242,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 if (isBeingDestroyed())
                     return;
 
-                _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES | CLAP_PARAM_RESCAN_INFO |
-                                   CLAP_PARAM_RESCAN_TEXT);
+                _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES | CLAP_PARAM_RESCAN_TEXT);
             });
         }
     }
