@@ -6,7 +6,7 @@ and missing many features currently, but it does allow us to build a few synths 
 By far the best solution for CLAP in JUCE would be full native support by the JUCE team. Until such a time as that
 happens, this code may help you if you have a JUCE plugin and want to generate a CLAP.
 
-This version is based off of CLAP 0.25 and generates plugins which work in BWS 4.3beta1.
+This version is based off of CLAP 0.26 and generates plugins which work in BWS 4.3beta4.
 
 ## Requirements and Issues
 
@@ -61,7 +61,7 @@ add_subdirectory(libs/clap-juce-extensions EXCLUDE_FROM_ALL)
 3. Create your juce plugin as normal with formats VST3 etc...
 4. After your `juce_plugin` code, add the following lines (or similar)
    to your cmake (a list of pre-defined CLAP
-   features can be found [here](https://github.com/free-audio/clap/blob/main/include/clap/plugin.h#L27)):
+   features can be found [here](https://github.com/free-audio/clap/blob/main/include/clap/plugin-features.h)):
 
 ```cmake
     clap_juce_extensions_plugin(TARGET my-target
