@@ -9,6 +9,8 @@
  */
 
 #include <memory>
+#include <unordered_map>
+#include <unordered_set>
 
 #define JUCE_GUI_BASICS_INCLUDE_XHEADERS 1
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -200,6 +202,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         return clap_id;
     }
 
+#if JUCE_VERSION >= 0x060008
     void audioProcessorChanged(juce::AudioProcessor *proc, const ChangeDetails &details) override
     {
         juce::ignoreUnused(proc);
@@ -224,6 +227,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES);
             });
         }
+#if JUCE_VERSION >= 0x060102
         if (details.nonParameterStateChanged)
         {
             runOnMainThread([this] {
@@ -233,6 +237,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 _host.stateMarkDirty();
             });
         }
+#endif
         if (details.parameterInfoChanged)
         {
             // JUCE documentations states that, `parameterInfoChanged` means
@@ -249,6 +254,21 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             });
         }
     }
+#else
+    void audioProcessorChanged(juce::AudioProcessor *proc) override {
+       /*
+        * Before 6.0.8 it was unclear what changed. For now make the approximating decision to just
+        * rescan values and text.
+        */
+       runOnMainThread([this] {
+           if (isBeingDestroyed())
+              return;
+
+           _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES | CLAP_PARAM_RESCAN_TEXT);
+       });
+    }
+#endif
+
 
     clap_id clapIdFromParameterIndex(int index)
     {
