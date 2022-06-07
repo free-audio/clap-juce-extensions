@@ -139,7 +139,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         juceParameters.update(*processor, forceLegacyParamIDs);
 
         for (auto *juceParam :
-#if JUCE_VERSION >= 0x060103
+#if JUCE_VERSION >= 0x060102
              juceParameters
 #else
              juceParameters.params
@@ -227,7 +227,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES);
             });
         }
-#if JUCE_VERSION >= 0x060102
+#if JUCE_VERSION >= 0x060103
         if (details.nonParameterStateChanged)
         {
             runOnMainThread([this] {
