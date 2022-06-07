@@ -20,6 +20,7 @@ add_subdirectory(clap-libs/clap clapjuceext_clap EXCLUDE_FROM_ALL)
 add_subdirectory(clap-libs/clap-helpers clapjuceext_claphelpers EXCLUDE_FROM_ALL)
 
 add_library(clap_juce_extensions STATIC src/extensions/clap-juce-extensions.cpp)
+set_property(TARGET clap_juce_extensions PROPERTY CXX_STANDARD 14)
 target_include_directories(clap_juce_extensions PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_definitions(clap_juce_extensions PUBLIC
         HAS_CLAP_JUCE_EXTENSIONS=1)
@@ -33,6 +34,7 @@ set_target_properties(clap_juce_extensions PROPERTIES
 )
 
 add_library(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/clap-juce-wrapper.cpp)
+set_property(TARGET clap_juce_sources PROPERTY CXX_STANDARD 14)
 if (APPLE)
   target_sources(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/clap-juce-mac.mm)
 endif()
@@ -68,6 +70,7 @@ function(clap_juce_extensions_plugin)
   add_library(${claptarget} MODULE ${SRC})
 
   set_target_properties(${claptarget} PROPERTIES
+          CXX_STANDARD 14
           ARCHIVE_OUTPUT_DIRECTORY "$<GENEX_EVAL:$<TARGET_PROPERTY:${target},ARCHIVE_OUTPUT_DIRECTORY>>/CLAP"
           LIBRARY_OUTPUT_DIRECTORY "$<GENEX_EVAL:$<TARGET_PROPERTY:${target},LIBRARY_OUTPUT_DIRECTORY>>/CLAP"
           RUNTIME_OUTPUT_DIRECTORY "$<GENEX_EVAL:$<TARGET_PROPERTY:${target},RUNTIME_OUTPUT_DIRECTORY>>/CLAP")
