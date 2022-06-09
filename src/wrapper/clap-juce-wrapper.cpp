@@ -36,7 +36,9 @@ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 #include <clap-juce-extensions/clap-juce-extensions.h>
 
 #if JUCE_LINUX
+#if JUCE_VERSION > 0x060008
 #include <juce_audio_plugin_client/utility/juce_LinuxMessageThread.h>
+#endif
 #endif
 
 #define FIXME(x)                                                                                   \
@@ -187,9 +189,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         juce::ScopedJuceInitialiser_GUI libraryInitialiser;
         const juce::MessageManagerLock mmLock;
 
+#if JUCE_VERSION > 0x060008
         while (juce::dispatchNextMessageOnSystemQueue(true))
         {
         }
+#else
+        auto mm = juce::MessageManager::getInstance();
+        mm->runDispatchLoopUntil(0);
+#endif
 #endif
     }
 
