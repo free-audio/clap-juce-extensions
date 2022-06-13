@@ -18,7 +18,7 @@
 #include <juce_audio_processors/format_types/juce_LegacyAudioParameter.cpp>
 
 JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter", "-Wsign-conversion")
-JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4100 4127)
+JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4100 4127 4244)
 // Sigh - X11.h eventually does a #define None 0L which doesn't work
 // with an enum in clap land being called None, so just undef it
 // post the JUCE installs
@@ -141,7 +141,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         juceParameters.update(*processor, forceLegacyParamIDs);
 
         for (auto *juceParam :
-#if JUCE_VERSION >= 0x060102
+#if JUCE_VERSION >= 0x060103
              juceParameters
 #else
              juceParameters.params
@@ -333,7 +333,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             }
             if (flags & CLAP_TRANSPORT_HAS_SECONDS_TIMELINE)
             {
-                info.timeInSeconds = 1.0 * transportInfo->song_pos_seconds / CLAP_SECTIME_FACTOR;
+                info.timeInSeconds = 1.0 * (double)transportInfo->song_pos_seconds / CLAP_SECTIME_FACTOR;
                 info.timeInSamples = (int64_t)(info.timeInSeconds * sampleRate());
             }
             info.isPlaying = flags & CLAP_TRANSPORT_IS_PLAYING;
@@ -586,7 +586,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                            uint32_t size) noexcept override
     {
         auto pbi = paramPtrByClapID[paramId];
-        auto res = pbi->getText(value, size);
+        auto res = pbi->getText((float)value, (int)size);
         strncpy(display, res.toStdString().c_str(), size);
         return true;
     }
@@ -726,7 +726,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                     auto nf = pevt->value;
                     jassert(pevt->cookie == paramPtrByClapID[id]);
                     auto jp = static_cast<juce::AudioProcessorParameter *>(pevt->cookie);
-                    paramSetValueAndNotifyIfChanged(*jp, nf);
+                    paramSetValueAndNotifyIfChanged(*jp, (float)nf);
                 }
                 break;
                 case CLAP_EVENT_PARAM_MOD:
