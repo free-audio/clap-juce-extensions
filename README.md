@@ -20,7 +20,7 @@ happens (and it may never happen), this code may help you if you have a JUCE plu
 happy to merge changes and answer questions as you try to use it. Please feel free to raise github issues in this repo.
 
 This version is based off of CLAP 1.0 and generates plugins which work in BWS 4.3beta5 and later, as well as
-other CLAP 1.0 DAWs such as MultiTrackStudio.
+other CLAP 1.0 DAWs such as MultitrackStudio.
 
 ## Basics: Using these extensions to build a CLAP
 
