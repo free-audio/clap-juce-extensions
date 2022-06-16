@@ -10,11 +10,4 @@
  */
 
 #define JucePlugin_Build_VST3 1
-#define JucePlugin_IsSynth false
-#define JucePlugin_ManufacturerCode Manu
-#define JucePlugin_PluginCode Svf4
-#define JucePlugin_ProducesMidiOutput false
-#define JucePlugin_WantsMidiInput false
-#define JucePlugin_EditorRequiresKeyboardFocus false
-
 #include "juce_audio_plugin_client/VST/juce_VST_Wrapper.mm"
