@@ -1,6 +1,6 @@
 # JUCE6 and 7 Unofficial CMake Clap Plugin Support
 
-This is a set of code which, combined with a JUCE6 or JUCE 7 CMake plugin project, allows you to build a CLAP plugin. It
+This is a set of code which, combined with a JUCE6 or JUCE 7 plugin project, allows you to build a CLAP plugin. It
 is licensed under the MIT license, and can be used for both open and closed source projects.
 
 We are labeling it 'unofficial' for four reasons
@@ -23,6 +23,8 @@ This version is based off of CLAP 1.0 and generates plugins which work in BWS 4.
 other CLAP 1.0 DAWs such as MultitrackStudio.
 
 ## Basics: Using these extensions to build a CLAP
+
+### CMake
 
 Given a starting point of a JUCE plugin using CMake which can build a VST3, AU, Standalone and so forth with
 `juce_plugin`, building a CLAP is a simple exercise of checking out this CLAP extension code
@@ -52,6 +54,61 @@ add_subdirectory(libs/clap-juce-extensions EXCLUDE_FROM_ALL)
 
 5. Reload your CMake file and you will have a new target `my-target_CLAP` which will build a CLAP and leave
    it side-by-side with your AU, Standalone, VST3, and so forth. Load that CLAP into a DAW and give it a whirl!
+
+### Projucer
+
+Given a starting point of a JUCE plugin using the Projucer, it is possible to build a CLAP plugin by adding
+a small CMake configuration alongside the Projucer build setup.
+
+1. Build your Projucer-based plugin.
+2. Create `CMakeLists.txt` file in the same directory as your `.jucer` file. Here's an example CMakeLists.txt:
+
+```cmake
+cmake_minimum_required(VERSION 3.15)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.12" CACHE STRING "Minimum OS X deployment target")
+project(MyPlugin VERSION 1.0.0)
+
+set(PATH_TO_JUCE path/to/JUCE)
+set(PATH_TO_CLAP_EXTENSIONS path/to/clap-juce-extensions)
+
+# define the exporter types used in your Projucer configuration
+if(APPLE)
+    set(JUCER_GENERATOR "Xcode")
+elseif(WIN32)
+    set(JUCER_GENERATOR "VisualStudio2019")
+else() # Linux
+    set(JUCER_GENERATOR "LinuxMakefile")
+endif()
+
+include(${PATH_TO_CLAP_EXTENSIONS}/cmake/JucerClap.cmake)
+create_jucer_clap_target(
+   TARGET MyPlugin # "Binary Name" in the Projucer
+   PLUGIN_NAME "My Plugin"
+   MANUFACTURER_NAME "My Company"
+   MANUFACTURER_CODE Manu
+   PLUGIN_CODE Plg1
+   VERSION_STRING "1.0.0"
+   CLAP_ID "org.mycompany.myplugin"
+   CLAP_FEATURES instrument synthesizer
+   CLAP_MANUAL_URL "https://www.mycompany.com"
+   CLAP_SUPPORT_URL "https://www.mycompany.com"
+   EDITOR_NEEDS_KEYBOARD_FOCUS FALSE
+)
+```
+
+3. Build the CLAP plugin using CMake. This step can be done manually,
+   as part of an automated build script, or potentially even as a
+   post-build step triggered from the Projucer:
+
+```bash
+cmake -Bbuild-clap -G<generator> -DCMAKE_BUILD_TYPE=<Debug|Release>
+cmake --build build-clap --config <Debug|Release>
+```
+
+The resulting builds will be located in `build-clap/MyPlugin_artefacts`.
+
+If you would like to use the [CLAP extensions API](#the-extensions-api), the necessary source
+files must be added to the plugin's Projucer configuration.
 
 ## Risks of using this library
 
