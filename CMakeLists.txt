@@ -12,15 +12,23 @@ cmake_minimum_required (VERSION 3.15 FATAL_ERROR)
 
 project(clap-juce-extensions VERSION 0.1 LANGUAGES C CXX)
 
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_STANDARD 14)
+if (CMAKE_CXX_STANDARD)
+  set(CLAP_CXX_STANDARD ${CMAKE_CXX_STANDARD})
+else()
+  set(CLAP_CXX_STANDARD 14)
+endif()
+if (${CLAP_CXX_STANDARD} LESS 14)
+  set(CLAP_CXX_STANDARD 14)
+endif()
 
+message( STATUS "Building CLAP with CLAP_CXX_STANDARD=${CLAP_CXX_STANDARD}")
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_subdirectory(clap-libs/clap clapjuceext_clap EXCLUDE_FROM_ALL)
 add_subdirectory(clap-libs/clap-helpers clapjuceext_claphelpers EXCLUDE_FROM_ALL)
 
 add_library(clap_juce_extensions STATIC src/extensions/clap-juce-extensions.cpp)
-set_property(TARGET clap_juce_extensions PROPERTY CXX_STANDARD 14)
+set_property(TARGET clap_juce_extensions PROPERTY CXX_STANDARD ${CLAP_CXX_STANDARD})
 target_include_directories(clap_juce_extensions PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_definitions(clap_juce_extensions PUBLIC
         HAS_CLAP_JUCE_EXTENSIONS=1)
@@ -34,7 +42,7 @@ set_target_properties(clap_juce_extensions PROPERTIES
 )
 
 add_library(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/clap-juce-wrapper.cpp)
-set_property(TARGET clap_juce_sources PROPERTY CXX_STANDARD 14)
+set_property(TARGET clap_juce_sources PROPERTY CXX_STANDARD ${CLAP_CXX_STANDARD})
 if (APPLE)
   target_sources(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/clap-juce-mac.mm)
 endif()
@@ -69,8 +77,10 @@ function(clap_juce_extensions_plugin)
   get_property(SRC TARGET clap_juce_sources PROPERTY SOURCES)
   add_library(${claptarget} MODULE ${SRC})
 
+  get_property(CLAP_CXX_STANDARD TARGET clap_juce_sources PROPERTY CXX_STANDARD)
+
   set_target_properties(${claptarget} PROPERTIES
-          CXX_STANDARD 14
+          CXX_STANDARD ${CLAP_CXX_STANDARD}
           ARCHIVE_OUTPUT_DIRECTORY "$<GENEX_EVAL:$<TARGET_PROPERTY:${target},ARCHIVE_OUTPUT_DIRECTORY>>/CLAP"
           LIBRARY_OUTPUT_DIRECTORY "$<GENEX_EVAL:$<TARGET_PROPERTY:${target},LIBRARY_OUTPUT_DIRECTORY>>/CLAP"
           RUNTIME_OUTPUT_DIRECTORY "$<GENEX_EVAL:$<TARGET_PROPERTY:${target},RUNTIME_OUTPUT_DIRECTORY>>/CLAP")
