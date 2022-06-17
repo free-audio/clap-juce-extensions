@@ -115,7 +115,7 @@ function(clap_juce_extensions_plugin)
     cmake_parse_arguments(CJA "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(product_name $<TARGET_PROPERTY:${CJA_TARGET},JUCE_PRODUCT_NAME>)
-    get_target_property(docopy "${target}" JUCE_COPY_PLUGIN_AFTER_BUILD)
+    get_target_property(docopy "${CJA_TARGET}" JUCE_COPY_PLUGIN_AFTER_BUILD)
 
     clap_juce_extensions_plugin_internal(
         TARGET ${CJA_TARGET}
