@@ -29,6 +29,8 @@ function(clap_juce_extensions_plugin_internal)
     get_property(CLAP_CXX_STANDARD TARGET clap_juce_sources PROPERTY CXX_STANDARD)
 
     if(${CJA_IS_JUCER})
+        set(base_folder "${CMAKE_CURRENT_BINARY_DIR}/${target}_artefacts")
+        set(products_folder "${base_folder}/$<CONFIG>")
         set_target_properties(${claptarget} PROPERTIES
                 CXX_STANDARD ${CLAP_CXX_STANDARD}
                 ARCHIVE_OUTPUT_DIRECTORY "${products_folder}"
