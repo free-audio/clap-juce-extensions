@@ -177,6 +177,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             _host.timerSupportRegister(1000 / 50, &idleTimer);
         }
 #endif
+        defineAudioPorts();
+
         return true;
     }
 
@@ -370,6 +372,27 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
     /* CLAP API */
 
+    void defineAudioPorts()
+    {
+        jassert (! isActive());
+
+        auto requested = processor->getBusesLayout();
+        for (auto isInput : { true, false })
+        {
+            for (int i = 0; i < processor->getBusCount(isInput); ++i)
+            {
+                auto* bus = processor->getBus(isInput, i);
+                auto busDefaultLayout = bus->getDefaultLayout();
+
+                requested.getChannelSet(isInput, i) = busDefaultLayout;
+            }
+        }
+
+        const auto success = processor->setBusesLayout(requested);
+        jassert(success); // failed to set default bus layout!
+        juce::ignoreUnused(success);
+    }
+
     bool implementsAudioPorts() const noexcept override { return true; }
     uint32_t audioPortsCount(bool isInput) const noexcept override
     {
@@ -380,20 +403,18 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                         clap_audio_port_info *info) const noexcept override
     {
         // For now hardcode to stereo out. Fix this obviously.
-        auto bus = processor->getBus(isInput, (int)index);
-        auto clob = bus->getDefaultLayout();
+        const auto bus = processor->getBus(isInput, (int)index);
+        const auto busDefaultLayout = bus->getDefaultLayout();
 
-        // For now we only support stereo channels
-        jassert(clob.size() == 1 || clob.size() == 2);
-        jassert(clob.size() == 1 || (clob.getTypeOfChannel(0) == juce::AudioChannelSet::left &&
-                                     clob.getTypeOfChannel(1) == juce::AudioChannelSet::right));
-        // if (isInput || index != 0) return false;
+        // For now we only support mono or stereo buses
+        jassert(busDefaultLayout == juce::AudioChannelSet::mono() || busDefaultLayout == juce::AudioChannelSet::stereo());
+
         info->id = (isInput ? 1 << 15 : 1) + index;
         strncpy(info->name, bus->getName().toRawUTF8(), sizeof(info->name));
 
         bool couldBeMain = true;
         if (isInput && processorAsClapExtensions)
-            couldBeMain = processorAsClapExtensions->isInputMain(index);
+            couldBeMain = processorAsClapExtensions->isInputMain((int)index);
         if (index == 0 && couldBeMain)
         {
             info->flags = CLAP_AUDIO_PORT_IS_MAIN;
@@ -404,25 +425,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         }
 
         info->in_place_pair = info->id;
-        info->channel_count = (uint32_t)clob.size();
+        info->channel_count = (uint32_t)busDefaultLayout.size();
 
-        if (clob.size() == 1)
+        if (busDefaultLayout == juce::AudioChannelSet::mono())
             info->port_type = CLAP_PORT_MONO;
-        else
+        else if (busDefaultLayout == juce::AudioChannelSet::stereo())
             info->port_type = CLAP_PORT_STEREO;
-
-        auto requested = processor->getBusesLayout();
-        if (clob.size() == 1)
-            requested.getChannelSet(isInput, (int)index) = juce::AudioChannelSet::mono();
-        if (clob.size() == 2)
-            requested.getChannelSet(isInput, (int)index) = juce::AudioChannelSet::stereo();
-
-        processor->setBusesLayoutWithoutEnabling(requested);
-
-        DBG("audioPortsInfo " << (isInput ? "INPUT " : "OUTPUT ") << (int)index << " '"
-                              << bus->getName()
-                              << "' isMain=" << ((index == 0 && couldBeMain) ? "T" : "F")
-                              << " sz=" << clob.size() << " enabled=" << (int)(bus->isEnabled()));
+        else
+            jassertfalse; // @TODO: implement CLAP_PORT_SURROUND and CLAP_PORT_AMBISONIC through extensions
 
         return true;
     }
