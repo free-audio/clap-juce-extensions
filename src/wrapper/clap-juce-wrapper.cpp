@@ -212,7 +212,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 if (isBeingDestroyed())
                     return;
 
-                _host.latencyChanged();
+                if (_host.canUseLatency())
+                    _host.latencyChanged();
             });
         }
         if (details.programChanged)
@@ -224,7 +225,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 if (isBeingDestroyed())
                     return;
 
-                _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES);
+                if (_host.canUseParams())
+                    _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES);
             });
         }
 #if JUCE_VERSION >= 0x060102
@@ -234,7 +236,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 if (isBeingDestroyed())
                     return;
 
-                _host.stateMarkDirty();
+                if (_host.canUseState())
+                    _host.stateMarkDirty();
             });
         }
 #endif
@@ -250,25 +253,27 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 if (isBeingDestroyed())
                     return;
 
-                _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES | CLAP_PARAM_RESCAN_TEXT);
+                if (_host.canUseParams())
+                    _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES | CLAP_PARAM_RESCAN_TEXT);
             });
         }
     }
 #else
-    void audioProcessorChanged(juce::AudioProcessor *proc) override {
-       /*
-        * Before 6.0.8 it was unclear what changed. For now make the approximating decision to just
-        * rescan values and text.
-        */
-       runOnMainThread([this] {
-           if (isBeingDestroyed())
-              return;
+    void audioProcessorChanged(juce::AudioProcessor *proc) override
+    {
+        /*
+         * Before 6.0.8 it was unclear what changed. For now make the approximating decision to just
+         * rescan values and text.
+         */
+        runOnMainThread([this] {
+            if (isBeingDestroyed())
+                return;
 
-           _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES | CLAP_PARAM_RESCAN_TEXT);
-       });
+            if (_host.canUseParams())
+                _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES | CLAP_PARAM_RESCAN_TEXT);
+        });
     }
 #endif
-
 
     clap_id clapIdFromParameterIndex(int index)
     {
@@ -834,7 +839,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                                  bool wasResized) override
     {
         juce::ignoreUnused(wasMoved);
-        if (wasResized)
+        if (wasResized && _host.canUseGui())
             _host.guiRequestResize((uint32_t)component.getWidth(), (uint32_t)component.getHeight());
     }
 
