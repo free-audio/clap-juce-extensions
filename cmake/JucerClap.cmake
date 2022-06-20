@@ -44,7 +44,7 @@ function(create_jucer_clap_target)
         CLAP_SUPPORT_URL "${CJA_CLAP_SUPPORT_URL}"
     )
 
-    set(clap_target "${CJA_TARGET}_CLAP")
+    string(REPLACE " " "_" clap_target "${CJA_TARGET}_CLAP")
     target_include_directories(${clap_target}
         PUBLIC
             ${PATH_TO_JUCE}/modules
@@ -106,6 +106,6 @@ function(create_jucer_clap_target)
             target_compile_definitions(${clap_target} PRIVATE JucePlugin_EditorRequiresKeyboardFocus=0)
         endif()
 
-        _juce_link_frameworks("${clap_target}" PRIVATE AppKit Cocoa WebKit OpenGL CoreAudioKit CoreAudio CoreMidi CoreVideo CoreImage Quartz Accelerate AudioToolbox IOKit)
+        _juce_link_frameworks("${clap_target}" PRIVATE AppKit Cocoa WebKit OpenGL CoreAudioKit CoreAudio CoreMidi CoreVideo CoreImage Quartz Accelerate AudioToolbox IOKit QuartzCore)
     endif()
 endfunction()
