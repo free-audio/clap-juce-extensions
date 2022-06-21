@@ -340,7 +340,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
             }
             if (flags & CLAP_TRANSPORT_HAS_SECONDS_TIMELINE)
             {
-                info.timeInSeconds = 1.0 * (double)transportInfo->song_pos_seconds / CLAP_SECTIME_FACTOR;
+                info.timeInSeconds =
+                    1.0 * (double)transportInfo->song_pos_seconds / CLAP_SECTIME_FACTOR;
                 info.timeInSamples = (int64_t)(info.timeInSeconds * sampleRate());
             }
             info.isPlaying = flags & CLAP_TRANSPORT_IS_PLAYING;
@@ -374,14 +375,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
     void defineAudioPorts()
     {
-        jassert (! isActive());
+        jassert(!isActive());
 
         auto requested = processor->getBusesLayout();
-        for (auto isInput : { true, false })
+        for (auto isInput : {true, false})
         {
             for (int i = 0; i < processor->getBusCount(isInput); ++i)
             {
-                auto* bus = processor->getBus(isInput, i);
+                auto *bus = processor->getBus(isInput, i);
                 auto busDefaultLayout = bus->getDefaultLayout();
 
                 requested.getChannelSet(isInput, i) = busDefaultLayout;
@@ -407,7 +408,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         const auto busDefaultLayout = bus->getDefaultLayout();
 
         // For now we only support mono or stereo buses
-        jassert(busDefaultLayout == juce::AudioChannelSet::mono() || busDefaultLayout == juce::AudioChannelSet::stereo());
+        jassert(busDefaultLayout == juce::AudioChannelSet::mono() ||
+                busDefaultLayout == juce::AudioChannelSet::stereo());
 
         info->id = (isInput ? 1 << 15 : 1) + index;
         strncpy(info->name, bus->getName().toRawUTF8(), sizeof(info->name));
@@ -432,7 +434,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         else if (busDefaultLayout == juce::AudioChannelSet::stereo())
             info->port_type = CLAP_PORT_STEREO;
         else
-            jassertfalse; // @TODO: implement CLAP_PORT_SURROUND and CLAP_PORT_AMBISONIC through extensions
+            jassertfalse; // @TODO: implement CLAP_PORT_SURROUND and CLAP_PORT_AMBISONIC through
+                          // extensions
 
         return true;
     }
@@ -892,6 +895,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         return false;
     }
 
+    bool guiParentAttached{false};
     bool guiCreate(const char *api, bool isFloating) noexcept override
     {
         juce::ignoreUnused(api);
@@ -909,11 +913,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     void guiDestroy() noexcept override
     {
         processor->editorBeingDeleted(editor.get());
+        guiParentAttached = false;
         editor.reset(nullptr);
     }
 
     bool guiSetParent(const clap_window *window) noexcept override
     {
+        guiParentAttached = true;
 #if JUCE_MAC
         return guiCocoaAttach(window->cocoa);
 #elif JUCE_LINUX
@@ -921,8 +927,22 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 #elif JUCE_WINDOWS
         return guiWin32Attach(window->win32);
 #else
+        guiParentAttached = false;
         return false;
 #endif
+    }
+
+    // Show doesn't really exist in JUCE per se. If there's an editor and its attached
+    // we are good.
+    bool guiShow() noexcept override
+    {
+#if JUCE_MAC || JUCE_LINUX || JUCE_WINDOWS
+        if (editor)
+        {
+            return guiParentAttached;
+        }
+#endif
+        return false;
     }
 
     bool guiGetSize(uint32_t *width, uint32_t *height) noexcept override
