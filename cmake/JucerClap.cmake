@@ -31,8 +31,10 @@ function(create_jucer_clap_target)
 
     message(STATUS "Plugin SharedCode library path: ${PLUGIN_LIBRARY_PATH}")
 
-    add_subdirectory(${PATH_TO_JUCE} clap_juce_juce)
-    add_subdirectory(${PATH_TO_CLAP_EXTENSIONS} clap_juce_clapext EXCLUDE_FROM_ALL)
+    if(NOT CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES)
+        add_subdirectory(${PATH_TO_JUCE} clap_juce_juce)
+        add_subdirectory(${PATH_TO_CLAP_EXTENSIONS} clap_juce_clapext EXCLUDE_FROM_ALL)
+    endif()
 
     clap_juce_extensions_plugin_jucer(
         TARGET ${CJA_TARGET}
@@ -49,7 +51,6 @@ function(create_jucer_clap_target)
         PUBLIC
             ${PATH_TO_JUCE}/modules
             JuceLibraryCode
-            Source
     )
 
     target_compile_definitions(${clap_target}

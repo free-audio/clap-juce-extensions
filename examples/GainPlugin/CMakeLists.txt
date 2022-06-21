@@ -1,3 +1,30 @@
+if(CLAP_WRAP_PROJUCER_PLUGIN)
+    set(PATH_TO_JUCE "${JUCE_SOURCE_DIR}")
+    set(PATH_TO_CLAP_EXTENSIONS ${CMAKE_CURRENT_SOURCE_DIR}/../..)
+
+    if(APPLE)
+        set(JUCER_GENERATOR "Xcode")
+    elseif(WIN32)
+        set(JUCER_GENERATOR "VisualStudio2019")
+    else() # Linux
+        set(JUCER_GENERATOR "LinuxMakefile")
+    endif()
+
+    include(${PATH_TO_CLAP_EXTENSIONS}/cmake/JucerClap.cmake)
+    create_jucer_clap_target(
+        TARGET "GainPlugin"
+        PLUGIN_NAME "GainPlugin"
+        PLUGIN_CODE "Gplg"
+        MANUFACTURER_NAME "${COMPANY_NAME}"
+        MANUFACTURER_CODE "${COMPANY_CODE}"
+        VERSION_STRING "${CMAKE_PROJECT_VERSION}"
+        CLAP_ID "org.free-audio.GainPlugin"
+        CLAP_FEATURES audio-effect utility
+    )
+
+    return()
+endif()
+
 juce_add_plugin(GainPlugin
     COMPANY_NAME "${COMPANY_NAME}"
     PLUGIN_MANUFACTURER_CODE "${COMPANY_CODE}"
