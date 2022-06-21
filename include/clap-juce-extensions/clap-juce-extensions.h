@@ -118,7 +118,7 @@ struct clap_param_extensions
      * initiated modulation changes. Requires you to implement
      * clap_direct_process
      */
-    virtual bool supportsMonophonicModulation() { return false; };
+    virtual bool supportsMonophonicModulation() { return false; }
 
     /*
      * Return true if this parameter should receive non-destructive
@@ -126,7 +126,7 @@ struct clap_param_extensions
      * this also requires your process to return note end events when
      * voices are terminated.
      */
-    virtual bool supportsPolyphonicModulation() { return false; };
+    virtual bool supportsPolyphonicModulation() { return false; }
 };
 } // namespace clap_juce_extensions
 

@@ -17,7 +17,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/format_types/juce_LegacyAudioParameter.cpp>
 
-JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter", "-Wsign-conversion")
+JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter", "-Wsign-conversion", "-Wfloat-conversion")
 JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4100 4127 4244)
 // Sigh - X11.h eventually does a #define None 0L which doesn't work
 // with an enum in clap land being called None, so just undef it
@@ -88,7 +88,7 @@ template <typename T, int qSize = 4096> class PushPopQ
         return ret;
     }
     juce::AbstractFifo af;
-    T dq[qSize];
+    T dq[(size_t)qSize];
 };
 
 /*
@@ -149,11 +149,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
         )
         {
-            uint32_t clap_id = generateClapIDForJuceParam(juceParam);
+            uint32_t clapID = generateClapIDForJuceParam(juceParam);
 
-            allClapIDs.insert(clap_id);
-            paramPtrByClapID[clap_id] = juceParam;
-            clapIDByParamPtr[juceParam] = clap_id;
+            allClapIDs.insert(clapID);
+            paramPtrByClapID[clapID] = juceParam;
+            clapIDByParamPtr[juceParam] = clapID;
         }
     }
 
@@ -207,8 +207,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     uint32_t generateClapIDForJuceParam(juce::AudioProcessorParameter *param) const
     {
         auto juceParamID = juce::LegacyAudioParameter::getParamID(param, false);
-        auto clap_id = static_cast<uint32_t>(juceParamID.hashCode());
-        return clap_id;
+        auto clapID = static_cast<uint32_t>(juceParamID.hashCode());
+        return clapID;
     }
 
 #if JUCE_VERSION >= 0x060008
@@ -364,7 +364,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                   uint32_t maxFrameCount) noexcept override
     {
         juce::ignoreUnused(minFrameCount);
-        processor->setRateAndBufferSizeDetails(sampleRate, maxFrameCount);
+        processor->setRateAndBufferSizeDetails(sampleRate, (int)maxFrameCount);
         processor->prepareToPlay(sampleRate, (int)maxFrameCount);
         midiBuffer.ensureSize(2048);
         midiBuffer.clear();
@@ -669,7 +669,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 evt.header.type = (uint16_t)CLAP_EVENT_PARAM_VALUE;
                 evt.header.time = 0; // for now
                 evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-                evt.header.flags = pc.flag;
+                evt.header.flags = (uint32_t)pc.flag;
                 evt.param_id = pc.id;
                 evt.value = pc.newval;
                 ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
@@ -683,7 +683,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 evt.header.type = (uint16_t)pc.type;
                 evt.header.time = 0; // for now
                 evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-                evt.header.flags = pc.flag;
+                evt.header.flags = (uint32_t)pc.flag;
                 evt.param_id = pc.id;
                 ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
             }
@@ -839,7 +839,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                     auto evt = clap_event_midi();
                     evt.header.size = sizeof(clap_event_midi);
                     evt.header.type = (uint16_t)CLAP_EVENT_MIDI;
-                    evt.header.time = meta.samplePosition; // for now
+                    evt.header.time = (uint32_t)meta.samplePosition; // for now
                     evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
                     evt.header.flags = 0;
                     evt.port_index = 0;
@@ -879,7 +879,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
         if (!editor->isResizable())
             return false;
 
-        editor->setSize(*w, *h);
+        editor->setSize(static_cast<int>(*w), static_cast<int>(*h));
         return true;
     }
 
@@ -1014,6 +1014,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 #if JUCE_LINUX
     bool guiX11Attach(const char *displayName, unsigned long window) noexcept
     {
+        juce::ignoreUnused(displayName);
         const juce::MessageManagerLock mmLock;
         editor->setVisible(false);
         editor->addToDesktop(0, (void *)window);
@@ -1077,7 +1078,9 @@ clap_plugin_descriptor ClapJuceWrapper::desc = {CLAP_VERSION,
                                                 JucePlugin_Desc,
                                                 features};
 
+JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wredundant-decls")
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter();
+JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 
 namespace ClapAdapter
 {
