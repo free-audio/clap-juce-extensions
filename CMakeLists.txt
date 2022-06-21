@@ -24,6 +24,19 @@ endif()
 message( STATUS "Building CLAP with CLAP_CXX_STANDARD=${CLAP_CXX_STANDARD}")
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+get_directory_property(parent_dir PARENT_DIRECTORY)
+if ("${parent_dir}" STREQUAL "")
+    set(is_toplevel 1)
+else ()
+    set(is_toplevel 0)
+endif ()
+option(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES "Add targets for building and running clap-juce-extensions examples" ${is_toplevel})
+if(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES)
+    # The examples need JUCE to be imported before the CLAP helper targets
+    include(examples/cmake/CPM.cmake)
+    CPMAddPackage("gh:juce-framework/JUCE#6.1.5")
+endif()
+
 add_subdirectory(clap-libs/clap clapjuceext_clap EXCLUDE_FROM_ALL)
 add_subdirectory(clap-libs/clap-helpers clapjuceext_claphelpers EXCLUDE_FROM_ALL)
 
@@ -49,3 +62,8 @@ endif()
 target_include_directories(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 include(cmake/ClapTargetHelpers.cmake)
+
+if(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES)
+    message(STATUS "Configuring clap-juce-extensions examples")
+    add_subdirectory(examples)
+endif()
