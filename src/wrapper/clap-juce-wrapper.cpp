@@ -17,7 +17,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/format_types/juce_LegacyAudioParameter.cpp>
 
-JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter", "-Wsign-conversion")
+JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter", "-Wsign-conversion", "-Wfloat-conversion")
 JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4100 4127 4244)
 // Sigh - X11.h eventually does a #define None 0L which doesn't work
 // with an enum in clap land being called None, so just undef it
