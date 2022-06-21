@@ -1014,7 +1014,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 #if JUCE_LINUX
     bool guiX11Attach(const char *displayName, unsigned long window) noexcept
     {
-        (void)displayName;
+        juce::ignoreUnused(displayName);
         const juce::MessageManagerLock mmLock;
         editor->setVisible(false);
         editor->addToDesktop(0, (void *)window);
