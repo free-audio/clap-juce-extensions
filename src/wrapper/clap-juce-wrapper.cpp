@@ -1084,14 +1084,14 @@ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 
 namespace ClapAdapter
 {
-bool clap_init(const char *) { return true; }
+static bool clap_init(const char *) { return true; }
 
-void clap_deinit(void) {}
+static void clap_deinit(void) {}
 
-uint32_t clap_get_plugin_count(const struct clap_plugin_factory *) { return 1; }
+static uint32_t clap_get_plugin_count(const struct clap_plugin_factory *) { return 1; }
 
-const clap_plugin_descriptor *clap_get_plugin_descriptor(const struct clap_plugin_factory *,
-                                                         uint32_t)
+static const clap_plugin_descriptor *clap_get_plugin_descriptor(const struct clap_plugin_factory *,
+                                                                uint32_t)
 {
     return &ClapJuceWrapper::desc;
 }
@@ -1118,13 +1118,13 @@ static const clap_plugin *clap_create_plugin(const struct clap_plugin_factory *,
     return wrapper->clapPlugin();
 }
 
-const struct clap_plugin_factory juce_clap_plugin_factory = {
+static const struct clap_plugin_factory juce_clap_plugin_factory = {
     ClapAdapter::clap_get_plugin_count,
     ClapAdapter::clap_get_plugin_descriptor,
     ClapAdapter::clap_create_plugin,
 };
 
-const void *clap_get_factory(const char *factory_id)
+static const void *clap_get_factory(const char *factory_id)
 {
     if (strcmp(factory_id, CLAP_PLUGIN_FACTORY_ID) == 0)
     {
