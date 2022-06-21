@@ -11,6 +11,7 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include <algorithm>
 
 #define JUCE_GUI_BASICS_INCLUDE_XHEADERS 1
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -107,6 +108,10 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 #if !defined(CLAP_MISBEHAVIOUR_HANDLER_LEVEL)
 #define CLAP_MISBEHAVIOUR_HANDLER_LEVEL "Ignore"
 #endif
+
+// This is useful for debugging overrides
+// #undef CLAP_MISBEHAVIOUR_HANDLER_LEVEL
+// #define CLAP_MISBEHAVIOUR_HANDLER_LEVEL Terminate
 
 /*
  * A little class that sets an atomic bool to a value across its lifetime and
@@ -992,6 +997,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             return editor->isResizable();
         return true;
     }
+
     bool guiAdjustSize(uint32_t *w, uint32_t *h) noexcept override
     {
         if (!editor)
@@ -1000,7 +1006,42 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         if (!editor->isResizable())
             return false;
 
-        editor->setSize(static_cast<int>(*w), static_cast<int>(*h));
+        auto cst = editor->getConstrainer();
+
+        if (!cst)
+            return true; // we have no constraints. Whaever is fine!
+
+        auto minW = (uint32_t)cst->getMinimumWidth();
+        auto maxW = (uint32_t)cst->getMaximumWidth();
+        auto minH = (uint32_t)cst->getMinimumHeight();
+        auto maxH = (uint32_t)cst->getMaximumHeight();
+
+        auto width = std::clamp(*w, minW, maxW);
+        auto height = std::clamp(*h, minH, maxH);
+
+        auto aspectRatio = (float)cst->getFixedAspectRatio();
+
+        if (aspectRatio != 0.0)
+        {
+            // This is an unsatisfactory but stable algorithm
+            width = aspectRatio * height;
+        }
+
+        *w = width;
+        *h = height;
+
+        return true;
+    }
+
+    bool guiSetSize(uint32_t width, uint32_t height) noexcept override
+    {
+        if (!editor)
+            return false;
+
+        if (!editor->isResizable())
+            return false;
+
+        editor->setSize(static_cast<int>(width), static_cast<int>(height));
         return true;
     }
 
