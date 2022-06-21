@@ -4,7 +4,7 @@ function(clap_juce_extensions_plugin_internal)
   
     cmake_parse_arguments(CJA "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     set(target ${CJA_TARGET})
-    set(claptarget ${target}_CLAP)
+    string(REPLACE " " "_" claptarget "${target}_CLAP")
   
     message(STATUS "Creating CLAP ${claptarget} from ${target}")
   
