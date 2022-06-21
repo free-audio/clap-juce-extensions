@@ -334,9 +334,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 
             if (flags & CLAP_TRANSPORT_HAS_BEATS_TIMELINE)
             {
-                info.ppqPosition = 1.0 * transportInfo->song_pos_beats / CLAP_BEATTIME_FACTOR;
+                info.ppqPosition =
+                    1.0 * (double)transportInfo->song_pos_beats / CLAP_BEATTIME_FACTOR;
                 info.ppqPositionOfLastBarStart =
-                    1.0 * transportInfo->bar_start / CLAP_BEATTIME_FACTOR;
+                    1.0 * (double)transportInfo->bar_start / CLAP_BEATTIME_FACTOR;
             }
             if (flags & CLAP_TRANSPORT_HAS_SECONDS_TIMELINE)
             {
@@ -740,9 +741,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
                 {
                     auto pevt = reinterpret_cast<const clap_event_param_value *>(evt);
 
-                    auto id = pevt->param_id;
                     auto nf = pevt->value;
-                    jassert(pevt->cookie == paramPtrByClapID[id]);
+                    jassert(pevt->cookie == paramPtrByClapID[pevt->param_id]);
                     auto jp = static_cast<juce::AudioProcessorParameter *>(pevt->cookie);
                     paramSetValueAndNotifyIfChanged(*jp, (float)nf);
                 }
@@ -923,7 +923,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 #if JUCE_MAC
         return guiCocoaAttach(window->cocoa);
 #elif JUCE_LINUX
-        return guiX11Attach(NULL, window->x11);
+        return guiX11Attach(nullptr, window->x11);
 #elif JUCE_WINDOWS
         return guiWin32Attach(window->win32);
 #else
