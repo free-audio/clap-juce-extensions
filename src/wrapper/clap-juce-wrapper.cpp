@@ -109,6 +109,18 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 #endif
 
 /*
+ * A little class that sets an atomic bool to a value across its lifetime and
+ * restores it on exit.
+ */
+template <typename T> struct AtomicTGuard
+{
+    std::atomic<T> &ref;
+    T valAtConstruct;
+    AtomicTGuard(std::atomic<T> &b, T val) : ref(b), valAtConstruct(b) { ref = val; }
+    ~AtomicTGuard() { ref = valAtConstruct; }
+};
+
+/*
  * The ClapJuceWrapper is a class which immplements a collection
  * of CLAP and JUCE APIs
  */
@@ -129,6 +141,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     clap_juce_extensions::clap_properties *processorAsClapProperties{nullptr};
     clap_juce_extensions::clap_extensions *processorAsClapExtensions{nullptr};
 
+    bool usingLegacyParameterAPI{false};
+
     ClapJuceWrapper(const clap_host *host, juce::AudioProcessor *p)
         : clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::CLAP_MISBEHAVIOUR_HANDLER_LEVEL,
                                 clap::helpers::CheckingLevel::Minimal>(&desc, host),
@@ -144,6 +158,12 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         const bool forceLegacyParamIDs = false;
 
         juceParameters.update(*processor, forceLegacyParamIDs);
+
+        if (processor->getParameters().size() == 0)
+        {
+            usingLegacyParameterAPI = true;
+            DBG("Using Legacy Parameter API: getText will ignore value and use plugin value.");
+        }
 
         for (auto *juceParam :
 #if JUCE_VERSION >= 0x060103
@@ -300,8 +320,29 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return id;
     }
 
+    std::atomic<bool> supressParameterChangeMessages{false};
     void audioProcessorParameterChanged(juce::AudioProcessor *, int index, float newValue) override
     {
+        if (cacheHostCanUseThreadCheck)
+        {
+            /*
+             * In this event the host can tell us the audio thread and so we can supress this
+             * outbound message which would have resulted from the parameter change in the ::process
+             * loop
+             */
+            if (_host.isAudioThread())
+                return;
+        }
+        else
+        {
+            /*
+             * In this case the host can't give us thread identities. To make sure we don't double
+             * send an event, use an atomic bool to send the result. This may in a very rare
+             * condition drop a UI event but will avoid a feedback cycle from the UI
+             */
+            if (supressParameterChangeMessages)
+                return;
+        }
         auto id = clapIdFromParameterIndex(index);
         uiParamChangeQ.push({CLAP_EVENT_PARAM_VALUE, 0, id, newValue});
     }
@@ -412,6 +453,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     void parameterGestureChanged(int, bool) override { FIXME("parameter gesture changed"); }
 
+    bool cacheHostCanUseThreadCheck{false};
     bool activate(double sampleRate, uint32_t minFrameCount,
                   uint32_t maxFrameCount) noexcept override
     {
@@ -420,6 +462,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         processor->prepareToPlay(sampleRate, (int)maxFrameCount);
         midiBuffer.ensureSize(2048);
         midiBuffer.clear();
+
+        cacheHostCanUseThreadCheck = _host.canUseThreadCheck();
+        if (!cacheHostCanUseThreadCheck)
+        {
+            DBG("Host cannot support thread check. Using atomic guard for param feedback.");
+        }
+
         return true;
     }
 
@@ -656,8 +705,21 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                            uint32_t size) noexcept override
     {
         auto pbi = paramPtrByClapID[paramId];
-        auto res = pbi->getText((float)value, (int)size);
-        strncpy(display, res.toStdString().c_str(), size);
+        if (!usingLegacyParameterAPI)
+        {
+            auto res = pbi->getText((float)value, (int)size);
+            strncpy(display, res.toStdString().c_str(), size);
+        }
+        else
+        {
+            /*
+             * This is really unsatisfactory but we have very little choice in the
+             * event that the JUCE parameter mode is more or less like a VST2
+             */
+            auto res = pbi->getCurrentValueAsText();
+            strncpy(display, res.toStdString().c_str(), size);
+        }
+
         return true;
     }
 
@@ -795,6 +857,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                     auto nf = pevt->value;
                     jassert(pevt->cookie == paramPtrByClapID[pevt->param_id]);
                     auto jp = static_cast<juce::AudioProcessorParameter *>(pevt->cookie);
+
+                    /*
+                     * In the event that a param value comes in from the host, we don't want
+                     * to send it back out as a UI message but we do want to trigger any *other*
+                     * listeners which may be attached. So suppress my listeners while we send this
+                     * event.
+                     */
+                    auto g = AtomicTGuard<bool>(supressParameterChangeMessages, true);
                     paramSetValueAndNotifyIfChanged(*jp, (float)nf);
                 }
                 break;
