@@ -104,12 +104,17 @@ extern JUCE_API void *attachComponentToWindowRefVST(Component *, void *parentWin
 
 JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 
+#if !defined(CLAP_MISBEHAVIOUR_HANDLER_LEVEL)
+#define CLAP_MISBEHAVIOUR_HANDLER_LEVEL "Ignore"
+#endif
+
 /*
  * The ClapJuceWrapper is a class which immplements a collection
  * of CLAP and JUCE APIs
  */
-class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate,
-                                                     clap::helpers::CheckingLevel::Minimal>,
+class ClapJuceWrapper : public clap::helpers::Plugin<
+                            clap::helpers::MisbehaviourHandler::CLAP_MISBEHAVIOUR_HANDLER_LEVEL,
+                            clap::helpers::CheckingLevel::Minimal>,
                         public juce::AudioProcessorListener,
                         public juce::AudioPlayHead,
                         public juce::AudioProcessorParameter::Listener,
@@ -125,7 +130,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     clap_juce_extensions::clap_extensions *processorAsClapExtensions{nullptr};
 
     ClapJuceWrapper(const clap_host *host, juce::AudioProcessor *p)
-        : clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate,
+        : clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::CLAP_MISBEHAVIOUR_HANDLER_LEVEL,
                                 clap::helpers::CheckingLevel::Minimal>(&desc, host),
           processor(p)
     {
