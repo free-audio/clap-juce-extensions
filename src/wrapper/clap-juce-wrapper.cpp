@@ -115,7 +115,7 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 template <typename T> struct AtomicTGuard
 {
     std::atomic<T> &ref;
-    bool valAtConstruct;
+    T valAtConstruct;
     AtomicTGuard(std::atomic<T> &b, T val) : ref(b), valAtConstruct(b) { ref = val; }
     ~AtomicTGuard() { ref = valAtConstruct; }
 };
