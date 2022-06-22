@@ -169,20 +169,31 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
 #endif
     }
 
+    bool haveCompletedDeferredInit{false};
     bool init() noexcept override
     {
-#if JUCE_LINUX
-        if (_host.canUseTimerSupport())
-        {
-            _host.timerSupportRegister(1000 / 50, &idleTimer);
-        }
-#endif
         defineAudioPorts();
 
+        haveCompletedDeferredInit = false;
+        _host.requestCallback();
         return true;
     }
 
-  public:
+    void onMainThread() noexcept override
+    {
+        if (!haveCompletedDeferredInit)
+        {
+            haveCompletedDeferredInit = true;
+
+#if JUCE_LINUX
+            if (_host.canUseTimerSupport())
+            {
+                _host.timerSupportRegister(1000 / 50, &idleTimer);
+            }
+#endif
+        }
+    }
+
     bool implementsTimerSupport() const noexcept override { return true; }
     void onTimer(clap_id timerId) noexcept override
     {
@@ -864,7 +875,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<clap::helpers::Misbehaviour
     }
 
     std::unique_ptr<juce::AudioProcessorEditor> editor;
-    bool implementsGui() const noexcept override { return processor->hasEditor(); }
+    bool implementsGui() const noexcept override
+    {
+#if JUCE_LINUX
+        if (!_host.canUseTimerSupport())
+            return false;
+#endif
+        return processor->hasEditor();
+    }
     bool guiCanResize() const noexcept override
     {
         if (editor)
