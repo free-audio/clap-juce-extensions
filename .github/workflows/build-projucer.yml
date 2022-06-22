@@ -10,6 +10,9 @@ on:
 
   workflow_dispatch:
 
+env:
+  JUCE_DIR: build/_deps/juce-src
+
 jobs:
   build_and_test:
     name: Build example plugins with Projucer on ${{ matrix.os }}
@@ -19,13 +22,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            jucer: "modules/JUCE/extras/Projucer/Builds/LinuxMakefile/build/Projucer"
+            jucer: "$JUCE_DIR/extras/Projucer/Builds/LinuxMakefile/build/Projucer"
             clap_gen: "Unix Makefiles"
           - os: macos-latest
-            jucer: "modules/JUCE/extras/Projucer/Builds/MacOSX/build/Debug/Projucer.app/Contents/MacOS/Projucer"
+            jucer: "$JUCE_DIR/extras/Projucer/Builds/MacOSX/build/Debug/Projucer.app/Contents/MacOS/Projucer"
             clap_gen: "Xcode"
           - os: windows-2019
-            jucer: "modules/JUCE/extras/Projucer/Builds/VisualStudio2019/x64/Debug/App/Projucer.exe"
+            jucer: "$JUCE_DIR/extras/Projucer/Builds/VisualStudio2019/x64/Debug/App/Projucer.exe"
             clap_gen: "Visual Studio 16 2019"
 
     steps:
@@ -54,25 +57,25 @@ jobs:
 
       - name: Install JUCE
         shell: bash
-        run: git clone --depth 1 --branch 6.1.5 https://github.com/juce-framework/JUCE build/_deps/juce-src
+        run: git clone --depth 1 --branch 6.1.5 https://github.com/juce-framework/JUCE $JUCE_DIR
 
       - name: Build Projucer (MacOS)
         if: runner.os == 'MacOS'
         shell: bash
         run: xcodebuild -project Projucer.xcodeproj -jobs 4 | xcpretty
-        working-directory: modules/JUCE/extras/Projucer/Builds/MacOSX
+        working-directory: $JUCE_DIR/extras/Projucer/Builds/MacOSX
 
       - name: Build Projucer (Windows)
         if: runner.os == 'Windows'
         shell: bash
         run: msbuild.exe -v:normal -m:4 Projucer.sln
-        working-directory: modules/JUCE/extras/Projucer/Builds/VisualStudio2019
+        working-directory: $JUCE_DIR/extras/Projucer/Builds/VisualStudio2019
 
       - name: Build Projucer (Linux)
         if: runner.os == 'Linux'
         shell: bash
         run: make -j4
-        working-directory: modules/JUCE/extras/Projucer/Builds/LinuxMakefile
+        working-directory: $JUCE_DIR/extras/Projucer/Builds/LinuxMakefile
 
       - name: Resave jucer
         shell: bash
