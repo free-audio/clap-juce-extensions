@@ -1023,7 +1023,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         if (aspectRatio != 0.0)
         {
-            // This is an unsatisfactory but stable algorithm
+            // This is an unsatisfactory but stable algorithm.
+            // Since we don't know drag direction it is hard to
+            // find a stable better one, at least it is for me right
+            // now
             width = aspectRatio * height;
         }
 
