@@ -63,19 +63,19 @@ jobs:
         if: runner.os == 'MacOS'
         shell: bash
         run: xcodebuild -project Projucer.xcodeproj -jobs 4 | xcpretty
-        working-directory: $JUCE_DIR/extras/Projucer/Builds/MacOSX
+        working-directory: "$JUCE_DIR/extras/Projucer/Builds/MacOSX"
 
       - name: Build Projucer (Windows)
         if: runner.os == 'Windows'
         shell: bash
         run: msbuild.exe -v:normal -m:4 Projucer.sln
-        working-directory: $JUCE_DIR/extras/Projucer/Builds/VisualStudio2019
+        working-directory: "$JUCE_DIR/extras/Projucer/Builds/VisualStudio2019"
 
       - name: Build Projucer (Linux)
         if: runner.os == 'Linux'
         shell: bash
         run: make -j4
-        working-directory: $JUCE_DIR/extras/Projucer/Builds/LinuxMakefile
+        working-directory: "$JUCE_DIR/extras/Projucer/Builds/LinuxMakefile"
 
       - name: Resave jucer
         shell: bash
