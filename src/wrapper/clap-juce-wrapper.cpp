@@ -320,6 +320,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_END, 0, id, p->getValue()});
     }
 
+#if JUCE_VERSION < 0x070000
     /*
      * According to the JUCE docs this is *only* called on the processing thread
      */
@@ -356,6 +357,51 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         }
         return hasTransportInfo;
     }
+#else
+    juce::Optional<PositionInfo> getPosition() const override
+    {
+        if (hasTransportInfo && transportInfo)
+        {
+            auto flags = transportInfo->flags;
+            auto posinfo = PositionInfo();
+
+            if (flags & CLAP_TRANSPORT_HAS_TEMPO)
+                posinfo.setBpm(transportInfo->tempo);
+            if (flags & CLAP_TRANSPORT_HAS_TIME_SIGNATURE)
+            {
+                auto ts = TimeSignature();
+                ts.numerator = transportInfo->tsig_num;
+                ts.denominator = transportInfo->tsig_denom;
+                posinfo.setTimeSignature(ts);
+            }
+
+            if (flags & CLAP_TRANSPORT_HAS_BEATS_TIMELINE)
+            {
+                posinfo.setBarCount(transportInfo->bar_number);
+                posinfo.setPpqPosition(1.0 * (double)transportInfo->song_pos_beats /
+                                       CLAP_BEATTIME_FACTOR);
+                posinfo.setPpqPositionOfLastBarStart(1.0 * (double)transportInfo->bar_start /
+                                                     CLAP_BEATTIME_FACTOR);
+            }
+            if (flags & CLAP_TRANSPORT_HAS_SECONDS_TIMELINE)
+            {
+                auto timeInSeconds =
+                    1.0 * (double)transportInfo->song_pos_seconds / CLAP_SECTIME_FACTOR;
+                posinfo.setTimeInSeconds(timeInSeconds);
+                posinfo.setTimeInSamples((int64_t)(timeInSeconds * sampleRate()));
+            }
+            posinfo.setIsPlaying(flags & CLAP_TRANSPORT_IS_PLAYING);
+            posinfo.setIsRecording(flags & CLAP_TRANSPORT_IS_RECORDING);
+            posinfo.setIsLooping(flags & CLAP_TRANSPORT_IS_LOOP_ACTIVE);
+
+            return posinfo;
+        }
+        else
+        {
+            return juce::Optional<PositionInfo>();
+        }
+    }
+#endif
 
     void parameterValueChanged(int, float newValue) override
     {
