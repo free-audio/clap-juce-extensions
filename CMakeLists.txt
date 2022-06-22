@@ -33,8 +33,10 @@ endif ()
 option(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES "Add targets for building and running clap-juce-extensions examples" ${is_toplevel})
 if(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES)
     # The examples need JUCE to be imported before the CLAP helper targets
+    set(CLAP_JUCE_VERSION "6.1.5" CACHE STRING "Version of JUCE to use for building example plugins")
+    message(STATUS "Building examples with JUCE version: ${CLAP_JUCE_VERSION}")
     include(examples/cmake/CPM.cmake)
-    CPMAddPackage("gh:juce-framework/JUCE#6.1.5")
+    CPMAddPackage("gh:juce-framework/JUCE#${CLAP_JUCE_VERSION}")
 endif()
 
 add_subdirectory(clap-libs/clap clapjuceext_clap EXCLUDE_FROM_ALL)
