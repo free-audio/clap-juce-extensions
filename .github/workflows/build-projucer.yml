@@ -54,7 +54,7 @@ jobs:
 
       - name: Install JUCE
         shell: bash
-        run: git clone --depth 1 --branch 6.1.5 https://github.com/juce-framework/JUCE $JUCE_DIR
+        run: git clone --depth 1 --branch 6.1.5 https://github.com/juce-framework/JUCE build/_deps/juce-src
 
       - name: Build Projucer (MacOS)
         if: runner.os == 'MacOS'
