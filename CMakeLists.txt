@@ -8,7 +8,9 @@
 #          CLAP_ID "com.my-cool-plugs.my-target")
 # 4. Reload your CMAKe file and my-target_CLAP will be a buildable target
 
-cmake_minimum_required (VERSION 3.15 FATAL_ERROR)
+# The INTERFACE targets to transmit CXX_STANDARD and POSITION INDEPENDENT
+# require at least CMAKE 3.21
+cmake_minimum_required (VERSION 3.21 FATAL_ERROR)
 
 project(clap-juce-extensions VERSION 0.1 LANGUAGES C CXX)
 
