@@ -83,13 +83,13 @@ jobs:
       - name: Build Plugin (MacOS)
         if: runner.os == 'MacOS'
         shell: bash
-        run: xcodebuild -project SimplePlugin.xcodeproj -jobs 4 | xcpretty
+        run: xcodebuild -project GainPlugin.xcodeproj -jobs 4 | xcpretty
         working-directory: examples/GainPlugin/Builds/MacOSX
 
       - name: Build Plugin (Windows)
         if: runner.os == 'Windows'
         shell: bash
-        run: msbuild.exe -v:normal -m:4 SimplePlugin.sln
+        run: msbuild.exe -v:normal -m:4 GainPlugin.sln
         working-directory: examples/GainPlugin/Builds/VisualStudio2019
 
       - name: Build Plugin (Linux)
