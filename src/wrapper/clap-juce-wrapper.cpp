@@ -109,9 +109,17 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 #define CLAP_MISBEHAVIOUR_HANDLER_LEVEL "Ignore"
 #endif
 
+
+#if !defined(CLAP_CHECKING_LEVEL)
+#define CLAP_CHECKING_LEVEL "Minimal"
+#endif
+
 // This is useful for debugging overrides
 // #undef CLAP_MISBEHAVIOUR_HANDLER_LEVEL
 // #define CLAP_MISBEHAVIOUR_HANDLER_LEVEL Terminate
+// #undef CLAP_CHECKING_LEVEL
+// #define CLAP_CHECKING_LEVEL Maximal
+
 
 /*
  * A little class that sets an atomic bool to a value across its lifetime and
@@ -131,7 +139,7 @@ template <typename T> struct AtomicTGuard
  */
 class ClapJuceWrapper : public clap::helpers::Plugin<
                             clap::helpers::MisbehaviourHandler::CLAP_MISBEHAVIOUR_HANDLER_LEVEL,
-                            clap::helpers::CheckingLevel::Minimal>,
+                            clap::helpers::CheckingLevel::CLAP_CHECKING_LEVEL>,
                         public juce::AudioProcessorListener,
                         public juce::AudioPlayHead,
                         public juce::AudioProcessorParameter::Listener,
@@ -150,7 +158,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     ClapJuceWrapper(const clap_host *host, juce::AudioProcessor *p)
         : clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::CLAP_MISBEHAVIOUR_HANDLER_LEVEL,
-                                clap::helpers::CheckingLevel::Minimal>(&desc, host),
+                                clap::helpers::CheckingLevel::CLAP_CHECKING_LEVEL>(&desc, host),
           processor(p)
     {
         processor->setRateAndBufferSizeDetails(0, 0);
