@@ -998,6 +998,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return true;
     }
 
+    /*
+     * guiAdjustSize is called before guiSetSize and given the option to
+     * reset the size the host hands to the subsequent setSize. This is a
+     * relatively naive and unsatisfactory initial implementation.
+     */
     bool guiAdjustSize(uint32_t *w, uint32_t *h) noexcept override
     {
         if (!editor)
@@ -1017,27 +1022,27 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         auto maxH = (uint32_t)cst->getMaximumHeight();
 
         // There is no std::clamp in c++14
-        auto width = *w;
-        if (width < minW)
-            width = minW;
-        if (width > maxW)
-            width = maxW;
-
-        auto height = *h;
-        if (height < minH)
-            height = minH;
-        if (height > maxH)
-            height = maxH;
+        auto width = juce::jlimit(minW, maxW, *w);
+        auto height = juce::jlimit(minH, maxH, *h);
 
         auto aspectRatio = (float)cst->getFixedAspectRatio();
 
         if (aspectRatio != 0.0)
         {
-            // This is an unsatisfactory but stable algorithm.
-            // Since we don't know drag direction it is hard to
-            // find a stable better one, at least it is for me right
-            // now
-            width = aspectRatio * height;
+            /*
+             * This is obviously an unsatisfactory algorithm, but we wanted to have
+             * something at least workable here.
+             *
+             * The problem with other algorithms I tried is that this function gets
+             * called by BWS for sub-single pixel motions on macOS, so it is hard to make
+             * a version which is *stable* (namely adjust(w,h); cw=w;ch=h; adjust(cw,ch);
+             * cw == w; ch == h) that deals with directions. I tried all sorts of stuff
+             * and then ran into vacation.
+             *
+             * So for now here's this approach. See the discussion in CJE PR #67
+             * and interop-tracker issue #30.
+             */
+            width = std::round(aspectRatio * height);
         }
 
         *w = width;
