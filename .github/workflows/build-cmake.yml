@@ -54,8 +54,15 @@ jobs:
           cd clap-info
           cmake -Bbuild -DCMAKE_BUILD_TYPE=Release
           cmake --build build --config Release --parallel 4
-          build/Release/clap-info --version
 
-      - name: Run clap-info
+      - name: Run clap-info (Max/Linux)
         shell: bash
-        run: clap-info/build/Release/clap-info build/examples/GainPlugin/GainPlugin_artefacts/Release/CLAP/GainPlugin.clap
+        run: |
+          build/clap-info --version
+          clap-info/build/clap-info build/examples/GainPlugin/GainPlugin_artefacts/Release/CLAP/GainPlugin.clap
+
+      - name: Run clap-info (Windows)
+        shell: bash
+        run: |
+          build/Release/clap-info --version
+          clap-info/build/Release/clap-info build/examples/GainPlugin/GainPlugin_artefacts/Release/CLAP/GainPlugin.clap
