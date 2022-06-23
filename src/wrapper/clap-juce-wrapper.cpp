@@ -11,6 +11,7 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include <algorithm>
 
 #define JUCE_GUI_BASICS_INCLUDE_XHEADERS 1
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -108,9 +109,17 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 #define CLAP_MISBEHAVIOUR_HANDLER_LEVEL "Ignore"
 #endif
 
+
 #if !defined(CLAP_CHECKING_LEVEL)
 #define CLAP_CHECKING_LEVEL "Minimal"
 #endif
+
+// This is useful for debugging overrides
+// #undef CLAP_MISBEHAVIOUR_HANDLER_LEVEL
+// #define CLAP_MISBEHAVIOUR_HANDLER_LEVEL Terminate
+// #undef CLAP_CHECKING_LEVEL
+// #define CLAP_CHECKING_LEVEL Maximal
+
 
 /*
  * A little class that sets an atomic bool to a value across its lifetime and
@@ -996,6 +1005,12 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             return editor->isResizable();
         return true;
     }
+
+    /*
+     * guiAdjustSize is called before guiSetSize and given the option to
+     * reset the size the host hands to the subsequent setSize. This is a
+     * relatively naive and unsatisfactory initial implementation.
+     */
     bool guiAdjustSize(uint32_t *w, uint32_t *h) noexcept override
     {
         if (!editor)
@@ -1004,7 +1019,55 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         if (!editor->isResizable())
             return false;
 
-        editor->setSize(static_cast<int>(*w), static_cast<int>(*h));
+        auto cst = editor->getConstrainer();
+
+        if (!cst)
+            return true; // we have no constraints. Whaever is fine!
+
+        auto minW = (uint32_t)cst->getMinimumWidth();
+        auto maxW = (uint32_t)cst->getMaximumWidth();
+        auto minH = (uint32_t)cst->getMinimumHeight();
+        auto maxH = (uint32_t)cst->getMaximumHeight();
+
+        // There is no std::clamp in c++14
+        auto width = juce::jlimit(minW, maxW, *w);
+        auto height = juce::jlimit(minH, maxH, *h);
+
+        auto aspectRatio = (float)cst->getFixedAspectRatio();
+
+        if (aspectRatio != 0.0)
+        {
+            /*
+             * This is obviously an unsatisfactory algorithm, but we wanted to have
+             * something at least workable here.
+             *
+             * The problem with other algorithms I tried is that this function gets
+             * called by BWS for sub-single pixel motions on macOS, so it is hard to make
+             * a version which is *stable* (namely adjust(w,h); cw=w;ch=h; adjust(cw,ch);
+             * cw == w; ch == h) that deals with directions. I tried all sorts of stuff
+             * and then ran into vacation.
+             *
+             * So for now here's this approach. See the discussion in CJE PR #67
+             * and interop-tracker issue #30.
+             */
+            width = std::round(aspectRatio * height);
+        }
+
+        *w = width;
+        *h = height;
+
+        return true;
+    }
+
+    bool guiSetSize(uint32_t width, uint32_t height) noexcept override
+    {
+        if (!editor)
+            return false;
+
+        if (!editor->isResizable())
+            return false;
+
+        editor->setSize(static_cast<int>(width), static_cast<int>(height));
         return true;
     }
 
