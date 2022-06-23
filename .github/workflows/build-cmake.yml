@@ -53,7 +53,7 @@ jobs:
           git clone --recurse-submodules https://github.com/surge-synthesizer/clap-info
           cd clap-info
           cmake -Bbuild -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --parallel 4
+          cmake --build build --config Release --parallel 4
           build/Release/clap-info --version
 
       - name: Run clap-info
