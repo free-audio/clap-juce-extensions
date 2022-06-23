@@ -108,3 +108,25 @@ jobs:
           cmake --build build-clap --config Debug --target GainPlugin_CLAP
         env:
           CLAP_GEN: ${{ matrix.clap_gen }}
+
+      - name: Set up clap-info
+        shell: bash
+        run: |
+          git clone --recurse-submodules https://github.com/surge-synthesizer/clap-info
+          cd clap-info
+          cmake -Bbuild -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release --parallel 4
+
+      - name: Run clap-info (Max/Linux)
+        if: runner.os == 'MacOS' # || runner.os == 'Linux' @TODO: figure out why `clap_entry` returns nullptr for Linux Projucer builds
+        shell: bash
+        run: |
+          clap-info/build/clap-info --version
+          clap-info/build/clap-info build-clap/examples/GainPlugin/GainPlugin_artefacts/Debug/GainPlugin.clap
+
+      - name: Run clap-info (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          clap-info/build/Release/clap-info --version
+          clap-info/build/Release/clap-info build-clap/examples/GainPlugin/GainPlugin_artefacts/Debug/GainPlugin.clap
