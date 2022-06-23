@@ -1,5 +1,5 @@
 function(clap_juce_extensions_plugin_internal)
-    set(oneValueArgs TARGET TARGET_PATH PLUGIN_NAME IS_JUCER DO_COPY CLAP_MANUAL_URL CLAP_SUPPORT_URL CLAP_MISBEHAVIOUR_HANDLER_LEVEL)
+    set(oneValueArgs TARGET TARGET_PATH PLUGIN_NAME IS_JUCER DO_COPY CLAP_MANUAL_URL CLAP_SUPPORT_URL CLAP_MISBEHAVIOUR_HANDLER_LEVEL CLAP_CHECKING_LEVEL)
     set(multiValueArgs CLAP_ID CLAP_FEATURES)
   
     cmake_parse_arguments(CJA "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -22,6 +22,13 @@ function(clap_juce_extensions_plugin_internal)
         set(CJA_CLAP_MISBEHAVIOUR_HANDLER_LEVEL "Ignore")
     else()
         message( STATUS "Setting Misbehaviour handler level to '${CJA_CLAP_MISBEHAVIOUR_HANDLER_LEVEL}'")
+    endif()
+
+    if ("${CJA_CLAP_CHECKING_LEVEL}" STREQUAL "")
+        message( STATUS "Setting Checking handler level to 'Minimal'")
+        set(CJA_CLAP_CHECKING_LEVEL "Minimal")
+    else()
+        message( STATUS "Setting Checking handler level to '${CJA_CLAP_CHECKING_LEVEL}'")
     endif()
 
     # we need the list of features as comma separated quoted strings
@@ -76,7 +83,9 @@ function(clap_juce_extensions_plugin_internal)
             CLAP_FEATURES=${CJA_CLAP_FEATURES_PARSED}
             CLAP_MANUAL_URL="${CJA_CLAP_MANUAL_URL}"
             CLAP_SUPPORT_URL="${CJA_CLAP_SUPPORT_URL}"
-            CLAP_MISBEHAVIOUR_HANDLER_LEVEL=${CJA_CLAP_MISBEHAVIOUR_HANDLER_LEVEL})
+            CLAP_MISBEHAVIOUR_HANDLER_LEVEL=${CJA_CLAP_MISBEHAVIOUR_HANDLER_LEVEL}
+            CLAP_CHECKING_LEVEL=${CJA_CLAP_CHECKING_LEVEL}
+            )
 
     if(${CJA_IS_JUCER})
         # Since we're working with a pre-compiled plugin lib we can't build
