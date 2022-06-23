@@ -194,20 +194,41 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 #endif
     }
 
+    bool haveCompletedDeferredInit{false};
     bool init() noexcept override
     {
-#if JUCE_LINUX
-        if (_host.canUseTimerSupport())
-        {
-            _host.timerSupportRegister(1000 / 50, &idleTimer);
-        }
-#endif
         defineAudioPorts();
 
+        /*
+         * At 1.0 the spec was silent on whether a plugin could call host extension methods
+         * on ::init. Some hosts failed timerSupportRegister at init since they hadn't had
+         * the chance to see if a plugin supports the timer extension. A conversation ensued
+         * and is still ongoing, but to avoid ambiguity, we take the timer initialization we
+         * used to do for linux here and move it to an onMainThread call the host will make
+         * once initialization is complete, by using requestCallback, which hosts must implement
+         * at init time.
+         */
+        haveCompletedDeferredInit = false;
+        _host.requestCallback();
         return true;
     }
 
-  public:
+    void onMainThread() noexcept override
+    {
+        if (!haveCompletedDeferredInit)
+        {
+            haveCompletedDeferredInit = true;
+
+#if JUCE_LINUX
+            if (_host.canUseTimerSupport())
+            {
+                // A 60hz timer seens reasonable for these UI and message queue things
+                _host.timerSupportRegister(1000 / 60, &idleTimer);
+            }
+#endif
+        }
+    }
+
     bool implementsTimerSupport() const noexcept override { return true; }
     void onTimer(clap_id timerId) noexcept override
     {
@@ -985,7 +1006,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     }
 
     std::unique_ptr<juce::AudioProcessorEditor> editor;
-    bool implementsGui() const noexcept override { return processor->hasEditor(); }
+    bool implementsGui() const noexcept override
+    {
+#if JUCE_LINUX
+        if (!_host.canUseTimerSupport())
+            return false;
+#endif
+        return processor->hasEditor();
+    }
     bool guiCanResize() const noexcept override
     {
         if (editor)
