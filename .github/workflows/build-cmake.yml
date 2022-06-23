@@ -58,11 +58,11 @@ jobs:
       - name: Run clap-info (Max/Linux)
         shell: bash
         run: |
-          build/clap-info --version
+          clap-info/build/clap-info --version
           clap-info/build/clap-info build/examples/GainPlugin/GainPlugin_artefacts/Release/CLAP/GainPlugin.clap
 
       - name: Run clap-info (Windows)
         shell: bash
         run: |
-          build/Release/clap-info --version
+          clap-info/build/Release/clap-info --version
           clap-info/build/Release/clap-info build/examples/GainPlugin/GainPlugin_artefacts/Release/CLAP/GainPlugin.clap
