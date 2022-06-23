@@ -122,11 +122,11 @@ jobs:
         shell: bash
         run: |
           clap-info/build/clap-info --version
-          clap-info/build/clap-info build-clap/examples/GainPlugin/GainPlugin_artefacts/Debug/CLAP/GainPlugin.clap
+          clap-info/build/clap-info build-clap/examples/GainPlugin/GainPlugin_artefacts/Debug/GainPlugin.clap
 
       - name: Run clap-info (Windows)
         if: runner.os == 'Windows'
         shell: bash
         run: |
           clap-info/build/Release/clap-info --version
-          clap-info/build/Release/clap-info build-clap/examples/GainPlugin/GainPlugin_artefacts/Debug/CLAP/GainPlugin.clap
+          clap-info/build/Release/clap-info build-clap/examples/GainPlugin/GainPlugin_artefacts/Debug/GainPlugin.clap
