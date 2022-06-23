@@ -108,6 +108,10 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 #define CLAP_MISBEHAVIOUR_HANDLER_LEVEL "Ignore"
 #endif
 
+#if !defined(CLAP_CHECKING_LEVEL)
+#define CLAP_CHECKING_LEVEL "Minimal"
+#endif
+
 /*
  * A little class that sets an atomic bool to a value across its lifetime and
  * restores it on exit.
@@ -126,7 +130,7 @@ template <typename T> struct AtomicTGuard
  */
 class ClapJuceWrapper : public clap::helpers::Plugin<
                             clap::helpers::MisbehaviourHandler::CLAP_MISBEHAVIOUR_HANDLER_LEVEL,
-                            clap::helpers::CheckingLevel::Minimal>,
+                            clap::helpers::CheckingLevel::CLAP_CHECKING_LEVEL>,
                         public juce::AudioProcessorListener,
                         public juce::AudioPlayHead,
                         public juce::AudioProcessorParameter::Listener,
