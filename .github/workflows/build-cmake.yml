@@ -56,12 +56,14 @@ jobs:
           cmake --build build --config Release --parallel 4
 
       - name: Run clap-info (Max/Linux)
+        if: runner.os == 'Linux' || runner.os == 'MacOS'
         shell: bash
         run: |
           clap-info/build/clap-info --version
           clap-info/build/clap-info build/examples/GainPlugin/GainPlugin_artefacts/Release/CLAP/GainPlugin.clap
 
       - name: Run clap-info (Windows)
+        if: runner.os == 'Windows'
         shell: bash
         run: |
           clap-info/build/Release/clap-info --version
