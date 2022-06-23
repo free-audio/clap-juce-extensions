@@ -1016,8 +1016,18 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         auto minH = (uint32_t)cst->getMinimumHeight();
         auto maxH = (uint32_t)cst->getMaximumHeight();
 
-        auto width = std::clamp(*w, minW, maxW);
-        auto height = std::clamp(*h, minH, maxH);
+        // There is no std::clamp in c++14
+        auto width = *w;
+        if (width < minW)
+            width = minW;
+        if (width > maxW)
+            width = maxW;
+
+        auto height = *h;
+        if (height < minH)
+            height = minH;
+        if (height > maxH)
+            height = maxH;
 
         auto aspectRatio = (float)cst->getFixedAspectRatio();
 
