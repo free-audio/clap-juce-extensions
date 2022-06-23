@@ -51,7 +51,7 @@ target_compile_definitions(GainPlugin PUBLIC
     JUCE_USE_CURL=0
     JUCE_JACK=1
     JUCE_ALSA=1
-    JUCE_MODAL_LOOPS_PERMITTED=0
+    JUCE_MODAL_LOOPS_PERMITTED=1 # required for Linux FileChooser with JUCE 6.0.7
     JUCE_VST3_CAN_REPLACE_VST2=0
 )
 
