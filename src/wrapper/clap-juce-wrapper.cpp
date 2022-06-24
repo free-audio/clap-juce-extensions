@@ -8,6 +8,10 @@
  * - Cleanup and comment of course (including the CMake) including what's skipped
  */
 
+#if _WIN32
+#define _CRT_SECURE_NO_WARNINGS 1
+#endif
+
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
