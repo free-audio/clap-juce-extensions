@@ -1,5 +1,5 @@
 /*
- * This file contains C++ interface classeswhich allow your AudioProcessor or
+ * This file contains C++ interface classes which allow your AudioProcessor or
  * AudioProcessorParameter to implement additional clap-specific capabilities, and then allows the
  * CLAP wrapper to detect those capabilities and activate advanced features beyond the base
  * JUCE model.

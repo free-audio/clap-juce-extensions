@@ -7,7 +7,7 @@ JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter", "-Wextra-semi", "-Wnon
 JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 
 class ModulatableFloatParameter : public juce::AudioParameterFloat,
-                                  public clap_juce_extensions::clap_param_extensions
+                                  public clap_juce_extensions::clap_juce_parameter_capabilities
 {
   public:
     ModulatableFloatParameter(const juce::String &parameterID, const juce::String &parameterName,
