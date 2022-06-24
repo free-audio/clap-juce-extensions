@@ -169,10 +169,11 @@ a workaround for using our extensions mechanism, below.
    in our adapter (although they are supported in the CLAP API of course). We would love a test plugin to help us
    resolve this.
 
-## The Extensions API
+## The `clap_juce_extensions` API for extended CLAP capabilities in JUCE
 
 There are a set of things which JUCE doesn't support which CLAP does. Rather than not support them in our
-plugins, we've decided to create an extensions API. These are a set of classes which your AudioProcessor can
+plugins, we've decided to create an specific extensions API which allow you to decorate JUCE
+classes with extended capabilities. These are a set of classes which your AudioProcessor can
 implement and, if it does, then the CLAP JUCE wrapper will call the associated functions.
 
 The extension are in "include/clap-juce-extensions.h" and are documented there, but currently have
@@ -182,10 +183,10 @@ three classes
     - if you subclass this your AudioProcessor will have a collection of members which give you extra CLAP info
     - Most usefully, you get an `is_clap` member which is false if not a CLAP and true if it is, which works around
       the fact that our 'forkless' approach doesn't let us add a `AudioProcessor::WrapperType` to the JUCE API
-- `clap_juce_extensions::clap_extensions`
+- `clap_juce_extensions::clap_juce_audio_processor_capabilities`
     - these are a set of advanced extensions which let you optionally interact more directly with the CLAP API
       and are mostly useful for advanced features like non-destructive modulation and note expression support
-- `clap_juce_extensions::clap_param_extensions`
+- `clap_juce_extensions::clap_juce_parameter_capabilities`
     - If your AudioProcessorParameter subclass implements this API, you can share extended CLAP information on
       a parameter by parameter basis
 

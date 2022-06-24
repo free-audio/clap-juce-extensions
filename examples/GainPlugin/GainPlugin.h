@@ -5,7 +5,7 @@
 
 class ModulatableFloatParameter;
 class GainPlugin : public juce::AudioProcessor,
-                   public clap_juce_extensions::clap_extensions,
+                   public clap_juce_extensions::clap_juce_audio_processor_capabilities,
                    protected clap_juce_extensions::clap_properties
 {
   public:
