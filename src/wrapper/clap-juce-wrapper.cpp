@@ -117,8 +117,8 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 #define CLAP_CHECKING_LEVEL "Minimal"
 #endif
 
-#if !defined(CLAP_SMALLEST_ALLOWED_BLOCK_SIZE)
-#define CLAP_SMALLEST_ALLOWED_BLOCK_SIZE 0 // sample-accurate events are off by default
+#if !defined(CLAP_EVENT_RESOLUTION_SAMPLES)
+#define CLAP_EVENT_RESOLUTION_SAMPLES 0 // sample-accurate events are off by default
 #endif
 
 // This is useful for debugging overrides
@@ -834,11 +834,24 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         int currentEvent = 0;
         int nextEventTime = numSamples;
 
-        if (numEvents > 0)
+        if (numEvents > 0) // load first event
         {
             auto event = events->get(events, 0);
             nextEventTime = (int)event->time;
         }
+
+        auto processEvent = [&](int sampleOffset) {
+            auto event = events->get(events, (uint32_t)currentEvent);
+            process_clap_event(event, sampleOffset);
+
+            currentEvent++;
+            nextEventTime = (currentEvent < numEvents)
+                                ? (int)events->get(events, (uint32_t)currentEvent)->time
+                                : numSamples;
+        };
+
+        while (nextEventTime == 0) // process events with timestamp 0
+            processEvent(0);
 
         /*
          * OK so here is what JUCE expects in its audio buffer. It *always* uses input as output
@@ -852,7 +865,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         for (int n = 0; n < numSamples;)
         {
             auto getSamplesToProcess = [&]() {
-                if (CLAP_SMALLEST_ALLOWED_BLOCK_SIZE <= 0)
+                if (CLAP_EVENT_RESOLUTION_SAMPLES <= 0)
                 {
                     // Sample-accurate events are turned off, so just process the whole block!
                     return numSamples;
@@ -862,25 +875,17 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                     // How many samples should we process at a time?
                     // In the spirit of sample-accurate events, we want to process a batch of
                     // samples until we hit the next event, but we don't want to have a batch
-                    // smaller than the `CLAP_SMALLEST_ALLOWED_BLOCK_SIZE`. If there's no more
+                    // smaller than the `CLAP_EVENT_RESOLUTION_SAMPLES`. If there's no more
                     // events, just process the rest of the block!
-                    return (numSamples - n >= CLAP_SMALLEST_ALLOWED_BLOCK_SIZE)
-                               ? juce::jmax(nextEventTime - n, CLAP_SMALLEST_ALLOWED_BLOCK_SIZE)
+                    return (numSamples - n >= CLAP_EVENT_RESOLUTION_SAMPLES)
+                               ? juce::jmax(nextEventTime - n, CLAP_EVENT_RESOLUTION_SAMPLES)
                                : (numSamples - n);
                 }
             };
 
             const auto numSamplesToProcess = getSamplesToProcess();
             while (nextEventTime < n + numSamplesToProcess && currentEvent < numEvents)
-            {
-                auto event = events->get(events, (uint32_t)currentEvent);
-                process_clap_event(event, n);
-
-                currentEvent++;
-                nextEventTime = (currentEvent < numEvents)
-                                    ? (int)events->get(events, (uint32_t)currentEvent)->time
-                                    : numSamples;
-            }
+                processEvent(n);
 
             uint32_t outputChannels = 0;
             for (uint32_t idx = 0; idx < process->audio_outputs_count && outputChannels < maxBuses;
@@ -953,11 +958,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         }
 
         // process any leftover events
-        for (; currentEvent < numEvents; ++currentEvent)
-        {
-            auto event = events->get(events, (uint32_t)currentEvent);
-            process_clap_event(event, 0);
-        }
+        while (currentEvent < numEvents)
+            processEvent(numSamples);
 
         return CLAP_PROCESS_CONTINUE;
     }
