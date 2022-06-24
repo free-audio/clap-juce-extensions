@@ -862,7 +862,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         for (int n = 0; n < numSamples;)
         {
             while (nextEventTime == n) // process all events at this timestep
-                processEvent(0);
+                processEvent(n);
 
             auto getSamplesToProcess = [&]() {
                 if (CLAP_EVENT_RESOLUTION_SAMPLES <= 0)
