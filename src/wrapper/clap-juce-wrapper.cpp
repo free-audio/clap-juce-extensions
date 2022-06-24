@@ -109,7 +109,6 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 #define CLAP_MISBEHAVIOUR_HANDLER_LEVEL "Ignore"
 #endif
 
-
 #if !defined(CLAP_CHECKING_LEVEL)
 #define CLAP_CHECKING_LEVEL "Minimal"
 #endif
@@ -119,7 +118,6 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 // #define CLAP_MISBEHAVIOUR_HANDLER_LEVEL Terminate
 // #undef CLAP_CHECKING_LEVEL
 // #define CLAP_CHECKING_LEVEL Maximal
-
 
 /*
  * A little class that sets an atomic bool to a value across its lifetime and
@@ -152,7 +150,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     static clap_plugin_descriptor desc;
     std::unique_ptr<juce::AudioProcessor> processor;
     clap_juce_extensions::clap_properties *processorAsClapProperties{nullptr};
-    clap_juce_extensions::clap_extensions *processorAsClapExtensions{nullptr};
+    clap_juce_extensions::clap_juce_audio_processor_capabilities *processorAsClapExtensions{
+        nullptr};
 
     bool usingLegacyParameterAPI{false};
 
@@ -166,7 +165,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         processor->addListener(this);
 
         processorAsClapProperties = dynamic_cast<clap_juce_extensions::clap_properties *>(p);
-        processorAsClapExtensions = dynamic_cast<clap_juce_extensions::clap_extensions *>(p);
+        processorAsClapExtensions =
+            dynamic_cast<clap_juce_extensions::clap_juce_audio_processor_capabilities *>(p);
 
         const bool forceLegacyParamIDs = false;
 
@@ -688,14 +688,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             info->flags = info->flags | CLAP_PARAM_IS_STEPPED;
         }
 
-        auto cpe = dynamic_cast<clap_juce_extensions::clap_param_extensions *>(pbi);
-        if (cpe)
+        auto cpc = dynamic_cast<clap_juce_extensions::clap_juce_parameter_capabilities *>(pbi);
+        if (cpc)
         {
-            if (cpe->supportsMonophonicModulation())
+            if (cpc->supportsMonophonicModulation())
             {
                 info->flags = info->flags | CLAP_PARAM_IS_MODULATABLE;
             }
-            if (cpe->supportsPolyphonicModulation())
+            if (cpc->supportsPolyphonicModulation())
             {
                 info->flags =
                     info->flags | CLAP_PARAM_IS_MODULATABLE |

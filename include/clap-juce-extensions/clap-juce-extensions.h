@@ -1,7 +1,7 @@
 /*
- * This file contains interface extensions which allow your AudioProcessor or
- * AudioProcessorParameter to implement additional clap-specific API points, and then allows the
- * CLAP wrapper to detect those implementation points and activate advanced features beyond the base
+ * This file contains C++ interface classeswhich allow your AudioProcessor or
+ * AudioProcessorParameter to implement additional clap-specific capabilities, and then allows the
+ * CLAP wrapper to detect those capabilities and activate advanced features beyond the base
  * JUCE model.
  */
 
@@ -36,11 +36,12 @@ struct clap_properties
 };
 
 /*
- * clap_extensions allows you to interact with advanced properties of the CLAP api.
- * The default implementations here mean if you implement clap_extensions and override
- * nothing, you get the same behaviour as if you hadn't implemented it.
+ * clap_juce_audio_processor_capabilities allows you to interact with advanced properties of the
+ * CLAP api. The default implementations here mean if you implement
+ * clap_juce_audio_processor_capabilities and override nothing, you get the same behaviour as if you
+ * hadn't implemented it.
  */
-struct clap_extensions
+struct clap_juce_audio_processor_capabilities
 {
     /*
      * In some cases, there is no main input, and input 0 is not main. Allow your plugin
@@ -106,11 +107,11 @@ struct clap_extensions
 };
 
 /*
- * clap_param_extensions is intended to be applied to AudioParameter subclasses. When
+ * clap_juce_parameter_capabilities is intended to be applied to AudioParameter subclasses. When
  * asking your JUCE plugin for parameters, the clap wrapper will check if your parameter
- * implements the extensions and call the associated functions.
+ * implements the capabilities and call the associated functions.
  */
-struct clap_param_extensions
+struct clap_juce_parameter_capabilities
 {
     /*
      * Return true if this parameter should receive non-destructive
