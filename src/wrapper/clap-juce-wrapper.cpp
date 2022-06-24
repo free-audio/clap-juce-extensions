@@ -117,6 +117,10 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 #define CLAP_CHECKING_LEVEL "Minimal"
 #endif
 
+#if !defined(CLAP_SMALLEST_ALLOWED_BLOCK_SIZE)
+#define CLAP_SMALLEST_ALLOWED_BLOCK_SIZE 0 // sample-accurate events are off by default
+#endif
+
 // This is useful for debugging overrides
 // #undef CLAP_MISBEHAVIOUR_HANDLER_LEVEL
 // #define CLAP_MISBEHAVIOUR_HANDLER_LEVEL Terminate
@@ -246,7 +250,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     clap_id idleTimer{0};
 
-    uint32_t generateClapIDForJuceParam(juce::AudioProcessorParameter *param) const
+    static uint32_t generateClapIDForJuceParam(juce::AudioProcessorParameter *param)
     {
         auto juceParamID = juce::LegacyAudioParameter::getParamID(param, false);
         auto clapID = static_cast<uint32_t>(juceParamID.hashCode());
@@ -747,7 +751,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return true;
     }
 
-    void paramSetValueAndNotifyIfChanged(juce::AudioProcessorParameter &param, float newValue)
+    static void paramSetValueAndNotifyIfChanged(juce::AudioProcessorParameter &param,
+                                                float newValue)
     {
         if (param.getValue() == newValue)
             return;
@@ -823,174 +828,213 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         if (processorAsClapExtensions && processorAsClapExtensions->supportsDirectProcess())
             return processorAsClapExtensions->clap_direct_process(process);
 
-        auto ev = process->in_events;
-        auto sz = ev->size(ev);
+        const auto numSamples = (int)process->frames_count;
+        auto events = process->in_events;
+        auto numEvents = (int)events->size(events);
+        int currentEvent = 0;
+        int nextEventTime = numSamples;
 
-        if (sz != 0)
+        if (numEvents > 0)
         {
-            for (uint32_t i = 0; i < sz; ++i)
-            {
-                auto evt = ev->get(ev, i);
-
-                if (evt->space_id != CLAP_CORE_EVENT_SPACE_ID)
-                    continue;
-
-                switch (evt->type)
-                {
-                case CLAP_EVENT_NOTE_ON:
-                {
-                    auto nevt = reinterpret_cast<const clap_event_note *>(evt);
-
-                    midiBuffer.addEvent(juce::MidiMessage::noteOn(nevt->channel + 1, nevt->key,
-                                                                  (float)nevt->velocity),
-                                        (int)nevt->header.time);
-                }
-                break;
-                case CLAP_EVENT_NOTE_OFF:
-                {
-                    auto nevt = reinterpret_cast<const clap_event_note *>(evt);
-                    midiBuffer.addEvent(juce::MidiMessage::noteOff(nevt->channel + 1, nevt->key,
-                                                                   (float)nevt->velocity),
-                                        (int)nevt->header.time);
-                }
-                break;
-                case CLAP_EVENT_MIDI:
-                {
-                    auto mevt = reinterpret_cast<const clap_event_midi *>(evt);
-                    midiBuffer.addEvent(juce::MidiMessage(mevt->data[0], mevt->data[1],
-                                                          mevt->data[2], mevt->header.time),
-                                        (int)mevt->header.time);
-                }
-                break;
-                case CLAP_EVENT_TRANSPORT:
-                {
-                    // handle this case
-                }
-                break;
-                case CLAP_EVENT_PARAM_VALUE:
-                {
-                    auto pevt = reinterpret_cast<const clap_event_param_value *>(evt);
-
-                    auto nf = pevt->value;
-                    jassert(pevt->cookie == paramPtrByClapID[pevt->param_id]);
-                    auto jp = static_cast<juce::AudioProcessorParameter *>(pevt->cookie);
-
-                    /*
-                     * In the event that a param value comes in from the host, we don't want
-                     * to send it back out as a UI message but we do want to trigger any *other*
-                     * listeners which may be attached. So suppress my listeners while we send this
-                     * event.
-                     */
-                    auto g = AtomicTGuard<bool>(supressParameterChangeMessages, true);
-                    paramSetValueAndNotifyIfChanged(*jp, (float)nf);
-                }
-                break;
-                case CLAP_EVENT_PARAM_MOD:
-                {
-                }
-                break;
-                case CLAP_EVENT_NOTE_END:
-                {
-                    // Why do you send me this, Alex?
-                }
-                break;
-                default:
-                {
-                    DBG("Unknown message type " << (int)evt->type);
-                    // In theory I should never get this.
-                    // jassertfalse
-                }
-                break;
-                }
-            }
+            auto event = events->get(events, 0);
+            nextEventTime = (int)event->time;
         }
-
-        // We process in place so
-        static constexpr uint32_t maxBuses = 128;
-        std::array<float *, maxBuses> busses{};
-        busses.fill(nullptr);
-
-        /*DBG("IO Configuration: I=" << (int)process->audio_inputs_count << " O="
-                                   << (int)process->audio_outputs_count << " MX=" << (int)mx);
-        DBG("Plugin Configuration: IC=" << processor->getTotalNumInputChannels()
-                                        << " OC=" << processor->getTotalNumOutputChannels());
-        */
 
         /*
          * OK so here is what JUCE expects in its audio buffer. It *always* uses input as output
          * buffer so we need to create a buffer where each channel is the channel of the associated
          * output pointer (fine) and then the inputs need to either check they are the same or copy.
          */
+        static constexpr uint32_t maxBuses = 128;
+        std::array<float *, maxBuses> busses{};
+        busses.fill(nullptr);
 
-        /*
-         * So first lets load up with our outputs
-         */
-        uint32_t ochans = 0;
-        for (uint32_t idx = 0; idx < process->audio_outputs_count && ochans < maxBuses; ++idx)
+        for (int n = 0; n < numSamples;)
         {
-            for (uint32_t ch = 0; ch < process->audio_outputs[idx].channel_count; ++ch)
-            {
-                busses[ochans] = process->audio_outputs[idx].data32[ch];
-                ochans++;
-            }
-        }
-
-        uint32_t ichans = 0;
-        for (uint32_t idx = 0; idx < process->audio_inputs_count && ichans < maxBuses; ++idx)
-        {
-            for (uint32_t ch = 0; ch < process->audio_inputs[idx].channel_count; ++ch)
-            {
-                auto *ic = process->audio_inputs[idx].data32[ch];
-                if (ichans < ochans)
+            auto getSamplesToProcess = [&]() {
+                if (CLAP_SMALLEST_ALLOWED_BLOCK_SIZE <= 0)
                 {
-                    if (ic == busses[ichans])
-                    {
-                        // The buffers overlap - no need to do anything
-                    }
-                    else
-                    {
-                        juce::FloatVectorOperations::copy(busses[ichans], ic,
-                                                          (int)process->frames_count);
-                    }
+                    // Sample-accurate events are turned off, so just process the whole block!
+                    return numSamples;
                 }
                 else
                 {
-                    busses[ichans] = ic;
+                    // How many samples should we process at a time?
+                    // In the spirit of sample-accurate events, we want to process a batch of
+                    // samples until we hit the next event, but we don't want to have a batch
+                    // smaller than the `CLAP_SMALLEST_ALLOWED_BLOCK_SIZE`. If there's no more
+                    // events, just process the rest of the block!
+                    return (numSamples - n >= CLAP_SMALLEST_ALLOWED_BLOCK_SIZE)
+                               ? juce::jmax(nextEventTime - n, CLAP_SMALLEST_ALLOWED_BLOCK_SIZE)
+                               : (numSamples - n);
                 }
-                ichans++;
-            }
-        }
+            };
 
-        auto totalChans = std::max(ichans, ochans);
-        juce::AudioBuffer<float> buf(busses.data(), (int)totalChans, (int)process->frames_count);
-
-        FIXME("Handle bypass and deactivated states");
-        processor->processBlock(buf, midiBuffer);
-
-        if (processor->producesMidi())
-        {
-            for (auto meta : midiBuffer)
+            const auto numSamplesToProcess = getSamplesToProcess();
+            while (nextEventTime < n + numSamplesToProcess && currentEvent < numEvents)
             {
-                auto msg = meta.getMessage();
-                if (msg.getRawDataSize() == 3)
+                auto event = events->get(events, (uint32_t)currentEvent);
+                process_clap_event(event, n);
+
+                currentEvent++;
+                nextEventTime = (currentEvent < numEvents)
+                                    ? (int)events->get(events, (uint32_t)currentEvent)->time
+                                    : numSamples;
+            }
+
+            uint32_t outputChannels = 0;
+            for (uint32_t idx = 0; idx < process->audio_outputs_count && outputChannels < maxBuses;
+                 ++idx)
+            {
+                for (uint32_t ch = 0; ch < process->audio_outputs[idx].channel_count; ++ch)
                 {
-                    auto evt = clap_event_midi();
-                    evt.header.size = sizeof(clap_event_midi);
-                    evt.header.type = (uint16_t)CLAP_EVENT_MIDI;
-                    evt.header.time = (uint32_t)meta.samplePosition; // for now
-                    evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-                    evt.header.flags = 0;
-                    evt.port_index = 0;
-                    memcpy(&evt.data, msg.getRawData(), 3 * sizeof(uint8_t));
-                    ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
+                    busses[outputChannels] = process->audio_outputs[idx].data32[ch] + n;
+                    outputChannels++;
                 }
             }
+
+            uint32_t inputChannels = 0;
+            for (uint32_t idx = 0; idx < process->audio_inputs_count && inputChannels < maxBuses;
+                 ++idx)
+            {
+                for (uint32_t ch = 0; ch < process->audio_inputs[idx].channel_count; ++ch)
+                {
+                    auto *ic = process->audio_inputs[idx].data32[ch] + n;
+                    if (inputChannels < outputChannels)
+                    {
+                        if (ic == busses[inputChannels])
+                        {
+                            // The buffers overlap - no need to do anything
+                        }
+                        else
+                        {
+                            juce::FloatVectorOperations::copy(busses[inputChannels], ic,
+                                                              numSamplesToProcess);
+                        }
+                    }
+                    else
+                    {
+                        busses[inputChannels] = ic;
+                    }
+                    inputChannels++;
+                }
+            }
+
+            auto totalChans = juce::jmax(inputChannels, outputChannels);
+            juce::AudioBuffer<float> buffer(busses.data(), (int)totalChans, numSamplesToProcess);
+
+            FIXME("Handle bypass and deactivated states")
+            processor->processBlock(buffer, midiBuffer);
+
+            if (processor->producesMidi())
+            {
+                for (auto meta : midiBuffer)
+                {
+                    auto msg = meta.getMessage();
+                    if (msg.getRawDataSize() == 3)
+                    {
+                        auto evt = clap_event_midi();
+                        evt.header.size = sizeof(clap_event_midi);
+                        evt.header.type = (uint16_t)CLAP_EVENT_MIDI;
+                        evt.header.time = uint32_t(meta.samplePosition + n);
+                        evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+                        evt.header.flags = 0;
+                        evt.port_index = 0;
+                        memcpy(&evt.data, msg.getRawData(), 3 * sizeof(uint8_t));
+                        ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
+                    }
+                }
+            }
+
+            if (!midiBuffer.isEmpty())
+                midiBuffer.clear();
+
+            n += numSamplesToProcess;
         }
 
-        if (!midiBuffer.isEmpty())
-            midiBuffer.clear();
+        // process any leftover events
+        for (; currentEvent < numEvents; ++currentEvent)
+        {
+            auto event = events->get(events, (uint32_t)currentEvent);
+            process_clap_event(event, 0);
+        }
 
         return CLAP_PROCESS_CONTINUE;
+    }
+
+    void process_clap_event(const clap_event_header_t *event, int sampleOffset)
+    {
+        if (event->space_id != CLAP_CORE_EVENT_SPACE_ID)
+            return;
+
+        switch (event->type)
+        {
+        case CLAP_EVENT_NOTE_ON:
+        {
+            auto noteEvent = reinterpret_cast<const clap_event_note *>(event);
+
+            midiBuffer.addEvent(juce::MidiMessage::noteOn(noteEvent->channel + 1, noteEvent->key,
+                                                          (float)noteEvent->velocity),
+                                (int)noteEvent->header.time - sampleOffset);
+        }
+        break;
+        case CLAP_EVENT_NOTE_OFF:
+        {
+            auto noteEvent = reinterpret_cast<const clap_event_note *>(event);
+            midiBuffer.addEvent(juce::MidiMessage::noteOff(noteEvent->channel + 1, noteEvent->key,
+                                                           (float)noteEvent->velocity),
+                                (int)noteEvent->header.time - sampleOffset);
+        }
+        break;
+        case CLAP_EVENT_MIDI:
+        {
+            auto midiEvent = reinterpret_cast<const clap_event_midi *>(event);
+            midiBuffer.addEvent(juce::MidiMessage(midiEvent->data[0], midiEvent->data[1],
+                                                  midiEvent->data[2], midiEvent->header.time),
+                                (int)midiEvent->header.time - sampleOffset);
+        }
+        break;
+        case CLAP_EVENT_TRANSPORT:
+        {
+            // handle this case
+        }
+        break;
+        case CLAP_EVENT_PARAM_VALUE:
+        {
+            auto paramEvent = reinterpret_cast<const clap_event_param_value *>(event);
+
+            auto nf = paramEvent->value;
+            jassert(paramEvent->cookie == paramPtrByClapID[paramEvent->param_id]);
+            auto jp = static_cast<juce::AudioProcessorParameter *>(paramEvent->cookie);
+
+            /*
+             * In the event that a param value comes in from the host, we don't want
+             * to send it back out as a UI message but we do want to trigger any *other*
+             * listeners which may be attached. So suppress my listeners while we send this
+             * event.
+             */
+            auto g = AtomicTGuard<bool>(supressParameterChangeMessages, true);
+            paramSetValueAndNotifyIfChanged(*jp, (float)nf);
+        }
+        break;
+        case CLAP_EVENT_PARAM_MOD:
+        {
+            // no way to handle this with built-in JUCE parameter mechanisms
+        }
+        break;
+        case CLAP_EVENT_NOTE_END:
+        {
+            // Why do you send me this, Alex?
+        }
+        break;
+        default:
+        {
+            DBG("Unknown message type " << (int)event->type);
+            // In theory I should never get this.
+            // jassertfalse
+        }
+        break;
+        }
     }
 
     void componentMovedOrResized(juce::Component &component, bool wasMoved,
@@ -1039,7 +1083,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         auto aspectRatio = (float)cst->getFixedAspectRatio();
 
-        if (aspectRatio != 0.0)
+        if (aspectRatio != 0.0f)
         {
             /*
              * This is obviously an unsatisfactory algorithm, but we wanted to have
@@ -1054,7 +1098,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
              * So for now here's this approach. See the discussion in CJE PR #67
              * and interop-tracker issue #30.
              */
-            width = std::round(aspectRatio * height);
+            width = (uint32_t)std::round(aspectRatio * (float)height);
         }
 
         *w = width;

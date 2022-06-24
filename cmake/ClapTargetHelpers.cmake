@@ -1,5 +1,5 @@
 function(clap_juce_extensions_plugin_internal)
-    set(oneValueArgs TARGET TARGET_PATH PLUGIN_NAME IS_JUCER PLUGIN_VERSION DO_COPY CLAP_MANUAL_URL CLAP_SUPPORT_URL CLAP_MISBEHAVIOUR_HANDLER_LEVEL CLAP_CHECKING_LEVEL)
+    set(oneValueArgs TARGET TARGET_PATH PLUGIN_NAME IS_JUCER PLUGIN_VERSION DO_COPY CLAP_MANUAL_URL CLAP_SUPPORT_URL CLAP_MISBEHAVIOUR_HANDLER_LEVEL CLAP_CHECKING_LEVEL CLAP_SMALLEST_ALLOWED_BLOCK_SIZE)
     set(multiValueArgs CLAP_ID CLAP_FEATURES)
   
     cmake_parse_arguments(CJA "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -29,6 +29,13 @@ function(clap_juce_extensions_plugin_internal)
         set(CJA_CLAP_CHECKING_LEVEL "Minimal")
     else()
         message( STATUS "Setting Checking handler level to '${CJA_CLAP_CHECKING_LEVEL}'")
+    endif()
+
+    if ("${CJA_CLAP_SMALLEST_ALLOWED_BLOCK_SIZE}" STREQUAL "")
+        message( STATUS "Setting smallest allowed block size to 0 (no sample-accurate automation)")
+        set(CJA_CLAP_SMALLEST_ALLOWED_BLOCK_SIZE 0)
+    else()
+        message( STATUS "Setting smallest allowed block size to ${CJA_CLAP_SMALLEST_ALLOWED_BLOCK_SIZE}")
     endif()
 
     # we need the list of features as comma separated quoted strings

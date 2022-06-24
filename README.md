@@ -118,6 +118,11 @@ are available
 * `CLAP_MANUAL_URL` and `CLAP_SUPPORT_URL` generate the urls in your description
 * `CLAP_MISBHEAVIOUR_HANDLER_LEVEL` can be set to `Terminate` or `Ignore` (default
   is `Ignore`) to choose your behaviour for a misbehaving host.
+* `CLAP_CHECKING_LEVEL` can be set to `None`, `Minimal`, or `Maximal` (default is
+  `Minimal`) to choose the error checking level for the plugin.
+* `CLAP_SMALLEST_ALLOWED_BLOCK_SIZE` can be set to any integer value to choose the
+  smallest allowed block size for doing sample-accurate event processing. Setting the
+  value to `0` (the default value) will turn off sample-accurate event processing.
 
 ## Risks of using this library
 
