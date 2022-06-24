@@ -37,7 +37,6 @@ clap_juce_extensions_plugin(
     TARGET GainPlugin
     CLAP_ID "org.free-audio.GainPlugin"
     CLAP_FEATURES audio-effect utility
-    CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES 128
 )
 
 target_sources(GainPlugin PRIVATE

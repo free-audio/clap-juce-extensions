@@ -32,7 +32,7 @@ class GainPlugin : public juce::AudioProcessor,
     void processBlock(juce::AudioBuffer<float> &, juce::MidiBuffer &) override;
     void processBlock(juce::AudioBuffer<double> &, juce::MidiBuffer &) override {}
 
-    bool supportsDirectProcess() override { return false; } // true; }
+    bool supportsDirectProcess() override { return true; }
     clap_process_status clap_direct_process(const clap_process *process) noexcept override;
 
     bool hasEditor() const override { return true; }
