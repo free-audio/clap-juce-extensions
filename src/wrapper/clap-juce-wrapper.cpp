@@ -850,9 +850,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                                 : numSamples;
         };
 
-        while (nextEventTime == 0) // process events with timestamp 0
-            processEvent(0);
-
         /*
          * OK so here is what JUCE expects in its audio buffer. It *always* uses input as output
          * buffer so we need to create a buffer where each channel is the channel of the associated
@@ -864,6 +861,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         for (int n = 0; n < numSamples;)
         {
+            while (nextEventTime == n) // process all events at this timestep
+                processEvent(0);
+
             auto getSamplesToProcess = [&]() {
                 if (CLAP_EVENT_RESOLUTION_SAMPLES <= 0)
                 {
@@ -884,6 +884,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             };
 
             const auto numSamplesToProcess = getSamplesToProcess();
+
+            // process the rest of the events in this sub-block
             while (nextEventTime < n + numSamplesToProcess && currentEvent < numEvents)
                 processEvent(n);
 
