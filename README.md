@@ -120,7 +120,7 @@ are available
   is `Ignore`) to choose your behaviour for a misbehaving host.
 * `CLAP_CHECKING_LEVEL` can be set to `None`, `Minimal`, or `Maximal` (default is
   `Minimal`) to choose the level of sanity checks enabled for the plugin.
-* `CLAP_EVENT_RESOLUTION_SAMPLES` can be set to any integer value to choose the
+* `CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES` can be set to any integer value to choose the
   resolution (in samples) used by the wrapper for doing sample-accurate event processing.
   Setting the value to `0` (the default value) will turn off sample-accurate event processing.
 

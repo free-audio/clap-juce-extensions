@@ -117,8 +117,8 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 #define CLAP_CHECKING_LEVEL "Minimal"
 #endif
 
-#if !defined(CLAP_EVENT_RESOLUTION_SAMPLES)
-#define CLAP_EVENT_RESOLUTION_SAMPLES 0 // sample-accurate events are off by default
+#if !defined(CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES)
+#define CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES 0 // sample-accurate events are off by default
 #endif
 
 // This is useful for debugging overrides
@@ -859,31 +859,43 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         std::array<float *, maxBuses> busses{};
         busses.fill(nullptr);
 
+        // we can't advance `n` until we know how many samples we're processing,
+        // so we'll increment it inside the loop.
         for (int n = 0; n < numSamples;)
         {
-            while (nextEventTime == n) // process all events at this timestep
+            // in order to know how many samples to process, we need to know when
+            // is the next timestamp that has an event. In order to know that next
+            // timestamp, we first need to process all of the events at the current timestamp.
+            while (nextEventTime == n)
                 processEvent(n);
 
-            auto getSamplesToProcess = [&]() {
-                if (CLAP_EVENT_RESOLUTION_SAMPLES <= 0)
+            const auto numSamplesToProcess = [&]() {
+                if (CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES <= 0)
                 {
-                    // Sample-accurate events are turned off, so just process the whole block!
+                    // Sample-accurate events are turned off, so just process the
+                    // whole block.
                     return numSamples;
                 }
                 else
                 {
-                    // How many samples should we process at a time?
-                    // In the spirit of sample-accurate events, we want to process a batch of
-                    // samples until we hit the next event, but we don't want to have a batch
-                    // smaller than the `CLAP_EVENT_RESOLUTION_SAMPLES`. If there's no more
-                    // events, just process the rest of the block!
-                    return (numSamples - n >= CLAP_EVENT_RESOLUTION_SAMPLES)
-                               ? juce::jmax(nextEventTime - n, CLAP_EVENT_RESOLUTION_SAMPLES)
-                               : (numSamples - n);
-                }
-            };
+                    const auto samplesUntilEndOfBlock = numSamples - n;
+                    const auto samplesUntilNextEvent = nextEventTime - n;
 
-            const auto numSamplesToProcess = getSamplesToProcess();
+                    // the number of samples left is less than
+                    // CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES so let's just
+                    // process the rest of the block
+                    if (samplesUntilEndOfBlock <= CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES)
+                        return samplesUntilEndOfBlock;
+
+                    // process up until the next event, rounding up to the nearest multiple
+                    // of CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES
+                    const auto numSmallBlocks =
+                        (samplesUntilNextEvent + CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES - 1) /
+                        CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES;
+                    return juce::jmin(numSmallBlocks * CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES,
+                                      samplesUntilEndOfBlock);
+                }
+            }();
 
             // process the rest of the events in this sub-block
             while (nextEventTime < n + numSamplesToProcess && currentEvent < numEvents)
