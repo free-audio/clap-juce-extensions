@@ -130,40 +130,24 @@ endfunction()
 
 function(clap_juce_extensions_plugin)
     set(oneValueArgs TARGET)
-    set(multiValueArgs CLAP_ID CLAP_FEATURES CLAP_MANUAL_URL CLAP_SUPPORT_URL)
     cmake_parse_arguments(CJA "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(product_name $<TARGET_PROPERTY:${CJA_TARGET},JUCE_PRODUCT_NAME>)
     get_target_property(docopy "${CJA_TARGET}" JUCE_COPY_PLUGIN_AFTER_BUILD)
 
     clap_juce_extensions_plugin_internal(
-        TARGET ${CJA_TARGET}
         PLUGIN_NAME "${product_name}"
         IS_JUCER FALSE
         DO_COPY ${docopy}
-        CLAP_ID "${CJA_CLAP_ID}"
-        CLAP_FEATURES "${CJA_CLAP_FEATURES}"
-        CLAP_MANUAL_URL "${CJA_CLAP_MANUAL_URL}"
-        CLAP_SUPPORT_URL "${CJA_CLAP_SUPPORT_URL}"
+        ${ARGV}
     )
 endfunction()
 
 # modified version of clap_juce_extensions_plugin
 # for use with Projucer projects
 function(clap_juce_extensions_plugin_jucer)
-    set(oneValueArgs TARGET TARGET_PATH PLUGIN_NAME DO_COPY)
-    set(multiValueArgs CLAP_ID CLAP_FEATURES CLAP_MANUAL_URL CLAP_SUPPORT_URL)
-    cmake_parse_arguments(CJA "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
     clap_juce_extensions_plugin_internal(
-        TARGET ${CJA_TARGET}
-        TARGET_PATH "${CJA_TARGET_PATH}"
-        PLUGIN_NAME "${CJA_PLUGIN_NAME}"
         IS_JUCER TRUE
-        DO_COPY ${CJA_DO_COPY}
-        CLAP_ID "${CJA_CLAP_ID}"
-        CLAP_FEATURES "${CJA_CLAP_FEATURES}"
-        CLAP_MANUAL_URL "${CJA_CLAP_MANUAL_URL}"
-        CLAP_SUPPORT_URL "${CJA_CLAP_SUPPORT_URL}"
+        ${ARGV}
     )
 endfunction()
