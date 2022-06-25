@@ -60,6 +60,7 @@ set_target_properties(clap_juce_extensions PROPERTIES
 
 add_library(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/clap-juce-wrapper.cpp)
 set_property(TARGET clap_juce_sources PROPERTY CXX_STANDARD ${CLAP_CXX_STANDARD})
+set_property(TARGET clap_juce_sources PROPERTY CLAP_JUCE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 if (APPLE)
   target_sources(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/clap-juce-mac.mm)
 endif()

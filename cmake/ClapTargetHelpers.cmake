@@ -64,6 +64,7 @@ function(clap_juce_extensions_plugin_internal)
 
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
         get_target_property(vers ${target} JUCE_VERSION)
+        get_target_property(cjd clap_juce_sources CLAP_JUCE_SOURCE_DIR)
         set_target_properties(${claptarget} PROPERTIES
                 BUNDLE True
                 BUNDLE_EXTENSION clap
@@ -71,12 +72,12 @@ function(clap_juce_extensions_plugin_internal)
                 OUTPUT_NAME "${product_name}"
                 MACOSX_BUNDLE TRUE
                 MACOSX_BUNDLE_BUNDLE_VERSION "${vers}"
-                MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/cmake/macos_bundle/CLAP_Info.plist.in"
+                MACOSX_BUNDLE_INFO_PLIST "${cjd}/cmake/macos_bundle/CLAP_Info.plist.in"
                 )
         add_custom_command(TARGET ${claptarget} POST_BUILD
-               COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/cmake/macos_bundle/PkgInfo" "$<TARGET_FILE_DIR:${claptarget}>/.."
+               COMMAND ${CMAKE_COMMAND} -E copy_if_different "${cjd}/cmake/macos_bundle/PkgInfo" "$<TARGET_FILE_DIR:${claptarget}>/.."
                COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${claptarget}>/../Resources"
-               COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/cmake/macos_bundle/clap.icns" "$<TARGET_FILE_DIR:${claptarget}>/../Resources"
+               COMMAND ${CMAKE_COMMAND} -E copy_if_different "${cjd}/cmake/macos_bundle/clap.icns" "$<TARGET_FILE_DIR:${claptarget}>/../Resources"
                )
     else()
         set_target_properties(${claptarget} PROPERTIES
