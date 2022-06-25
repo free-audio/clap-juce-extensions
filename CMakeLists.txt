@@ -12,7 +12,7 @@
 # require at least CMAKE 3.21
 cmake_minimum_required (VERSION 3.21 FATAL_ERROR)
 
-project(clap-juce-extensions VERSION 0.1 LANGUAGES C CXX)
+project(clap-juce-extensions VERSION 0.1.0 LANGUAGES C CXX)
 
 if (CMAKE_CXX_STANDARD)
   set(CLAP_CXX_STANDARD ${CMAKE_CXX_STANDARD})
@@ -60,6 +60,7 @@ set_target_properties(clap_juce_extensions PROPERTIES
 
 add_library(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/clap-juce-wrapper.cpp)
 set_property(TARGET clap_juce_sources PROPERTY CXX_STANDARD ${CLAP_CXX_STANDARD})
+set_property(TARGET clap_juce_sources PROPERTY CLAP_JUCE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 if (APPLE)
   target_sources(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper/clap-juce-mac.mm)
 endif()

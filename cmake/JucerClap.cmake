@@ -44,6 +44,7 @@ function(create_jucer_clap_target)
         TARGET ${CJA_TARGET}
         TARGET_PATH "${PLUGIN_LIBRARY_PATH}"
         PLUGIN_NAME "${CJA_BINARY_NAME}"
+        PLUGIN_VERSION "${CJA_VERSION_STRING}"
         CLAP_ID "${CJA_CLAP_ID}"
         CLAP_FEATURES "${CJA_CLAP_FEATURES}"
         CLAP_MANUAL_URL "${CJA_CLAP_MANUAL_URL}"

@@ -1,5 +1,5 @@
 function(clap_juce_extensions_plugin_internal)
-    set(oneValueArgs TARGET TARGET_PATH PLUGIN_NAME IS_JUCER DO_COPY CLAP_MANUAL_URL CLAP_SUPPORT_URL CLAP_MISBEHAVIOUR_HANDLER_LEVEL CLAP_CHECKING_LEVEL)
+    set(oneValueArgs TARGET TARGET_PATH PLUGIN_NAME IS_JUCER PLUGIN_VERSION DO_COPY CLAP_MANUAL_URL CLAP_SUPPORT_URL CLAP_MISBEHAVIOUR_HANDLER_LEVEL CLAP_CHECKING_LEVEL)
     set(multiValueArgs CLAP_ID CLAP_FEATURES)
   
     cmake_parse_arguments(CJA "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -63,13 +63,24 @@ function(clap_juce_extensions_plugin_internal)
     set(product_name "${CJA_PLUGIN_NAME}")
 
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+        get_target_property(cjd clap_juce_sources CLAP_JUCE_SOURCE_DIR)
         set_target_properties(${claptarget} PROPERTIES
                 BUNDLE True
                 BUNDLE_EXTENSION clap
                 PREFIX ""
                 OUTPUT_NAME "${product_name}"
                 MACOSX_BUNDLE TRUE
+                MACOSX_BUNDLE_GUI_IDENTIFIER "${CJA_CLAP_ID}"
+                MACOSX_BUNDLE_BUNDLE_NAME "${product_name}"
+                MACOSX_BUNDLE_BUNDLE_VERSION "${CJA_PLUGIN_VERSION}"
+                MACOSX_BUNDLE_SHORT_VERSION_STRING "${CJA_PLUGIN_VERSION}"
+                MACOSX_BUNDLE_INFO_PLIST "${cjd}/cmake/macos_bundle/CLAP_Info.plist.in"
                 )
+        add_custom_command(TARGET ${claptarget} POST_BUILD
+               COMMAND ${CMAKE_COMMAND} -E copy_if_different "${cjd}/cmake/macos_bundle/PkgInfo" "$<TARGET_FILE_DIR:${claptarget}>/.."
+               COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${claptarget}>/../Resources"
+               COMMAND ${CMAKE_COMMAND} -E copy_if_different "${cjd}/cmake/macos_bundle/clap.icns" "$<TARGET_FILE_DIR:${claptarget}>/../Resources"
+               )
     else()
         set_target_properties(${claptarget} PROPERTIES
                 PREFIX ""
@@ -132,11 +143,13 @@ function(clap_juce_extensions_plugin)
     set(oneValueArgs TARGET)
     cmake_parse_arguments(CJA "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    set(product_name $<TARGET_PROPERTY:${CJA_TARGET},JUCE_PRODUCT_NAME>)
+    get_target_property(product_name ${CJA_TARGET} JUCE_PRODUCT_NAME)
+    get_target_property(plugin_version ${CJA_TARGET} JUCE_VERSION)
     get_target_property(docopy "${CJA_TARGET}" JUCE_COPY_PLUGIN_AFTER_BUILD)
 
     clap_juce_extensions_plugin_internal(
         PLUGIN_NAME "${product_name}"
+        PLUGIN_VERSION "${plugin_version}"
         IS_JUCER FALSE
         DO_COPY ${docopy}
         ${ARGV}
