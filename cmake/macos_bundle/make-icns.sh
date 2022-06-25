@@ -21,4 +21,4 @@ sips -z 64 64 OUT/PNG/icon_512.png --out OUT/SET.iconset/icon_64x64.png
 
 iconutil -c icns -o clap.icns OUT/SET.iconset
 
-#rm -rf OUT
+rm -rf OUT

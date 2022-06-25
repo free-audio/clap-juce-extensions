@@ -12,7 +12,7 @@
 # require at least CMAKE 3.21
 cmake_minimum_required (VERSION 3.21 FATAL_ERROR)
 
-project(clap-juce-extensions VERSION 0.1 LANGUAGES C CXX)
+project(clap-juce-extensions VERSION 0.1.0 LANGUAGES C CXX)
 
 if (CMAKE_CXX_STANDARD)
   set(CLAP_CXX_STANDARD ${CMAKE_CXX_STANDARD})

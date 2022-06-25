@@ -1,5 +1,5 @@
 function(clap_juce_extensions_plugin_internal)
-    set(oneValueArgs TARGET TARGET_PATH PLUGIN_NAME IS_JUCER DO_COPY CLAP_MANUAL_URL CLAP_SUPPORT_URL CLAP_MISBEHAVIOUR_HANDLER_LEVEL CLAP_CHECKING_LEVEL)
+    set(oneValueArgs TARGET TARGET_PATH PLUGIN_NAME IS_JUCER PLUGIN_VERSION DO_COPY CLAP_MANUAL_URL CLAP_SUPPORT_URL CLAP_MISBEHAVIOUR_HANDLER_LEVEL CLAP_CHECKING_LEVEL)
     set(multiValueArgs CLAP_ID CLAP_FEATURES)
   
     cmake_parse_arguments(CJA "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -63,7 +63,6 @@ function(clap_juce_extensions_plugin_internal)
     set(product_name "${CJA_PLUGIN_NAME}")
 
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-        get_target_property(vers ${target} JUCE_VERSION)
         get_target_property(cjd clap_juce_sources CLAP_JUCE_SOURCE_DIR)
         set_target_properties(${claptarget} PROPERTIES
                 BUNDLE True
@@ -71,7 +70,10 @@ function(clap_juce_extensions_plugin_internal)
                 PREFIX ""
                 OUTPUT_NAME "${product_name}"
                 MACOSX_BUNDLE TRUE
-                MACOSX_BUNDLE_BUNDLE_VERSION "${vers}"
+                MACOSX_BUNDLE_GUI_IDENTIFIER "${CJA_CLAP_ID}"
+                MACOSX_BUNDLE_BUNDLE_NAME "${product_name}"
+                MACOSX_BUNDLE_BUNDLE_VERSION "${CJA_PLUGIN_VERSION}"
+                MACOSX_BUNDLE_SHORT_VERSION_STRING "${CJA_PLUGIN_VERSION}"
                 MACOSX_BUNDLE_INFO_PLIST "${cjd}/cmake/macos_bundle/CLAP_Info.plist.in"
                 )
         add_custom_command(TARGET ${claptarget} POST_BUILD
@@ -142,12 +144,14 @@ function(clap_juce_extensions_plugin)
     set(multiValueArgs CLAP_ID CLAP_FEATURES CLAP_MANUAL_URL CLAP_SUPPORT_URL)
     cmake_parse_arguments(CJA "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    set(product_name $<TARGET_PROPERTY:${CJA_TARGET},JUCE_PRODUCT_NAME>)
+    get_target_property(product_name ${CJA_TARGET} JUCE_PRODUCT_NAME)
+    get_target_property(plugin_version ${CJA_TARGET} JUCE_VERSION)
     get_target_property(docopy "${CJA_TARGET}" JUCE_COPY_PLUGIN_AFTER_BUILD)
 
     clap_juce_extensions_plugin_internal(
         TARGET ${CJA_TARGET}
         PLUGIN_NAME "${product_name}"
+        PLUGIN_VERSION "${plugin_version}"
         IS_JUCER FALSE
         DO_COPY ${docopy}
         CLAP_ID "${CJA_CLAP_ID}"
@@ -160,7 +164,7 @@ endfunction()
 # modified version of clap_juce_extensions_plugin
 # for use with Projucer projects
 function(clap_juce_extensions_plugin_jucer)
-    set(oneValueArgs TARGET TARGET_PATH PLUGIN_NAME DO_COPY)
+    set(oneValueArgs TARGET TARGET_PATH PLUGIN_NAME PLUGIN_VERSION DO_COPY)
     set(multiValueArgs CLAP_ID CLAP_FEATURES CLAP_MANUAL_URL CLAP_SUPPORT_URL)
     cmake_parse_arguments(CJA "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -168,6 +172,7 @@ function(clap_juce_extensions_plugin_jucer)
         TARGET ${CJA_TARGET}
         TARGET_PATH "${CJA_TARGET_PATH}"
         PLUGIN_NAME "${CJA_PLUGIN_NAME}"
+        PLUGIN_VERSION "${CJA_PLUGIN_VERSION}"
         IS_JUCER TRUE
         DO_COPY ${CJA_DO_COPY}
         CLAP_ID "${CJA_CLAP_ID}"
