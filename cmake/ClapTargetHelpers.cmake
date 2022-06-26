@@ -1,5 +1,7 @@
 function(clap_juce_extensions_plugin_internal)
-    set(oneValueArgs TARGET TARGET_PATH PLUGIN_NAME IS_JUCER PLUGIN_VERSION DO_COPY CLAP_MANUAL_URL CLAP_SUPPORT_URL CLAP_MISBEHAVIOUR_HANDLER_LEVEL CLAP_CHECKING_LEVEL CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES)
+    set(oneValueArgs TARGET TARGET_PATH PLUGIN_NAME IS_JUCER PLUGIN_VERSION DO_COPY CLAP_MANUAL_URL CLAP_SUPPORT_URL
+            CLAP_MISBEHAVIOUR_HANDLER_LEVEL CLAP_CHECKING_LEVEL CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES
+            CLAP_ALWAYS_SPLIT_BLOCK)
     set(multiValueArgs CLAP_ID CLAP_FEATURES)
   
     cmake_parse_arguments(CJA "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -36,6 +38,13 @@ function(clap_juce_extensions_plugin_internal)
         set(CJA_CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES 0)
     else()
         message( STATUS "Setting event resolution to ${CJA_CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES} samples")
+    endif()
+
+    if ("${CJA_CLAP_ALWAYS_SPLIT_BLOCK}" STREQUAL "")
+        message( STATUS "Setting \"Always split block\" to OFF")
+        set(CJA_CLAP_ALWAYS_SPLIT_BLOCK 0)
+    else()
+        message( STATUS "Setting \"Always split block\" to ${CJA_CLAP_ALWAYS_SPLIT_BLOCK}")
     endif()
 
     # we need the list of features as comma separated quoted strings
@@ -104,6 +113,7 @@ function(clap_juce_extensions_plugin_internal)
             CLAP_MISBEHAVIOUR_HANDLER_LEVEL=${CJA_CLAP_MISBEHAVIOUR_HANDLER_LEVEL}
             CLAP_CHECKING_LEVEL=${CJA_CLAP_CHECKING_LEVEL}
             CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES=${CJA_CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES}
+            CLAP_ALWAYS_SPLIT_BLOCK=${CJA_CLAP_ALWAYS_SPLIT_BLOCK}
             )
 
     if(${CJA_IS_JUCER})

@@ -121,6 +121,10 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 #define CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES 0 // sample-accurate events are off by default
 #endif
 
+#if !defined(CLAP_ALWAYS_SPLIT_BLOCK)
+#define CLAP_ALWAYS_SPLIT_BLOCK 0
+#endif
+
 // This is useful for debugging overrides
 // #undef CLAP_MISBEHAVIOUR_HANDLER_LEVEL
 // #define CLAP_MISBEHAVIOUR_HANDLER_LEVEL Terminate
@@ -834,7 +838,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         int currentEvent = 0;
         int nextEventTime = numSamples;
 
-        if (numEvents > 0) // load first event
+        if (numEvents > 0) // get timestamp for first event
         {
             auto event = events->get(events, 0);
             nextEventTime = (int)event->time;
@@ -863,41 +867,62 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         // so we'll increment it inside the loop.
         for (int n = 0; n < numSamples;)
         {
-            // in order to know how many samples to process, we need to know when
-            // is the next timestamp that has an event. In order to know that next
-            // timestamp, we first need to process all of the events at the current timestamp.
-            while (nextEventTime == n)
-                processEvent(n);
+#if CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES <= 0
+            // Sample-accurate events are turned off, so just process the
+            // whole block.
+            const auto numSamplesToProcess = numSamples;
+#endif
 
+#if CLAP_ALWAYS_SPLIT_BLOCK && CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES > 0
+            // process a block of the given resolution size, or a smaller block
+            // if there's not enough samples available
+            const auto numSamplesToProcess =
+                juce::jmin(CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES, numSamples - n);
+#endif
+
+#if !CLAP_ALWAYS_SPLIT_BLOCK && CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES > 0
             const auto numSamplesToProcess = [&]() {
-                if (CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES <= 0)
-                {
-                    // Sample-accurate events are turned off, so just process the
-                    // whole block.
-                    return numSamples;
-                }
-                else
-                {
-                    const auto samplesUntilEndOfBlock = numSamples - n;
-                    const auto samplesUntilNextEvent = nextEventTime - n;
+                const auto samplesUntilEndOfBlock = numSamples - n;
+                const auto samplesUntilNextEvent = [&]() {
+                    for (int eventIndex = currentEvent; eventIndex < numEvents; ++eventIndex)
+                    {
+                        auto event = events->get(events, (uint32_t)eventIndex);
+                        if ((int)event->time < n + CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES)
+                            // this event is within the resolution size, so we don't need to split
+                            continue;
 
-                    // the number of samples left is less than
-                    // CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES so let's just
-                    // process the rest of the block
-                    if (samplesUntilEndOfBlock <= CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES)
-                        return samplesUntilEndOfBlock;
+                        // For now we're only splitting the block on parameter events
+                        // so we can get sample-accurate automation.
+                        // @TODO: are there other events that will require us to split the block?
+                        // like maybe transport events?
+                        if (event->type == CLAP_EVENT_PARAM_VALUE ||
+                            event->type == CLAP_EVENT_PARAM_MOD ||
+                            event->type == CLAP_EVENT_PARAM_GESTURE_BEGIN ||
+                            event->type == CLAP_EVENT_PARAM_GESTURE_END)
+                        {
+                            return (int)event->time - n;
+                        }
+                    }
+                    return samplesUntilEndOfBlock;
+                }();
 
-                    // process up until the next event, rounding up to the nearest multiple
-                    // of CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES
-                    const auto numSmallBlocks =
-                        (samplesUntilNextEvent + CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES - 1) /
-                        CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES;
-                    return juce::jmin(numSmallBlocks * CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES,
-                                      samplesUntilEndOfBlock);
-                }
+                // the number of samples left is less than
+                // CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES so let's just
+                // process the rest of the block
+                if (samplesUntilEndOfBlock <= CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES)
+                    return samplesUntilEndOfBlock;
+
+                // process up until the next event, rounding up to the nearest multiple
+                // of CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES
+                const auto numSmallBlocks =
+                    (samplesUntilNextEvent + CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES - 1) /
+                    CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES;
+                return juce::jmin(numSmallBlocks * CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES,
+                                  samplesUntilEndOfBlock);
             }();
+#endif
 
-            // process the rest of the events in this sub-block
+            // process the events in this sub-block
             while (nextEventTime < n + numSamplesToProcess && currentEvent < numEvents)
                 processEvent(n);
 
