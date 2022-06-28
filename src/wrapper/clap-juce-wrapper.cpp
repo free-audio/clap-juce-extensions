@@ -529,7 +529,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         jassert(busDefaultLayout == juce::AudioChannelSet::mono() ||
                 busDefaultLayout == juce::AudioChannelSet::stereo());
 
-        info->id = (isInput ? 1 << 15 : 1) + index;
+        auto getPortID = [](bool isPortInput, uint32_t portIndex) {
+            return (isPortInput ? 1 << 15 : 1) + portIndex;
+        };
+
+        info->id = getPortID(isInput, index);
         strncpy(info->name, bus->getName().toRawUTF8(), sizeof(info->name));
 
         bool couldBeMain = true;
@@ -544,7 +548,17 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             info->flags = 0;
         }
 
-        info->in_place_pair = info->id;
+        if (processor->getBus(!isInput, (int)index) != nullptr)
+        {
+            // this bus has a corresponding bus on the other side, so it can do in-place processing
+            info->in_place_pair = getPortID(!isInput, index);
+        }
+        else
+        {
+            // this bus has no corresponding bus, so it can't do in-place processing
+            info->in_place_pair = CLAP_INVALID_ID;
+        }
+
         info->channel_count = (uint32_t)busDefaultLayout.size();
 
         if (busDefaultLayout == juce::AudioChannelSet::mono())
