@@ -891,14 +891,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                             // this event is within the resolution size, so we don't need to split
                             continue;
 
+                        if (event->space_id != CLAP_CORE_EVENT_SPACE_ID)
+                            continue; // never split for events that are not in the core namespace
+
                         // For now we're only splitting the block on parameter events
-                        // so we can get sample-accurate automation.
-                        // @TODO: are there other events that will require us to split the block?
-                        // like maybe transport events?
+                        // so we can get sample-accurate automation, and transport events.
                         if (event->type == CLAP_EVENT_PARAM_VALUE ||
                             event->type == CLAP_EVENT_PARAM_MOD ||
-                            event->type == CLAP_EVENT_PARAM_GESTURE_BEGIN ||
-                            event->type == CLAP_EVENT_PARAM_GESTURE_END)
+                            event->type == CLAP_EVENT_TRANSPORT)
                         {
                             return (int)event->time - n;
                         }
