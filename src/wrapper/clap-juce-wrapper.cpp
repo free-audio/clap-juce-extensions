@@ -791,6 +791,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             juce::roundToIntAccurate((double)sampleRate() * processor->getTailLengthSeconds()));
     }
 
+    bool implementsRender() const noexcept override { return true; }
+    bool renderSetMode(clap_plugin_render_mode mode) noexcept override
+    {
+        processor->setNonRealtime(mode != CLAP_RENDER_REALTIME);
+        return true;
+    }
+
     juce::MidiBuffer midiBuffer;
 
     clap_process_status process(const clap_process *process) noexcept override
@@ -981,8 +988,15 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             auto totalChans = juce::jmax(inputChannels, outputChannels);
             juce::AudioBuffer<float> buffer(busses.data(), (int)totalChans, numSamplesToProcess);
 
-            FIXME("Handle bypass and deactivated states")
-            processor->processBlock(buffer, midiBuffer);
+            if (processor->isSuspended())
+            {
+                buffer.clear();
+            }
+            else
+            {
+                FIXME("Handle bypass and deactivated states")
+                processor->processBlock(buffer, midiBuffer);
+            }
 
             if (processor->producesMidi())
             {
