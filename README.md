@@ -1,6 +1,6 @@
 # JUCE6 and 7 Unofficial CLAP Plugin Support
 
-This is a set of code which, combined with a JUCE6 or JUCE 7 plugin project, allows you to build a CLAP plugin. It
+This is a set of code which, combined with a JUCE 6 or JUCE 7 plugin project, allows you to build a CLAP plugin. It
 is licensed under the MIT license, and can be used for both open and closed source projects.
 
 We are labeling it 'unofficial' for four reasons
@@ -110,7 +110,7 @@ The resulting builds will be located in `build-clap/MyPlugin_artefacts`.
 If you would like to use the [CLAP extensions API](#the-extensions-api), the necessary source
 files must be added to the plugin's Projucer configuration.
 
-### Arguments to `create_jucer_clap_target`
+### Arguments to CLAP CMake functions
 
 In addition to `CLAP_ID` and `CLAP_FEATURES` described above the following arguments
 are available
@@ -151,8 +151,7 @@ we have endeavoured to write in as JUCE-natural a way as possible.
 2. The parameter IDs we use uses the [internal JUCE hashing mechanism to generate
    our `uint32_t`](https://github.com/free-audio/clap-juce-extensions/blob/85bc0d56dc784a5f1271602db46f0748954b180e/src/wrapper/clap-juce-wrapper.cpp#L198)
    just like
-   the [current VST3 wrapper does](https://github.com/juce-framework/JUCE/blob/2f980209cc4091a4490bb1bafc5d530f16834e58/modules/juce_audio_plugin_client/VST3/juce_VST3_Wrapper.cpp#L585)
-   .
+   the [current VST3 wrapper does](https://github.com/juce-framework/JUCE/blob/2f980209cc4091a4490bb1bafc5d530f16834e58/modules/juce_audio_plugin_client/VST3/juce_VST3_Wrapper.cpp#L585).
 3. Our stream implementation
    transparently [calls `AudioProcessor::setStateInformation` and `AudioProcessor::getStateInformation`](https://github.com/free-audio/clap-juce-extensions/blob/85bc0d56dc784a5f1271602db46f0748954b180e/src/wrapper/clap-juce-wrapper.cpp#L930)
    with no intervening
@@ -170,12 +169,9 @@ example today) relying on these wrappers still.
 ## Major Missing API points
 
 1. We have not tested any JUCE version earlier than 6.0.7, and plugins which use deprecated APIs may not work
-2.
-
-The [`AudioProcessor::WrapperType`](https://docs.juce.com/master/classAudioProcessor.html#a2e1b21b8831ac529965abffc96223dcf)
-API doesn't support CLAP. All CLAP plugins will define a `wrapperType` of `wrapperType_Undefined`. We do provide
-a workaround for using our extensions mechanism, below.
-
+2. The [`AudioProcessor::WrapperType`](https://docs.juce.com/master/classAudioProcessor.html#a2e1b21b8831ac529965abffc96223dcf)
+   API doesn't support CLAP. All CLAP plugins will define a `wrapperType` of `wrapperType_Undefined`. We do provide
+   a workaround for using our extensions mechanism, below.
 3. Several parameter features - including discrete (stepped) parameters - don't translate from JUCE to CLAP
    in our adapter (although they are supported in the CLAP API of course). We would love a test plugin to help us
    resolve this.
