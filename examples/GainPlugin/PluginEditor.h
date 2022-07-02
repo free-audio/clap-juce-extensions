@@ -2,15 +2,19 @@
 
 #include "GainPlugin.h"
 
-class PluginEditor : public juce::AudioProcessorEditor
+class PluginEditor : public juce::AudioProcessorEditor,
+                     private juce::AudioProcessorValueTreeState::Listener
 {
   public:
     explicit PluginEditor(GainPlugin &plugin);
+    ~PluginEditor() override;
 
     void resized() override;
     void paint(juce::Graphics &g) override;
 
   private:
+    void parameterChanged(const juce::String &parameterID, float newValue) override;
+
     GainPlugin &plugin;
 
     juce::Slider gainSlider;

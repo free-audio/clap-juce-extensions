@@ -43,9 +43,10 @@ class GainPlugin : public juce::AudioProcessor,
 
     juce::String getPluginTypeString() const;
     auto *getGainParameter() { return gainDBParameter; }
+    auto &getValueTreeState() { return vts; }
 
   private:
-    static void process_clap_event(const clap_event_header_t *event);
+    void process_clap_event(const clap_event_header_t *event);
 
     ModulatableFloatParameter *gainDBParameter = nullptr;
 

@@ -8,8 +8,17 @@ PluginEditor::PluginEditor(GainPlugin &plug) : juce::AudioProcessorEditor(plug),
     gainSlider.setSliderStyle(juce::Slider::SliderStyle::RotaryHorizontalVerticalDrag);
     gainSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 100, 20);
 
-    sliderAttachment = std::make_unique<juce::SliderParameterAttachment>(*plugin.getGainParameter(),
-                                                                         gainSlider, nullptr);
+    auto *gainParameter = plugin.getGainParameter();
+    sliderAttachment =
+        std::make_unique<juce::SliderParameterAttachment>(*gainParameter, gainSlider, nullptr);
+
+    plugin.getValueTreeState().addParameterListener(gainParameter->paramID, this);
+}
+
+PluginEditor::~PluginEditor()
+{
+    auto *gainParameter = plugin.getGainParameter();
+    plugin.getValueTreeState().removeParameterListener(gainParameter->paramID, this);
 }
 
 void PluginEditor::resized()
@@ -26,4 +35,19 @@ void PluginEditor::paint(juce::Graphics &g)
     const auto titleBounds = getLocalBounds().removeFromTop(30);
     const auto titleText = "Gain Plugin " + plugin.getPluginTypeString();
     g.drawFittedText(titleText, titleBounds, juce::Justification::centred, 1);
+}
+
+void PluginEditor::parameterChanged(const juce::String &, float)
+{
+    // visual feedback so we know the parameter listeners are getting called:
+    struct FlashComponent : Component
+    {
+        void paint(juce::Graphics &g) override { g.fillAll(juce::Colours::red); }
+    } flashComp;
+
+    addAndMakeVisible(flashComp);
+    flashComp.setBounds(juce::Rectangle<int>{getWidth() - 10, 0, 10, 10});
+
+    auto &animator = juce::Desktop::getInstance().getAnimator();
+    animator.fadeOut(&flashComp, 100);
 }
