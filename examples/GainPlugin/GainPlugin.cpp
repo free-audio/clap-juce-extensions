@@ -166,12 +166,7 @@ void GainPlugin::process_clap_event(const clap_event_header_t *event)
     case CLAP_EVENT_PARAM_VALUE:
     {
         auto paramEvent = reinterpret_cast<const clap_event_param_value *>(event);
-        auto juceParameter = static_cast<juce::AudioProcessorParameter *>(paramEvent->cookie);
-
-        if (juceParameter->getValue() == (float)paramEvent->value)
-            return;
-
-        juceParameter->setValueNotifyingHost((float)paramEvent->value);
+        handleParameterChange(paramEvent);
     }
     break;
     case CLAP_EVENT_PARAM_MOD:

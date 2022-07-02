@@ -12,6 +12,9 @@
 #include <clap/plugin.h>
 #include <clap/helpers/plugin.hh>
 
+/** Forward declaration of the wrapper class. */
+class ClapJuceWrapper;
+
 namespace clap_juce_extensions
 {
 /*
@@ -89,6 +92,16 @@ struct clap_juce_audio_processor_capabilities
         return CLAP_PROCESS_CONTINUE;
     }
 
+    /**
+     * If you're implementing `clap_direct_process`, you should use this method
+     * to handle `CLAP_EVENT_PARAM_VALUE`, so that the parameter listeners are
+     * called on the main thread without creating a feedback loop.
+     */
+    void handleParameterChange(const clap_event_param_value *paramEvent)
+    {
+        parameterChangeHandler(paramEvent);
+    }
+
     /*
      * Do I support the CLAP_NOTE_DIALECT_CLAP? And prefer it if so? By default this
      * is true if I support either note expressions, direct processing, or voice info,
@@ -104,6 +117,10 @@ struct clap_juce_audio_processor_capabilities
     }
 
     virtual bool prefersNoteDialectClap(bool isInput) { return supportsNoteDialectClap(isInput); }
+
+  private:
+    friend class ::ClapJuceWrapper;
+    std::function<void(const clap_event_param_value *)> parameterChangeHandler = nullptr;
 };
 
 /*
