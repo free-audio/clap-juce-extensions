@@ -118,6 +118,17 @@ are available
 * `CLAP_MANUAL_URL` and `CLAP_SUPPORT_URL` generate the urls in your description
 * `CLAP_MISBHEAVIOUR_HANDLER_LEVEL` can be set to `Terminate` or `Ignore` (default
   is `Ignore`) to choose your behaviour for a misbehaving host.
+* `CLAP_CHECKING_LEVEL` can be set to `None`, `Minimal`, or `Maximal` (default is
+  `Minimal`) to choose the level of sanity checks enabled for the plugin.
+* `CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES` can be set to any integer value to choose the
+  resolution (in samples) used by the wrapper for doing sample-accurate event processing.
+  Setting the value to `0` (the default value) will turn off sample-accurate event processing.
+* `CLAP_ALWAYS_SPLIT_BLOCK` can be set to `1` (on), or `0` (off, default), to tell the
+  wrapper to _always_ attempt to split incoming audio buffers into chunks of size
+  `CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES`, regardless of any input events being
+  sent from the host. Note that if the block size provided by the host is not an
+  even multiple of `CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES`, the plugin may be
+  required to process a chunk smaller than the chosen resolution.
 
 ## Risks of using this library
 
