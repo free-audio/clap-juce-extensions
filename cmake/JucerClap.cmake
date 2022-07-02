@@ -1,7 +1,7 @@
 # use this function to create a CLAP from a jucer project
 function(create_jucer_clap_target)
-    set(oneValueArgs TARGET PLUGIN_NAME BINARY_NAME MANUFACTURER_NAME MANUFACTURER_URL VERSION_STRING MANUFACTURER_CODE PLUGIN_CODE EDITOR_NEEDS_KEYBOARD_FOCUS MISBEHAVIOUR_HANDLER_LEVEL CHECKING_LEVEL)
-    set(multiValueArgs CLAP_ID CLAP_FEATURES CLAP_MANUAL_URL CLAP_SUPPORT_URL)
+    set(oneValueArgs TARGET PLUGIN_NAME BINARY_NAME MANUFACTURER_NAME MANUFACTURER_URL VERSION_STRING MANUFACTURER_CODE PLUGIN_CODE EDITOR_NEEDS_KEYBOARD_FOCUS)
+    set(multiValueArgs CLAP_FEATURES)
 
     cmake_parse_arguments(CJA "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -41,16 +41,10 @@ function(create_jucer_clap_target)
     endif()
 
     clap_juce_extensions_plugin_jucer(
-        TARGET ${CJA_TARGET}
         TARGET_PATH "${PLUGIN_LIBRARY_PATH}"
         PLUGIN_NAME "${CJA_BINARY_NAME}"
         PLUGIN_VERSION "${CJA_VERSION_STRING}"
-        CLAP_ID "${CJA_CLAP_ID}"
-        CLAP_FEATURES "${CJA_CLAP_FEATURES}"
-        CLAP_MANUAL_URL "${CJA_CLAP_MANUAL_URL}"
-        CLAP_SUPPORT_URL "${CJA_CLAP_SUPPORT_URL}"
-        CLAP_MISBEHAVIOUR_HANDLER_LEVEL "${CJA_MISBEHAVIOUR_HANDLER_LEVEL}"
-        CLAP_CHECKING_LEVEL "${CJA_CHECKING_LEVEL}"
+        ${ARGV}
     )
 
     string(REPLACE " " "_" clap_target "${CJA_TARGET}_CLAP")
