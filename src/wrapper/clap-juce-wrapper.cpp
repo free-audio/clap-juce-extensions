@@ -172,11 +172,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         {
             processorAsClapExtensions->parameterChangeHandler =
                 [this](const clap_event_param_value *paramEvent) {
-                    auto nf = paramEvent->value;
-                    jassert(paramEvent->cookie == paramPtrByClapID[paramEvent->param_id]);
-                    auto jp = static_cast<juce::AudioProcessorParameter *>(paramEvent->cookie);
-
-                    paramSetValueAndNotifyIfChanged(*jp, (float)nf);
+                    handleParameterChangeEvent(paramEvent);
                 };
         };
 
@@ -766,6 +762,15 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return true;
     }
 
+    void handleParameterChangeEvent(const clap_event_param_value *paramEvent)
+    {
+        auto nf = paramEvent->value;
+        jassert(paramEvent->cookie == paramPtrByClapID[paramEvent->param_id]);
+        auto jp = static_cast<juce::AudioProcessorParameter *>(paramEvent->cookie);
+
+        paramSetValueAndNotifyIfChanged(*jp, (float)nf);
+    }
+
     void paramSetValueAndNotifyIfChanged(juce::AudioProcessorParameter &param, float newValue)
     {
         if (param.getValue() == newValue)
@@ -1069,12 +1074,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         case CLAP_EVENT_PARAM_VALUE:
         {
             auto paramEvent = reinterpret_cast<const clap_event_param_value *>(event);
-
-            auto nf = paramEvent->value;
-            jassert(paramEvent->cookie == paramPtrByClapID[paramEvent->param_id]);
-            auto jp = static_cast<juce::AudioProcessorParameter *>(paramEvent->cookie);
-
-            paramSetValueAndNotifyIfChanged(*jp, (float)nf);
+            handleParameterChangeEvent(paramEvent);
         }
         break;
         case CLAP_EVENT_PARAM_MOD:
