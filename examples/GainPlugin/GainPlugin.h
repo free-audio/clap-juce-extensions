@@ -32,8 +32,8 @@ class GainPlugin : public juce::AudioProcessor,
     void processBlock(juce::AudioBuffer<float> &, juce::MidiBuffer &) override;
     void processBlock(juce::AudioBuffer<double> &, juce::MidiBuffer &) override {}
 
-    bool supportsDirectProcess() override { return true; }
-    clap_process_status clap_direct_process(const clap_process *process) noexcept override;
+    bool supportsDirectEvent(uint16_t space_id, uint16_t type) override;
+    void handleEventDirect(const clap_event_header_t *event, int sampleOffset) override;
 
     bool hasEditor() const override { return true; }
     juce::AudioProcessorEditor *createEditor() override;
@@ -46,8 +46,6 @@ class GainPlugin : public juce::AudioProcessor,
     auto &getValueTreeState() { return vts; }
 
   private:
-    void process_clap_event(const clap_event_header_t *event);
-
     ModulatableFloatParameter *gainDBParameter = nullptr;
 
     juce::AudioProcessorValueTreeState vts;

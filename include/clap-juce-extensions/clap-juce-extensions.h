@@ -88,7 +88,7 @@ struct clap_juce_audio_processor_capabilities
      * @param sampleOffset  If the CLAP wrapper has split up the incoming buffer (e.g. to
      *                      apply sample-accurate automation), then you'll need to apply
      *                      this sample offset to the timestamp of the incoming event
-     *                      to get the actual event time relative to the start if the
+     *                      to get the actual event time relative to the start of the
      *                      next incoming buffer to your processBlock method. For example:
      *                      `const auto actualNoteTime = noteEvent->header.time - sampleOffset;`
      */
