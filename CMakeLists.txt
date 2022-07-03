@@ -12,6 +12,15 @@
 # require at least CMAKE 3.21
 cmake_minimum_required (VERSION 3.21 FATAL_ERROR)
 
+get_directory_property(parent_dir PARENT_DIRECTORY)
+if ("${parent_dir}" STREQUAL "")
+    # OSX deployment target needs to be set before the `project()` call
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.7" CACHE STRING "Minimum OS X deployment target")
+    set(is_toplevel 1)
+else ()
+    set(is_toplevel 0)
+endif ()
+
 project(clap-juce-extensions VERSION 0.1.0 LANGUAGES C CXX)
 
 if (CMAKE_CXX_STANDARD)
@@ -26,12 +35,6 @@ endif()
 message( STATUS "Building CLAP with CLAP_CXX_STANDARD=${CLAP_CXX_STANDARD}")
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-get_directory_property(parent_dir PARENT_DIRECTORY)
-if ("${parent_dir}" STREQUAL "")
-    set(is_toplevel 1)
-else ()
-    set(is_toplevel 0)
-endif ()
 option(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES "Add targets for building and running clap-juce-extensions examples" ${is_toplevel})
 if(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES)
     # The examples need JUCE to be imported before the CLAP helper targets

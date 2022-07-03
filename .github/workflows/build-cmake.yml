@@ -45,7 +45,7 @@ jobs:
 
       - name: Build
         shell: bash
-        run: cmake --build build --config Release --parallel 4
+        run: cmake --build build --config Release --parallel 4 --target GainPlugin_CLAP
 
       - name: Set up clap-info
         shell: bash
