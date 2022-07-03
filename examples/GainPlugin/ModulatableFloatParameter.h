@@ -15,6 +15,7 @@ class ModulatableFloatParameter : public juce::AudioParameterFloat,
                               float defaultFloatValue,
                               const std::function<juce::String(float)> &valueToTextFunction,
                               std::function<float(const juce::String &)> &&textToValueFunction)
+#if JUCE_VERSION < 0x070000
         : juce::AudioParameterFloat(
               parameterID, parameterName, valueRange, defaultFloatValue, juce::String(),
               AudioProcessorParameter::genericParameter,
@@ -22,6 +23,14 @@ class ModulatableFloatParameter : public juce::AudioParameterFloat,
                   ? std::function<juce::String(float v, int)>()
                   : [valueToTextFunction](float v, int) { return valueToTextFunction(v); },
               std::move(textToValueFunction)),
+#else
+        : juce::AudioParameterFloat(
+              parameterID, parameterName, valueRange, defaultFloatValue,
+              juce::AudioParameterFloatAttributes()
+                  .withStringFromValueFunction(
+                      [valueToTextFunction](float v, int) { return valueToTextFunction(v); })
+                  .withValueFromStringFunction(std::move(textToValueFunction))),
+#endif
           unsnappedDefault(valueRange.convertTo0to1(defaultFloatValue)),
           normalisableRange(valueRange)
     {
