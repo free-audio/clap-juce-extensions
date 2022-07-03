@@ -15,7 +15,7 @@ cmake_minimum_required (VERSION 3.21 FATAL_ERROR)
 get_directory_property(parent_dir PARENT_DIRECTORY)
 if ("${parent_dir}" STREQUAL "")
     # OSX deployment target needs to be set before the `project()` call
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.7" CACHE STRING "Minimum OS X deployment target")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "Minimum OS X deployment target")
     set(is_toplevel 1)
 else ()
     set(is_toplevel 0)
