@@ -20,6 +20,7 @@ if(CLAP_WRAP_PROJUCER_PLUGIN)
         VERSION_STRING "${CMAKE_PROJECT_VERSION}"
         CLAP_ID "org.free-audio.GainPlugin"
         CLAP_FEATURES audio-effect utility
+        CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES 64
     )
 
     return()
@@ -37,6 +38,7 @@ clap_juce_extensions_plugin(
     TARGET GainPlugin
     CLAP_ID "org.free-audio.GainPlugin"
     CLAP_FEATURES audio-effect utility
+    CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES 64
 )
 
 target_sources(GainPlugin PRIVATE
