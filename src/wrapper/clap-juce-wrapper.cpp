@@ -320,7 +320,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
          * Before 6.0.8 it was unclear what changed. For now make the approximating decision to just
          * rescan values and text.
          */
-        juce::ignoreUnused(proc);
+        //        juce::ignoreUnused(proc);
         runOnMainThread([this] {
             if (isBeingDestroyed())
                 return;
