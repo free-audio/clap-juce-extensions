@@ -1054,7 +1054,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             processorAsClapExtensions->supportsDirectEvent(event->space_id, event->type))
         {
             // the plugin wants to handle this event with some custom logic
-            processorAsClapExtensions->handleEventDirect(event, sampleOffset);
+            processorAsClapExtensions->handleDirectEvent(event, sampleOffset);
             return;
         }
 

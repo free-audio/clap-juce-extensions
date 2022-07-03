@@ -67,7 +67,7 @@ bool GainPlugin::supportsDirectEvent(uint16_t space_id, uint16_t type)
     return type == CLAP_EVENT_PARAM_MOD; // custom handling for parameter modulation events only
 }
 
-void GainPlugin::handleEventDirect(const clap_event_header_t *event, int /*sampleOffset*/)
+void GainPlugin::handleDirectEvent(const clap_event_header_t *event, int /*sampleOffset*/)
 {
     if (event->space_id != CLAP_CORE_EVENT_SPACE_ID || event->type != CLAP_EVENT_PARAM_MOD)
     {
