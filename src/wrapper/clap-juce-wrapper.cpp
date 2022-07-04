@@ -1051,6 +1051,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     void process_clap_event(const clap_event_header_t *event, int sampleOffset)
     {
+        if (processorAsClapExtensions &&
+            processorAsClapExtensions->supportsDirectEvent(event->space_id, event->type))
+        {
+            // the plugin wants to handle this event with some custom logic
+            processorAsClapExtensions->handleDirectEvent(event, sampleOffset);
+            return;
+        }
+
         if (event->space_id != CLAP_CORE_EVENT_SPACE_ID)
             return;
 

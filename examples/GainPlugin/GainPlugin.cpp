@@ -59,133 +59,34 @@ void GainPlugin::processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer
     gain.process(juce::dsp::ProcessContextReplacing<float>{block});
 }
 
-clap_process_status GainPlugin::clap_direct_process(const clap_process *process) noexcept
+bool GainPlugin::supportsDirectEvent(uint16_t space_id, uint16_t type)
 {
-    const auto numSamples = (int)process->frames_count;
-    auto events = process->in_events;
-    auto numEvents = (int)events->size(events);
-    int currentEvent = 0;
-    int nextEventTime = numSamples;
+    if (space_id != CLAP_CORE_EVENT_SPACE_ID)
+        return false;
 
-    if (numEvents > 0)
-    {
-        auto event = events->get(events, 0);
-        nextEventTime = (int)event->time;
-    }
-
-    // We process in place so...
-    static constexpr uint32_t maxBuses = 128;
-    std::array<float *, maxBuses> busses{};
-    busses.fill(nullptr);
-    juce::MidiBuffer midiBuffer;
-
-    static constexpr int smallestBlockSize = 64;
-    for (int n = 0; n < numSamples;)
-    {
-        const auto numSamplesToProcess =
-            (numSamples - n >= smallestBlockSize)
-                ? juce::jmax(nextEventTime - n,
-                             smallestBlockSize) // process until next event, but no smaller than
-                                                // smallest block size
-                : (numSamples - n);             // process a few leftover samples
-
-        while (nextEventTime < n + numSamplesToProcess && currentEvent < numEvents)
-        {
-            auto event = events->get(events, (uint32_t)currentEvent);
-            process_clap_event(event);
-
-            currentEvent++;
-            nextEventTime = (currentEvent < numEvents)
-                                ? (int)events->get(events, (uint32_t)currentEvent)->time
-                                : numSamples;
-        }
-
-        uint32_t outputChannels = 0;
-        for (uint32_t idx = 0; idx < process->audio_outputs_count && outputChannels < maxBuses;
-             ++idx)
-        {
-            for (uint32_t ch = 0; ch < process->audio_outputs[idx].channel_count; ++ch)
-            {
-                busses[outputChannels] = process->audio_outputs[idx].data32[ch] + n;
-                outputChannels++;
-            }
-        }
-
-        uint32_t inputChannels = 0;
-        for (uint32_t idx = 0; idx < process->audio_inputs_count && inputChannels < maxBuses; ++idx)
-        {
-            for (uint32_t ch = 0; ch < process->audio_inputs[idx].channel_count; ++ch)
-            {
-                auto *ic = process->audio_inputs[idx].data32[ch] + n;
-                if (inputChannels < outputChannels)
-                {
-                    if (ic == busses[inputChannels])
-                    {
-                        // The buffers overlap - no need to do anything
-                    }
-                    else
-                    {
-                        juce::FloatVectorOperations::copy(busses[inputChannels], ic,
-                                                          numSamplesToProcess);
-                    }
-                }
-                else
-                {
-                    busses[inputChannels] = ic;
-                }
-                inputChannels++;
-            }
-        }
-
-        auto totalChans = juce::jmax(inputChannels, outputChannels);
-        juce::AudioBuffer<float> buffer(busses.data(), (int)totalChans, numSamplesToProcess);
-
-        processBlock(buffer, midiBuffer);
-
-        midiBuffer.clear();
-        n += numSamplesToProcess;
-    }
-
-    // process any leftover events
-    for (; currentEvent < numEvents; ++currentEvent)
-    {
-        auto event = events->get(events, (uint32_t)currentEvent);
-        process_clap_event(event);
-    }
-
-    return CLAP_PROCESS_CONTINUE;
+    return type == CLAP_EVENT_PARAM_MOD; // custom handling for parameter modulation events only
 }
 
-void GainPlugin::process_clap_event(const clap_event_header_t *event)
+void GainPlugin::handleDirectEvent(const clap_event_header_t *event, int /*sampleOffset*/)
 {
-    if (event->space_id != CLAP_CORE_EVENT_SPACE_ID)
+    if (event->space_id != CLAP_CORE_EVENT_SPACE_ID || event->type != CLAP_EVENT_PARAM_MOD)
+    {
+        // we should not be receiving events of this type!
+        jassertfalse;
         return;
-
-    switch (event->type)
-    {
-    case CLAP_EVENT_PARAM_VALUE:
-    {
-        auto paramEvent = reinterpret_cast<const clap_event_param_value *>(event);
-        handleParameterChange(paramEvent);
     }
-    break;
-    case CLAP_EVENT_PARAM_MOD:
+    
+    // custom handling for parameter modulation events:
+    auto paramModEvent = reinterpret_cast<const clap_event_param_mod *>(event);
+    auto *modulatableParam = static_cast<ModulatableFloatParameter *>(paramModEvent->cookie);
+    if (paramModEvent->note_id >= 0)
     {
-        auto paramModEvent = reinterpret_cast<const clap_event_param_mod *>(event);
-        auto *modulatableParam = static_cast<ModulatableFloatParameter *>(paramModEvent->cookie);
-        if (paramModEvent->note_id >= 0)
-        {
-            // no polyphonic modulation
-        }
-        else
-        {
-            if (modulatableParam->supportsMonophonicModulation())
-                modulatableParam->applyMonophonicModulation(paramModEvent->amount);
-        }
+        // no polyphonic modulation
     }
-    break;
-    default:
-        break;
+    else
+    {
+        if (modulatableParam->supportsMonophonicModulation())
+            modulatableParam->applyMonophonicModulation(paramModEvent->amount);
     }
 }
 

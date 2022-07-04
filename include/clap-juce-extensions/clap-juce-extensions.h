@@ -72,11 +72,42 @@ struct clap_juce_audio_processor_capabilities
      */
     virtual bool supportsNoteExpressions() { return false; }
 
+    /**
+     * The regular CLAP/JUCE wrapper handles the following CLAP events:
+     * - MIDI note on/off events
+     * - MIDI CC events
+     * - Parameter change events
+     *
+     * If you would like to handle these events using some custom behaviour, or
+     * if you would like to handle other CLAP events (e.g. parameter modulation or
+     * note expression), or events from another namespace, you should override
+     * this method to return true for those event types.
+     *
+     * @param space_id  The namespace ID for the given event.
+     * @param type      The event type.
+     */
+    virtual bool supportsDirectEvent(uint16_t /*space_id*/, uint16_t /*type*/) { return false; }
+
+    /**
+     * If your plugin returns true for supportsDirectEvent, then you'll need to
+     * implement this method to actually handle that event when it comes along.
+     * 
+     * @param event         The header for the incoming event.
+     * @param sampleOffset  If the CLAP wrapper has split up the incoming buffer (e.g. to
+     *                      apply sample-accurate automation), then you'll need to apply
+     *                      this sample offset to the timestamp of the incoming event
+     *                      to get the actual event time relative to the start of the
+     *                      next incoming buffer to your processBlock method. For example:
+     *                      `const auto actualNoteTime = noteEvent->header.time - sampleOffset;`
+     */
+    virtual void handleDirectEvent(const clap_event_header_t * /*event*/, int /*sampleOffset*/) {}
+
     /*
      * The JUCE process loop makes it difficult to do things like note expressions,
-     * sample accurate parameter automation, and other CLAP features. In most cases that
-     * is fine, but for some use cases, a synth may want the entirety of the JUCE infrastructure
-     * *except* the process loop. (Surge is one such synth).
+     * sample accurate parameter automation, and other CLAP features. The custom event handlers
+     * (above) help make some of these features possible, but for some use cases, a synth may
+     * want the entirety of the JUCE infrastructure *except* the process loop. (Surge is one
+     * such synth).
      *
      * In this case, you can implement supportsDirectProcess to return true and then the clap
      * juce wrapper will skip most parts of the process loop (it will still set up transport
