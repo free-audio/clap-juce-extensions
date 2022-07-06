@@ -42,7 +42,7 @@ function(create_jucer_clap_target)
 
     clap_juce_extensions_plugin_jucer(
         TARGET_PATH "${PLUGIN_LIBRARY_PATH}"
-        PLUGIN_NAME "${CJA_BINARY_NAME}"
+        PLUGIN_BINARY_NAME "${CJA_BINARY_NAME}"
         PLUGIN_VERSION "${CJA_VERSION_STRING}"
         ${ARGV}
     )
