@@ -1,6 +1,6 @@
 function(clap_juce_extensions_plugin_internal)
-    set(oneValueArgs TARGET TARGET_PATH PLUGIN_NAME IS_JUCER PLUGIN_VERSION DO_COPY CLAP_MANUAL_URL CLAP_SUPPORT_URL
-            CLAP_MISBEHAVIOUR_HANDLER_LEVEL CLAP_CHECKING_LEVEL CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES
+    set(oneValueArgs TARGET TARGET_PATH PLUGIN_BINARY_NAME IS_JUCER PLUGIN_VERSION DO_COPY CLAP_MANUAL_URL
+            CLAP_SUPPORT_URL CLAP_MISBEHAVIOUR_HANDLER_LEVEL CLAP_CHECKING_LEVEL CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES
             CLAP_ALWAYS_SPLIT_BLOCK)
     set(multiValueArgs CLAP_ID CLAP_FEATURES)
   
@@ -76,7 +76,7 @@ function(clap_juce_extensions_plugin_internal)
     endif()
 
     get_target_property(products_folder ${claptarget} LIBRARY_OUTPUT_DIRECTORY)
-    set(product_name "${CJA_PLUGIN_NAME}")
+    set(product_name "${CJA_PLUGIN_BINARY_NAME}")
 
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
         get_target_property(cjd clap_juce_sources CLAP_JUCE_SOURCE_DIR)
@@ -166,7 +166,7 @@ function(clap_juce_extensions_plugin)
     get_target_property(docopy "${CJA_TARGET}" JUCE_COPY_PLUGIN_AFTER_BUILD)
 
     clap_juce_extensions_plugin_internal(
-        PLUGIN_NAME "${product_name}"
+        PLUGIN_BINARY_NAME "${product_name}"
         PLUGIN_VERSION "${plugin_version}"
         IS_JUCER FALSE
         DO_COPY ${docopy}

@@ -14,6 +14,7 @@ if(CLAP_WRAP_PROJUCER_PLUGIN)
     create_jucer_clap_target(
         TARGET "GainPlugin"
         PLUGIN_NAME "GainPlugin"
+        BINARY_NAME "MyGreatGainPlugin"
         PLUGIN_CODE "Gplg"
         MANUFACTURER_NAME "${COMPANY_NAME}"
         MANUFACTURER_CODE "${COMPANY_CODE}"

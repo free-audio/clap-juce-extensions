@@ -84,6 +84,7 @@ include(${PATH_TO_CLAP_EXTENSIONS}/cmake/JucerClap.cmake)
 create_jucer_clap_target(
         TARGET MyPlugin # "Binary Name" in the Projucer
         PLUGIN_NAME "My Plugin"
+        BINARY_NAME "MyPlugin" # Name of the resulting plugin binary
         MANUFACTURER_NAME "My Company"
         MANUFACTURER_CODE Manu
         PLUGIN_CODE Plg1
