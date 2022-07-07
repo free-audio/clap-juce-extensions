@@ -65,7 +65,14 @@ a small CMake configuration alongside the Projucer build setup.
 
 ```cmake
 cmake_minimum_required(VERSION 3.15)
+
+# Make sure to set the same MacOS deployment target as you have set in the Projucer
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.12" CACHE STRING "Minimum OS X deployment target")
+
+# If the Projucer is using "static runtime" for Visual Studio:
+# set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "Runtime")
+# set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Release>:Release>" CACHE STRING "Runtime")
+
 project(MyPlugin VERSION 1.0.0)
 
 set(PATH_TO_JUCE path/to/JUCE)
