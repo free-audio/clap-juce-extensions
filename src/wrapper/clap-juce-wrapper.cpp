@@ -343,6 +343,26 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return id;
     }
 
+    static float getCorrectedParameterValueFromUI(juce::AudioProcessorParameter *pbi, float value)
+    {
+        // The JUCE parameter gives us a value in the range [0, 1]
+        // but the CLAP host needs discrete parameters in the range [0, numSteps]
+        if (pbi->isDiscrete())
+            value *= float(pbi->getNumSteps() - 1);
+
+        return value;
+    }
+
+    static float getCorrectedParameterValueFromHost(juce::AudioProcessorParameter *pbi, float value)
+    {
+        // the CLAP host gives us the discrete parameter as [0, numSteps],
+        // but we need to report the value to the JUCE parameter as [0, 1]
+        if (pbi->isDiscrete())
+            value /= float(pbi->getNumSteps() - 1);
+
+        return value;
+    }
+
     bool supressParameterChangeMessages{false};
     void audioProcessorParameterChanged(juce::AudioProcessor *, int index, float newValue) override
     {
@@ -364,6 +384,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             return;
 
         auto id = clapIdFromParameterIndex(index);
+        newValue = getCorrectedParameterValueFromUI(paramPtrByClapID[id], newValue);
         uiParamChangeQ.push({CLAP_EVENT_PARAM_VALUE, 0, id, newValue});
 
         if (_host.canUseParams())
@@ -373,8 +394,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     void audioProcessorParameterChangeGestureBegin(juce::AudioProcessor *, int index) override
     {
         auto id = clapIdFromParameterIndex(index);
-        auto p = paramPtrByClapID[id];
-        uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_BEGIN, 0, id, p->getValue()});
+        auto *pbi = paramPtrByClapID[id];
+        auto value = getCorrectedParameterValueFromUI(pbi, pbi->getValue());
+        uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_BEGIN, 0, id, value});
 
         if (_host.canUseParams())
             _host.paramsRequestFlush();
@@ -383,8 +405,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     void audioProcessorParameterChangeGestureEnd(juce::AudioProcessor *, int index) override
     {
         auto id = clapIdFromParameterIndex(index);
-        auto p = paramPtrByClapID[id];
-        uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_END, 0, id, p->getValue()});
+        auto *pbi = paramPtrByClapID[id];
+        auto value = getCorrectedParameterValueFromUI(pbi, pbi->getValue());
+        uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_END, 0, id, value});
 
         if (_host.canUseParams())
             _host.paramsRequestFlush();
@@ -704,8 +727,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         strncpy(info->name, (pbi->getName(CLAP_NAME_SIZE)).toRawUTF8(), CLAP_NAME_SIZE);
         strncpy(info->module, group.toRawUTF8(), CLAP_NAME_SIZE);
 
-        info->min_value = 0; // FIXME
-        info->max_value = 1;
+        info->min_value = 0.0;
+        info->max_value = 1.0;
         info->default_value = pbi->getDefaultValue();
         info->cookie = pbi;
         info->flags = 0;
@@ -719,6 +742,12 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         if (pbi->isBoolean() || pbi->isDiscrete())
         {
             info->flags = info->flags | CLAP_PARAM_IS_STEPPED;
+
+            if (auto *rangedParam = dynamic_cast<juce::RangedAudioParameter *>(pbi))
+            {
+                info->min_value = (double)rangedParam->getNormalisableRange().start;
+                info->max_value = (double)rangedParam->getNormalisableRange().end;
+            }
         }
 
         auto cpc = dynamic_cast<clap_juce_extensions::clap_juce_parameter_capabilities *>(pbi);
@@ -743,7 +772,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     bool paramsValue(clap_id paramId, double *value) noexcept override
     {
         auto pbi = paramPtrByClapID[paramId];
-        *value = pbi->getValue();
+        *value = getCorrectedParameterValueFromUI(pbi, pbi->getValue());
         return true;
     }
 
@@ -751,6 +780,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                            uint32_t size) noexcept override
     {
         auto pbi = paramPtrByClapID[paramId];
+        value = (double) getCorrectedParameterValueFromHost(pbi, (float) value);
+
         if (!usingLegacyParameterAPI)
         {
             auto res = pbi->getText((float)value, (int)size);
@@ -772,7 +803,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     bool paramsTextToValue(clap_id paramId, const char *display, double *value) noexcept override
     {
         auto pbi = paramPtrByClapID[paramId];
-        *value = pbi->getValueForText(display);
+        *value = (double) getCorrectedParameterValueFromUI(pbi, pbi->getValueForText(display));
         return true;
     }
 
@@ -789,6 +820,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     void paramSetValueAndNotifyIfChanged(juce::AudioProcessorParameter &param, float newValue)
     {
+        newValue = getCorrectedParameterValueFromHost(&param, newValue);
+
         if (param.getValue() == newValue)
             return;
 
