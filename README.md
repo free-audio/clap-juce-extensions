@@ -137,6 +137,10 @@ are available
   sent from the host. Note that if the block size provided by the host is not an
   even multiple of `CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES`, the plugin may be
   required to process a chunk smaller than the chosen resolution.
+* `CLAP_USE_JUCE_PARAMETER_RANGES` can be set to `1` (on) or `0` (off, default) to
+  tell the wrapper to use JUCE's parameter ranges when possible, rather than
+  "normalized" 0-1 parameter ranges for communicatign parameter information with
+  with the host.
 
 ## Risks of using this library
 
