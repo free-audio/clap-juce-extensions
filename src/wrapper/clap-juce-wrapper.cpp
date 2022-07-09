@@ -759,6 +759,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         strncpy(info->module, group.toRawUTF8(), CLAP_NAME_SIZE);
 
 #if CLAP_USE_JUCE_PARAMETER_RANGES
+        // For discrete parameters, JUCE uses ranges [0, N], so we'll report that
+        // range to the CLAP host. For non-discrete parameters, we'll report a [0, 1]
+        // range and let the parameter's normalisable range take care of everything.
         auto *rangedParam = paramVariant.rangedParameter;
         if (rangedParam && paramVariant.processorParam->isDiscrete())
         {
