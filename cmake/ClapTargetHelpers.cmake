@@ -49,7 +49,7 @@ function(clap_juce_extensions_plugin_internal)
 
     if ("${CJA_CLAP_USE_JUCE_PARAMETER_RANGES}" STREQUAL "")
         message( STATUS "Setting \"Use JUCE parameter ranges\" to OFF")
-        set(CJA_CLAP_USE_JUCE_PARAMETER_RANGES 0)
+        set(CJA_CLAP_USE_JUCE_PARAMETER_RANGES OFF)
     else()
         message( STATUS "Setting \"Use JUCE parameter ranges\" to ${CJA_CLAP_USE_JUCE_PARAMETER_RANGES}")
     endif()
@@ -121,7 +121,7 @@ function(clap_juce_extensions_plugin_internal)
             CLAP_CHECKING_LEVEL=${CJA_CLAP_CHECKING_LEVEL}
             CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES=${CJA_CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES}
             CLAP_ALWAYS_SPLIT_BLOCK=${CJA_CLAP_ALWAYS_SPLIT_BLOCK}
-            CLAP_USE_JUCE_PARAMETER_RANGES=${CJA_CLAP_USE_JUCE_PARAMETER_RANGES}
+            CLAP_USE_JUCE_PARAMETER_RANGES=CLAP_USE_JUCE_PARAMETER_RANGES_${CJA_CLAP_USE_JUCE_PARAMETER_RANGES}
             )
 
     if(${CJA_IS_JUCER})

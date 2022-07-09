@@ -125,8 +125,12 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 #define CLAP_ALWAYS_SPLIT_BLOCK 0
 #endif
 
+#define CLAP_USE_JUCE_PARAMETER_RANGES_OFF 0
+#define CLAP_USE_JUCE_PARAMETER_RANGES_DISCRETE 1
+#define CLAP_USE_JUCE_PARAMETER_RANGES_ALL 2
+
 #if !defined(CLAP_USE_JUCE_PARAMETER_RANGES)
-#define CLAP_USE_JUCE_PARAMETER_RANGES 0
+#define CLAP_USE_JUCE_PARAMETER_RANGES CLAP_USE_JUCE_PARAMETER_RANGES_OFF
 #endif
 
 // This is useful for debugging overrides
@@ -351,32 +355,40 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     static float getUnNormalisedParameterValue(const JUCEParameterVariant &parameter, float value)
     {
-#if CLAP_USE_JUCE_PARAMETER_RANGES
+#if CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_OFF
+        juce::ignoreUnused(parameter);
+        return value;
+#else
         // The JUCE parameter gives us a value in the range [0, 1]
         // but the CLAP host needs discrete parameters in the range [0, N]
         auto *rangedParam = parameter.rangedParameter;
+#if CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_ALL
+        if (rangedParam)
+#elif CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_DISCRETE
         if (rangedParam && parameter.processorParam->isDiscrete())
+#endif
             return rangedParam->convertFrom0to1(value);
 
-        return value;
-#else
-        juce::ignoreUnused(parameter);
         return value;
 #endif
     }
 
     static float getNormalisedParameterValue(const JUCEParameterVariant &parameter, float value)
     {
-#if CLAP_USE_JUCE_PARAMETER_RANGES
+#if CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_OFF
+        juce::ignoreUnused(parameter);
+        return value;
+#else
         // the CLAP host gives us the discrete parameter as [0, N],
         // but we need to report the value to the JUCE parameter as [0, 1]
         auto *rangedParam = parameter.rangedParameter;
+#if CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_ALL
+        if (rangedParam)
+#elif CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_DISCRETE
         if (rangedParam && parameter.processorParam->isDiscrete())
+#endif
             return rangedParam->convertTo0to1(value);
 
-        return value;
-#else
-        juce::ignoreUnused(parameter);
         return value;
 #endif
     }
@@ -749,12 +761,16 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                 CLAP_NAME_SIZE);
         strncpy(info->module, group.toRawUTF8(), CLAP_NAME_SIZE);
 
-#if CLAP_USE_JUCE_PARAMETER_RANGES
+#if CLAP_USE_JUCE_PARAMETER_RANGES != CLAP_USE_JUCE_PARAMETER_RANGES_OFF
         // For discrete parameters, JUCE uses ranges [0, N], so we'll report that
         // range to the CLAP host. For non-discrete parameters, we'll report a [0, 1]
         // range and let the parameter's normalisable range take care of everything.
         auto *rangedParam = paramVariant.rangedParameter;
+#if CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_ALL
+        if (rangedParam)
+#elif CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_DISCRETE
         if (rangedParam && paramVariant.processorParam->isDiscrete())
+#endif
         {
             info->min_value = rangedParam->getNormalisableRange().start;
             info->max_value = rangedParam->getNormalisableRange().end;
