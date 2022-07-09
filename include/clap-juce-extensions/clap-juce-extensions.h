@@ -102,6 +102,29 @@ struct clap_juce_audio_processor_capabilities
      */
     virtual void handleDirectEvent(const clap_event_header_t * /*event*/, int /*sampleOffset*/) {}
 
+    /**
+     * If your plugin needs to send outbound events (for example, telling the host that a
+     * note has ended, you should override this method to return true.
+     */
+    virtual bool supportsOutboundEvents() { return false; }
+
+    /**
+     * If your plugin returns true for supportsOutboundEvents, then this method will be
+     * called after your `processBlock()` method, so that any outbound events can be
+     * added to the output event queue.
+     *
+     * @param out_events    The output event queue.
+     * @param sampleOffset  If the CLAP wrapper has split up the incoming buffer (e.g. to
+     *                      apply sample-accurate automation), then you'll need to apply
+     *                      this sample offset to the timestamp of the outgoing event
+     *                      to the block size being used by the host. For example:
+     *                      `auto eventTime = eventTimeRelativeToStartOfLastBlock + sampleOffset;`
+     */
+    virtual void addOutboundEventsToQueue(const clap_output_events * /*out_events*/,
+                                          int /*sampleOffset*/)
+    {
+    }
+
     /*
      * The JUCE process loop makes it difficult to do things like note expressions,
      * sample accurate parameter automation, and other CLAP features. The custom event handlers

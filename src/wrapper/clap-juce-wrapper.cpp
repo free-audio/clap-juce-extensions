@@ -1084,6 +1084,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                 processor->processBlock(buffer, midiBuffer);
             }
 
+            // @TODO: I think this is correct, but ask Paul if this should go after the
+            // "producesMidi()" bit?
+            if (processorAsClapExtensions && processorAsClapExtensions->supportsOutboundEvents())
+            {
+                processorAsClapExtensions->addOutboundEventsToQueue(process->out_events, n);
+            }
+
             if (processor->producesMidi())
             {
                 for (auto meta : midiBuffer)
