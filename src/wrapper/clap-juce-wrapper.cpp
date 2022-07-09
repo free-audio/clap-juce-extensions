@@ -96,14 +96,6 @@ template <typename T, int qSize = 4096> class PushPopQ
     T dq[(size_t)qSize];
 };
 
-/** JUCE parameter that could be ranged, or could extend the clap_juce_parameter_capabilities */
-struct JUCEParameterVariant
-{
-    juce::AudioProcessorParameter *processorParam = nullptr;
-    juce::RangedAudioParameter *rangedParameter = nullptr;
-    clap_juce_extensions::clap_juce_parameter_capabilities *clapExtParameter = nullptr;
-};
-
 /*
  * These functions are the JUCE VST2/3 NSView attachment functions. We compile them into
  * our clap dll by, on macos, also linking clap_juce_mac.mm

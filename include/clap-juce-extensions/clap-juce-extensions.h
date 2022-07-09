@@ -179,4 +179,18 @@ struct clap_juce_parameter_capabilities
 };
 } // namespace clap_juce_extensions
 
+namespace juce
+{
+class AudioProcessorParameter;
+class RangedAudioParameter;
+} // namespace juce
+
+/** JUCE parameter that could be ranged, or could extend the clap_juce_parameter_capabilities */
+struct JUCEParameterVariant
+{
+    juce::AudioProcessorParameter *processorParam = nullptr;
+    juce::RangedAudioParameter *rangedParameter = nullptr;
+    clap_juce_extensions::clap_juce_parameter_capabilities *clapExtParameter = nullptr;
+};
+
 #endif // SURGE_CLAP_JUCE_EXTENSIONS_H
