@@ -126,7 +126,6 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 #endif
 
 #if !defined(CLAP_USE_JUCE_PARAMETER_RANGES)
-static_assert(false);
 #define CLAP_USE_JUCE_PARAMETER_RANGES 0
 #endif
 
