@@ -104,7 +104,7 @@ struct clap_juce_audio_processor_capabilities
 
     /**
      * If your plugin needs to send outbound events (for example, telling the host that a
-     * note has ended, you should override this method to return true.
+     * note has ended), you should override this method to return true.
      */
     virtual bool supportsOutboundEvents() { return false; }
 
@@ -114,10 +114,9 @@ struct clap_juce_audio_processor_capabilities
      * added to the output event queue.
      *
      * @param out_events    The output event queue.
-     * @param sampleOffset  If the CLAP wrapper has split up the incoming buffer (e.g. to
-     *                      apply sample-accurate automation), then you'll need to apply
-     *                      this sample offset to the timestamp of the outgoing event
-     *                      to the block size being used by the host. For example:
+     * @param sampleOffset  If the CLAP wrapper has split up the incoming buffer, then
+     *                      you'll need to apply this sample offset to the timestamp of
+     *                      the outgoing event. For example:
      *                      `auto eventTime = eventTimeRelativeToStartOfLastBlock + sampleOffset;`
      */
     virtual void addOutboundEventsToQueue(const clap_output_events * /*out_events*/,
