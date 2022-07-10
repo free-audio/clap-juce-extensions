@@ -365,7 +365,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         auto id = clapIdFromParameterIndex(index);
         uiParamChangeQ.push({CLAP_EVENT_PARAM_VALUE, 0, id, newValue});
-        _host.paramsRequestFlush();
+
+        if (_host.canUseParams())
+            _host.paramsRequestFlush();
     }
 
     void audioProcessorParameterChangeGestureBegin(juce::AudioProcessor *, int index) override
@@ -373,7 +375,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         auto id = clapIdFromParameterIndex(index);
         auto p = paramPtrByClapID[id];
         uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_BEGIN, 0, id, p->getValue()});
-        _host.paramsRequestFlush();
+
+        if (_host.canUseParams())
+            _host.paramsRequestFlush();
     }
 
     void audioProcessorParameterChangeGestureEnd(juce::AudioProcessor *, int index) override
@@ -381,7 +385,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         auto id = clapIdFromParameterIndex(index);
         auto p = paramPtrByClapID[id];
         uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_END, 0, id, p->getValue()});
-        _host.paramsRequestFlush();
+
+        if (_host.canUseParams())
+            _host.paramsRequestFlush();
     }
 
 #if JUCE_VERSION < 0x070000
@@ -773,7 +779,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     void handleParameterChangeEvent(const clap_event_param_value *paramEvent)
     {
         auto nf = paramEvent->value;
-        jassert(paramEvent->cookie == paramPtrByClapID[paramEvent->param_id]);
+        jassert(paramPtrByClapID.find(paramEvent->param_id) != paramPtrByClapID.end());
+        jassert(paramPtrByClapID.find(paramEvent->param_id)->second == paramEvent->cookie);
+
         auto jp = static_cast<juce::AudioProcessorParameter *>(paramEvent->cookie);
 
         paramSetValueAndNotifyIfChanged(*jp, (float)nf);
