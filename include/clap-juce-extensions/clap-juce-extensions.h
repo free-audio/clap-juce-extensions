@@ -15,6 +15,14 @@
 /** Forward declaration of the wrapper class. */
 class ClapJuceWrapper;
 
+/** Forward declarations for any JUCE classes we might need. */
+namespace juce
+{
+class MidiBuffer;
+class AudioProcessorParameter;
+class RangedAudioParameter;
+} // namespace juce
+
 namespace clap_juce_extensions
 {
 /*
@@ -102,6 +110,34 @@ struct clap_juce_audio_processor_capabilities
      */
     virtual void handleDirectEvent(const clap_event_header_t * /*event*/, int /*sampleOffset*/) {}
 
+    /**
+     * If your plugin needs to send outbound events (for example, telling the host that a
+     * note has ended), you should override this method to return true.
+     */
+    virtual bool supportsOutboundEvents() { return false; }
+
+    /**
+     * If your plugin returns true for supportsOutboundEvents, then this method will be
+     * called after your `processBlock()` method, so that any outbound events can be
+     * added to the output event queue.
+     *
+     * NOTE: if your plugin produces MIDI, you must take care to make sure that any outgoing
+     * events which are not MIDI events are correctly interleaved with the outgoing events
+     * from the midiBuffer, such that all the events in the output queue are ordered sequentially.
+     *
+     * @param out_events    The output event queue.
+     * @param midiBuffer    The JUCE MIDI Buffer from the previous `processBlock()` call.
+     * @param sampleOffset  If the CLAP wrapper has split up the incoming buffer, then
+     *                      you'll need to apply this sample offset to the timestamp of
+     *                      the outgoing event. For example:
+     *                      `auto eventTime = eventTimeRelativeToStartOfLastBlock + sampleOffset;`
+     */
+    virtual void addOutboundEventsToQueue(const clap_output_events * /*out_events*/,
+                                          const juce::MidiBuffer & /* midiBuffer */,
+                                          int /*sampleOffset*/)
+    {
+    }
+
     /*
      * The JUCE process loop makes it difficult to do things like note expressions,
      * sample accurate parameter automation, and other CLAP features. The custom event handlers
@@ -178,12 +214,6 @@ struct clap_juce_parameter_capabilities
     virtual bool supportsPolyphonicModulation() { return false; }
 };
 } // namespace clap_juce_extensions
-
-namespace juce
-{
-class AudioProcessorParameter;
-class RangedAudioParameter;
-} // namespace juce
 
 /** JUCE parameter that could be ranged, or could extend the clap_juce_parameter_capabilities */
 struct JUCEParameterVariant

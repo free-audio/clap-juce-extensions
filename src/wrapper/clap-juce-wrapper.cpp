@@ -1084,7 +1084,12 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                 processor->processBlock(buffer, midiBuffer);
             }
 
-            if (processor->producesMidi())
+            if (processorAsClapExtensions && processorAsClapExtensions->supportsOutboundEvents())
+            {
+                processorAsClapExtensions->addOutboundEventsToQueue(process->out_events, midiBuffer,
+                                                                    n);
+            }
+            else if (processor->producesMidi())
             {
                 for (auto meta : midiBuffer)
                 {
