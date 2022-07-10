@@ -79,17 +79,33 @@ void GainPlugin::handleDirectEvent(const clap_event_header_t *event, int /*sampl
     // custom handling for parameter modulation events:
     auto paramModEvent = reinterpret_cast<const clap_event_param_mod *>(event);
     auto *parameterVariant = static_cast<JUCEParameterVariant *>(paramModEvent->cookie);
-    auto *modulatableParam =
-        reinterpret_cast<ModulatableFloatParameter *>(parameterVariant->processorParam);
 
-    if (paramModEvent->note_id >= 0)
+    if (auto *modulatableParam = parameterVariant->clapExtParameter)
     {
-        // no polyphonic modulation
-    }
-    else
-    {
-        if (modulatableParam->supportsMonophonicModulation())
+        if (paramModEvent->note_id >= 0)
+        {
+            if (!modulatableParam->supportsPolyphonicModulation())
+            {
+                // The host is misbehaving! The host should know that this parameter does not
+                // support polyphonic modulation, and should not have sent this event.
+                jassertfalse;
+                return;
+            }
+
+            // no polyphonic modulation at this time
+        }
+        else
+        {
+            if (!modulatableParam->supportsMonophonicModulation())
+            {
+                // The host is misbehaving! The host should know that this parameter does not
+                // support monophonic modulation, and should not have sent this event.
+                jassertfalse;
+                return;
+            }
+
             modulatableParam->applyMonophonicModulation(paramModEvent->amount);
+        }
     }
 }
 

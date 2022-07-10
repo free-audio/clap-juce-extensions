@@ -201,9 +201,17 @@ struct clap_juce_parameter_capabilities
      * Return true if this parameter should receive non-destructive
      * monophonic modulation rather than simple setValue when a DAW
      * initiated modulation changes. Requires you to implement
-     * clap_direct_process
+     * either clap_direct_process or handleDirectEvent.
      */
     virtual bool supportsMonophonicModulation() { return false; }
+
+    /**
+     * Since the `clap_juce_parameter_capabilities` can be accessed directly from the
+     * `cookie` attached to each parameter event, it can be convenient to implement this
+     * method for your modulation-capable parameters, so you can call this method directly,
+     * rather than having to up-cast to your custom parameter type.
+     */
+    virtual void applyMonophonicModulation(double /*amount*/) {}
 
     /*
      * Return true if this parameter should receive non-destructive
@@ -212,10 +220,21 @@ struct clap_juce_parameter_capabilities
      * voices are terminated.
      */
     virtual bool supportsPolyphonicModulation() { return false; }
+
+    /** Polyphonic version of applyMonophonicModulation(). */
+    virtual void applyPolyphonicModulation(int32_t /*note_id*/, int16_t /*port_index*/,
+                                           int16_t /*channel*/, int16_t /*key*/, double /*amount*/)
+    {
+    }
 };
 } // namespace clap_juce_extensions
 
-/** JUCE parameter that could be ranged, or could extend the clap_juce_parameter_capabilities */
+/**
+ * JUCE parameter that could be ranged, or could extend the clap_juce_parameter_capabilities.
+ *
+ * When handling CLAP parameter events (e.g. CLAP_EVENT_PARAM_VALUE or CLAP_EVENT_PARAM_MOD),
+ * the event `cookie` will be a `JUCEParameterVariant*`.
+ */
 struct JUCEParameterVariant
 {
     /** After the plugin has been initialized, this field should never be a nullptr! */

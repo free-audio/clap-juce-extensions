@@ -40,7 +40,7 @@ class ModulatableFloatParameter : public juce::AudioParameterFloat,
 
     bool supportsMonophonicModulation() override { return true; }
 
-    void applyMonophonicModulation(double modulationValue)
+    void applyMonophonicModulation(double modulationValue) override
     {
         modulationAmount = (float)modulationValue;
     }
