@@ -15,6 +15,12 @@
 /** Forward declaration of the wrapper class. */
 class ClapJuceWrapper;
 
+/** Forward declarations for any JUCE classes we might need. */
+namespace juce
+{
+class MidiBuffer;
+}
+
 namespace clap_juce_extensions
 {
 /*
@@ -113,13 +119,19 @@ struct clap_juce_audio_processor_capabilities
      * called after your `processBlock()` method, so that any outbound events can be
      * added to the output event queue.
      *
+     * NOTE: if your plugin produces MIDI, you must take care to make sure that any outgoing
+     * events which are not MIDI events are correctly interleaved with the outgoing events
+     * from the midiBuffer, such that all the events in the output queue are ordered sequentially.
+     *
      * @param out_events    The output event queue.
+     * @param midiBuffer    The JUCE MIDI Buffer from the previous `processBlock()` call.
      * @param sampleOffset  If the CLAP wrapper has split up the incoming buffer, then
      *                      you'll need to apply this sample offset to the timestamp of
      *                      the outgoing event. For example:
      *                      `auto eventTime = eventTimeRelativeToStartOfLastBlock + sampleOffset;`
      */
     virtual void addOutboundEventsToQueue(const clap_output_events * /*out_events*/,
+                                          const juce::MidiBuffer & /* midiBuffer */,
                                           int /*sampleOffset*/)
     {
     }
