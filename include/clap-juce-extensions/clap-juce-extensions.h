@@ -85,11 +85,11 @@ struct clap_juce_audio_processor_capabilities
      * - MIDI note on/off events
      * - MIDI CC events
      * - Parameter change events
+     * - Parameter modulation events
      *
-     * If you would like to handle these events using some custom behaviour, or
-     * if you would like to handle other CLAP events (e.g. parameter modulation or
-     * note expression), or events from another namespace, you should override
-     * this method to return true for those event types.
+     * If you would like to handle these events using some custom behaviour, or if you would like
+     * to handle other CLAP events (e.g. note expression), or events from another namespace, you
+     * should override this method to return true for those event types.
      *
      * @param space_id  The namespace ID for the given event.
      * @param type      The event type.
@@ -200,17 +200,11 @@ struct clap_juce_parameter_capabilities
     /*
      * Return true if this parameter should receive non-destructive
      * monophonic modulation rather than simple setValue when a DAW
-     * initiated modulation changes. Requires you to implement
-     * either clap_direct_process or handleDirectEvent.
+     * initiated modulation changes.
      */
     virtual bool supportsMonophonicModulation() { return false; }
 
-    /**
-     * Since the `clap_juce_parameter_capabilities` can be accessed directly from the
-     * `cookie` attached to each parameter event, it can be convenient to implement this
-     * method for your modulation-capable parameters, so you can call this method directly,
-     * rather than having to up-cast to your custom parameter type.
-     */
+    /** Implement this method to apply the parameter modulation event to your parameter. */
     virtual void applyMonophonicModulation(double /*amount*/) {}
 
     /*
@@ -221,7 +215,7 @@ struct clap_juce_parameter_capabilities
      */
     virtual bool supportsPolyphonicModulation() { return false; }
 
-    /** Polyphonic version of applyMonophonicModulation(). */
+    /** Implement this method to apply the parameter modulation event to your parameter. */
     virtual void applyPolyphonicModulation(int32_t /*note_id*/, int16_t /*port_index*/,
                                            int16_t /*channel*/, int16_t /*key*/, double /*amount*/)
     {
