@@ -125,6 +125,14 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 #define CLAP_ALWAYS_SPLIT_BLOCK 0
 #endif
 
+#define CLAP_USE_JUCE_PARAMETER_RANGES_OFF 0
+#define CLAP_USE_JUCE_PARAMETER_RANGES_DISCRETE 1
+#define CLAP_USE_JUCE_PARAMETER_RANGES_ALL 2
+
+#if !defined(CLAP_USE_JUCE_PARAMETER_RANGES)
+#define CLAP_USE_JUCE_PARAMETER_RANGES CLAP_USE_JUCE_PARAMETER_RANGES_OFF
+#endif
+
 // This is useful for debugging overrides
 // #undef CLAP_MISBEHAVIOUR_HANDLER_LEVEL
 // #define CLAP_MISBEHAVIOUR_HANDLER_LEVEL Terminate
@@ -199,7 +207,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
             jassert(allClapIDs.find(clapID) == allClapIDs.end());
             allClapIDs.insert(clapID);
-            paramPtrByClapID[clapID] = juceParam;
+            paramPtrByClapID[clapID] = JUCEParameterVariant{
+                juceParam, dynamic_cast<juce::RangedAudioParameter *>(juceParam),
+                dynamic_cast<clap_juce_extensions::clap_juce_parameter_capabilities *>(juceParam)};
             clapIDByParamPtr[juceParam] = clapID;
         }
     }
@@ -332,7 +342,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     }
 #endif
 
-    clap_id clapIdFromParameterIndex(int index)
+    clap_id clapIdFromParameterIndex(int index) const
     {
         auto pbi = juceParameters.getParamForIndex(index);
         auto pf = clapIDByParamPtr.find(pbi);
@@ -341,6 +351,46 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         auto id = generateClapIDForJuceParam(pbi); // a lookup obviously
         return id;
+    }
+
+    static float getUnNormalisedParameterValue(const JUCEParameterVariant &parameter, float value)
+    {
+#if CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_OFF
+        juce::ignoreUnused(parameter);
+        return value;
+#else
+        // The JUCE parameter gives us a value in the range [0, 1]
+        // but the CLAP host needs discrete parameters in the range [0, N]
+        auto *rangedParam = parameter.rangedParameter;
+#if CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_ALL
+        if (rangedParam)
+#elif CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_DISCRETE
+        if (rangedParam && parameter.processorParam->isDiscrete())
+#endif
+            return rangedParam->convertFrom0to1(value);
+
+        return value;
+#endif
+    }
+
+    static float getNormalisedParameterValue(const JUCEParameterVariant &parameter, float value)
+    {
+#if CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_OFF
+        juce::ignoreUnused(parameter);
+        return value;
+#else
+        // the CLAP host gives us the discrete parameter as [0, N],
+        // but we need to report the value to the JUCE parameter as [0, 1]
+        auto *rangedParam = parameter.rangedParameter;
+#if CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_ALL
+        if (rangedParam)
+#elif CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_DISCRETE
+        if (rangedParam && parameter.processorParam->isDiscrete())
+#endif
+            return rangedParam->convertTo0to1(value);
+
+        return value;
+#endif
     }
 
     bool supressParameterChangeMessages{false};
@@ -364,6 +414,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             return;
 
         auto id = clapIdFromParameterIndex(index);
+        newValue = getUnNormalisedParameterValue(paramPtrByClapID[id], newValue);
         uiParamChangeQ.push({CLAP_EVENT_PARAM_VALUE, 0, id, newValue});
 
         if (_host.canUseParams())
@@ -373,8 +424,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     void audioProcessorParameterChangeGestureBegin(juce::AudioProcessor *, int index) override
     {
         auto id = clapIdFromParameterIndex(index);
-        auto p = paramPtrByClapID[id];
-        uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_BEGIN, 0, id, p->getValue()});
+        auto &pbi = paramPtrByClapID[id];
+        auto value = getUnNormalisedParameterValue(pbi, pbi.processorParam->getValue());
+        uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_BEGIN, 0, id, value});
 
         if (_host.canUseParams())
             _host.paramsRequestFlush();
@@ -383,8 +435,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     void audioProcessorParameterChangeGestureEnd(juce::AudioProcessor *, int index) override
     {
         auto id = clapIdFromParameterIndex(index);
-        auto p = paramPtrByClapID[id];
-        uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_END, 0, id, p->getValue()});
+        auto &pbi = paramPtrByClapID[id];
+        auto value = getUnNormalisedParameterValue(pbi, pbi.processorParam->getValue());
+        uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_END, 0, id, value});
 
         if (_host.canUseParams())
             _host.paramsRequestFlush();
@@ -685,9 +738,12 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     uint32_t paramsCount() const noexcept override { return (uint32_t)allClapIDs.size(); }
     bool paramsInfo(uint32_t paramIndex, clap_param_info *info) const noexcept override
     {
-        auto pbi = juceParameters.getParamForIndex((int)paramIndex);
+        const auto paramID = clapIdFromParameterIndex((int)paramIndex);
+        auto &paramVariant = paramPtrByClapID.at(paramID);
 
-        auto *parameterGroup = processor->getParameterTree().getGroupsForParameter(pbi).getLast();
+        auto *parameterGroup = processor->getParameterTree()
+                                   .getGroupsForParameter(paramVariant.processorParam)
+                                   .getLast();
         juce::String group = "";
         while (parameterGroup && parameterGroup->getParent() &&
                parameterGroup->getParent()->getName().isNotEmpty())
@@ -700,28 +756,50 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             group = "/" + group;
 
         // Fixme - using parameter groups here would be lovely but until then
-        info->id = generateClapIDForJuceParam(pbi);
-        strncpy(info->name, (pbi->getName(CLAP_NAME_SIZE)).toRawUTF8(), CLAP_NAME_SIZE);
+        info->id = paramID;
+        strncpy(info->name, (paramVariant.processorParam->getName(CLAP_NAME_SIZE)).toRawUTF8(),
+                CLAP_NAME_SIZE);
         strncpy(info->module, group.toRawUTF8(), CLAP_NAME_SIZE);
 
-        info->min_value = 0; // FIXME
-        info->max_value = 1;
-        info->default_value = pbi->getDefaultValue();
-        info->cookie = pbi;
+#if CLAP_USE_JUCE_PARAMETER_RANGES != CLAP_USE_JUCE_PARAMETER_RANGES_OFF
+        // For discrete parameters, JUCE uses ranges [0, N], so we'll report that
+        // range to the CLAP host. For non-discrete parameters, we'll report a [0, 1]
+        // range and let the parameter's normalisable range take care of everything.
+        auto *rangedParam = paramVariant.rangedParameter;
+#if CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_ALL
+        if (rangedParam)
+#elif CLAP_USE_JUCE_PARAMETER_RANGES == CLAP_USE_JUCE_PARAMETER_RANGES_DISCRETE
+        if (rangedParam && paramVariant.processorParam->isDiscrete())
+#endif
+        {
+            info->min_value = rangedParam->getNormalisableRange().start;
+            info->max_value = rangedParam->getNormalisableRange().end;
+            info->default_value =
+                rangedParam->convertFrom0to1(paramVariant.processorParam->getDefaultValue());
+        }
+        else
+#endif
+        {
+            info->min_value = 0.0;
+            info->max_value = 1.0;
+            info->default_value = paramVariant.processorParam->getDefaultValue();
+        }
+
+        info->cookie = const_cast<JUCEParameterVariant *>(&paramVariant);
         info->flags = 0;
 
         jassert(paramPtrByClapID.find(info->id) != paramPtrByClapID.end());
-        jassert(paramPtrByClapID.find(info->id)->second == info->cookie);
+        jassert(&paramPtrByClapID.find(info->id)->second == info->cookie);
 
-        if (pbi->isAutomatable())
+        if (paramVariant.processorParam->isAutomatable())
             info->flags = info->flags | CLAP_PARAM_IS_AUTOMATABLE;
 
-        if (pbi->isBoolean() || pbi->isDiscrete())
+        if (paramVariant.processorParam->isBoolean() || paramVariant.processorParam->isDiscrete())
         {
             info->flags = info->flags | CLAP_PARAM_IS_STEPPED;
         }
 
-        auto cpc = dynamic_cast<clap_juce_extensions::clap_juce_parameter_capabilities *>(pbi);
+        auto *cpc = paramVariant.clapExtParameter;
         if (cpc)
         {
             if (cpc->supportsMonophonicModulation())
@@ -743,7 +821,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     bool paramsValue(clap_id paramId, double *value) noexcept override
     {
         auto pbi = paramPtrByClapID[paramId];
-        *value = pbi->getValue();
+        *value = getUnNormalisedParameterValue(pbi, pbi.processorParam->getValue());
         return true;
     }
 
@@ -751,9 +829,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                            uint32_t size) noexcept override
     {
         auto pbi = paramPtrByClapID[paramId];
+        value = (double)getNormalisedParameterValue(pbi, (float)value);
+
         if (!usingLegacyParameterAPI)
         {
-            auto res = pbi->getText((float)value, (int)size);
+            auto res = pbi.processorParam->getText((float)value, (int)size);
             strncpy(display, res.toStdString().c_str(), size);
         }
         else
@@ -762,7 +842,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
              * This is really unsatisfactory but we have very little choice in the
              * event that the JUCE parameter mode is more or less like a VST2
              */
-            auto res = pbi->getCurrentValueAsText();
+            auto res = pbi.processorParam->getCurrentValueAsText();
             strncpy(display, res.toStdString().c_str(), size);
         }
 
@@ -772,7 +852,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     bool paramsTextToValue(clap_id paramId, const char *display, double *value) noexcept override
     {
         auto pbi = paramPtrByClapID[paramId];
-        *value = pbi->getValueForText(display);
+        *value = (double)getUnNormalisedParameterValue(
+            pbi, pbi.processorParam->getValueForText(display));
         return true;
     }
 
@@ -780,23 +861,24 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     {
         auto nf = paramEvent->value;
         jassert(paramPtrByClapID.find(paramEvent->param_id) != paramPtrByClapID.end());
-        jassert(paramPtrByClapID.find(paramEvent->param_id)->second == paramEvent->cookie);
+        jassert(&paramPtrByClapID.find(paramEvent->param_id)->second == paramEvent->cookie);
 
-        auto jp = static_cast<juce::AudioProcessorParameter *>(paramEvent->cookie);
-
+        auto jp = static_cast<JUCEParameterVariant *>(paramEvent->cookie);
         paramSetValueAndNotifyIfChanged(*jp, (float)nf);
     }
 
-    void paramSetValueAndNotifyIfChanged(juce::AudioProcessorParameter &param, float newValue)
+    void paramSetValueAndNotifyIfChanged(JUCEParameterVariant &param, float newValue)
     {
-        if (param.getValue() == newValue)
+        newValue = getNormalisedParameterValue(param, newValue);
+
+        if (param.processorParam->getValue() == newValue)
             return;
 
-        param.setValue(newValue);
+        param.processorParam->setValue(newValue);
 
         // we want to trigger the parameter listener callbacks on the main thread,
         // but MessageManager::callAsync is not safe to call from the audio thread.
-        audioThreadParamListenerQ.push(ParamListenerCall{&param, newValue});
+        audioThreadParamListenerQ.push(ParamListenerCall{param.processorParam, newValue});
         _host.requestCallback();
     }
 
@@ -1420,7 +1502,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
      * Various maps for ID lookups
      */
     // clap_id to param *
-    std::unordered_map<clap_id, juce::AudioProcessorParameter *> paramPtrByClapID;
+    std::unordered_map<clap_id, JUCEParameterVariant> paramPtrByClapID;
     // param * to clap_id
     std::unordered_map<juce::AudioProcessorParameter *, clap_id> clapIDByParamPtr;
     // Every id we have issued

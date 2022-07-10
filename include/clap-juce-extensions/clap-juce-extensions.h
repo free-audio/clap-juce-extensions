@@ -91,7 +91,7 @@ struct clap_juce_audio_processor_capabilities
     /**
      * If your plugin returns true for supportsDirectEvent, then you'll need to
      * implement this method to actually handle that event when it comes along.
-     * 
+     *
      * @param event         The header for the incoming event.
      * @param sampleOffset  If the CLAP wrapper has split up the incoming buffer (e.g. to
      *                      apply sample-accurate automation), then you'll need to apply
@@ -178,5 +178,22 @@ struct clap_juce_parameter_capabilities
     virtual bool supportsPolyphonicModulation() { return false; }
 };
 } // namespace clap_juce_extensions
+
+namespace juce
+{
+class AudioProcessorParameter;
+class RangedAudioParameter;
+} // namespace juce
+
+/** JUCE parameter that could be ranged, or could extend the clap_juce_parameter_capabilities */
+struct JUCEParameterVariant
+{
+    /** After the plugin has been initialized, this field should never be a nullptr! */
+    juce::AudioProcessorParameter *processorParam = nullptr;
+
+    /** Depending on the underlying parameter type, these could be nullptr. */
+    juce::RangedAudioParameter *rangedParameter = nullptr;
+    clap_juce_extensions::clap_juce_parameter_capabilities *clapExtParameter = nullptr;
+};
 
 #endif // SURGE_CLAP_JUCE_EXTENSIONS_H
