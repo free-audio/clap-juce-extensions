@@ -197,6 +197,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         {
             uint32_t clapID = generateClapIDForJuceParam(juceParam);
 
+            jassert(allClapIDs.find(clapID) == allClapIDs.end());
             allClapIDs.insert(clapID);
             paramPtrByClapID[clapID] = juceParam;
             clapIDByParamPtr[juceParam] = clapID;
@@ -364,6 +365,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         auto id = clapIdFromParameterIndex(index);
         uiParamChangeQ.push({CLAP_EVENT_PARAM_VALUE, 0, id, newValue});
+        _host.paramsRequestFlush();
     }
 
     void audioProcessorParameterChangeGestureBegin(juce::AudioProcessor *, int index) override
@@ -371,6 +373,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         auto id = clapIdFromParameterIndex(index);
         auto p = paramPtrByClapID[id];
         uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_BEGIN, 0, id, p->getValue()});
+        _host.paramsRequestFlush();
     }
 
     void audioProcessorParameterChangeGestureEnd(juce::AudioProcessor *, int index) override
@@ -378,6 +381,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         auto id = clapIdFromParameterIndex(index);
         auto p = paramPtrByClapID[id];
         uiParamChangeQ.push({CLAP_EVENT_PARAM_GESTURE_END, 0, id, p->getValue()});
+        _host.paramsRequestFlush();
     }
 
 #if JUCE_VERSION < 0x070000
@@ -700,6 +704,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         info->cookie = pbi;
         info->flags = 0;
 
+        jassert(paramPtrByClapID.find(info->id) != paramPtrByClapID.end());
+        jassert(paramPtrByClapID.find(info->id)->second == info->cookie);
+
         if (pbi->isAutomatable())
             info->flags = info->flags | CLAP_PARAM_IS_AUTOMATABLE;
 
@@ -836,37 +843,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         if (processorAsClapProperties)
             processorAsClapProperties->clap_transport = process->transport;
 
-        auto pc = ParamChange();
         auto ov = process->out_events;
-
-        while (uiParamChangeQ.pop(pc))
-        {
-            if (pc.type == CLAP_EVENT_PARAM_VALUE)
-            {
-                auto evt = clap_event_param_value();
-                evt.header.size = sizeof(clap_event_param_value);
-                evt.header.type = (uint16_t)CLAP_EVENT_PARAM_VALUE;
-                evt.header.time = 0; // for now
-                evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-                evt.header.flags = (uint32_t)pc.flag;
-                evt.param_id = pc.id;
-                evt.value = pc.newval;
-                ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
-            }
-
-            if (pc.type == CLAP_EVENT_PARAM_GESTURE_END ||
-                pc.type == CLAP_EVENT_PARAM_GESTURE_BEGIN)
-            {
-                auto evt = clap_event_param_gesture();
-                evt.header.size = sizeof(clap_event_param_gesture);
-                evt.header.type = (uint16_t)pc.type;
-                evt.header.time = 0; // for now
-                evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-                evt.header.flags = (uint32_t)pc.flag;
-                evt.param_id = pc.id;
-                ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
-            }
-        }
+        pushUIQueueToOutputEvents(ov);
 
         if (processorAsClapExtensions && processorAsClapExtensions->supportsDirectProcess())
             return processorAsClapExtensions->clap_direct_process(process);
@@ -1049,6 +1027,49 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return CLAP_PROCESS_CONTINUE;
     }
 
+    void paramsFlush(const clap_input_events *in, const clap_output_events *out) noexcept override
+    {
+        pushUIQueueToOutputEvents(out);
+
+        uint32_t sz = in->size(in);
+        for (uint32_t i=0; i<sz; ++i)
+        {
+            auto ev = in->get(in, i);
+            process_clap_event(ev, 0); // 0 since there is no block decomp in flush
+        }
+    }
+
+    void pushUIQueueToOutputEvents(const clap_output_events_t *ov) {
+        auto pc = ParamChange();
+        while (uiParamChangeQ.pop(pc))
+        {
+            if (pc.type == CLAP_EVENT_PARAM_VALUE)
+            {
+                auto evt = clap_event_param_value();
+                evt.header.size = sizeof(clap_event_param_value);
+                evt.header.type = (uint16_t)CLAP_EVENT_PARAM_VALUE;
+                evt.header.time = 0; // for now
+                evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+                evt.header.flags = (uint32_t)pc.flag;
+                evt.param_id = pc.id;
+                evt.value = pc.newval;
+                ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
+            }
+
+            if (pc.type == CLAP_EVENT_PARAM_GESTURE_END ||
+                pc.type == CLAP_EVENT_PARAM_GESTURE_BEGIN)
+            {
+                auto evt = clap_event_param_gesture();
+                evt.header.size = sizeof(clap_event_param_gesture);
+                evt.header.type = (uint16_t)pc.type;
+                evt.header.time = 0; // for now
+                evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+                evt.header.flags = (uint32_t)pc.flag;
+                evt.param_id = pc.id;
+                ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
+            }
+        }
+    }
     void process_clap_event(const clap_event_header_t *event, int sampleOffset)
     {
         if (processorAsClapExtensions &&
@@ -1298,8 +1319,19 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         processor->getStateInformation(chunkMemory);
 
-        auto written = stream->write(stream, chunkMemory.getData(), chunkMemory.getSize());
-        return written == (int64_t)chunkMemory.getSize();
+        auto dat = (uint8_t *)chunkMemory.getData();
+        auto sz = chunkMemory.getSize();
+        while (sz > 0)
+        {
+            auto written = stream->write(stream, dat, sz);
+            if (written < 0)
+            {
+                return false;
+            }
+            dat += written;
+            sz -= written;
+        }
+        return sz == 0;
     }
     bool stateLoad(const clap_istream *stream) noexcept override
     {
@@ -1403,6 +1435,7 @@ clap_plugin_descriptor ClapJuceWrapper::desc = {CLAP_VERSION,
                                                 JucePlugin_VersionString,
                                                 JucePlugin_Desc,
                                                 features};
+
 
 JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wredundant-decls")
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter();
