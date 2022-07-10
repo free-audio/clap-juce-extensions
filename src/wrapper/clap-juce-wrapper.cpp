@@ -1032,14 +1032,15 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         pushUIQueueToOutputEvents(out);
 
         uint32_t sz = in->size(in);
-        for (uint32_t i=0; i<sz; ++i)
+        for (uint32_t i = 0; i < sz; ++i)
         {
             auto ev = in->get(in, i);
             process_clap_event(ev, 0); // 0 since there is no block decomp in flush
         }
     }
 
-    void pushUIQueueToOutputEvents(const clap_output_events_t *ov) {
+    void pushUIQueueToOutputEvents(const clap_output_events_t *ov)
+    {
         auto pc = ParamChange();
         while (uiParamChangeQ.pop(pc))
         {
@@ -1133,7 +1134,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         break;
         default:
         {
-            DBG("Unknown message type " << (int)event->type);
+            DBG("Unknown CLAP Event type " << (int)event->type);
             // In theory I should never get this.
             // jassertfalse
         }
@@ -1321,7 +1322,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         auto dat = (uint8_t *)chunkMemory.getData();
         auto sz = chunkMemory.getSize();
-        while (sz > 0)
+        auto sofar = 0U;
+        while (sofar < sz)
         {
             auto written = stream->write(stream, dat, sz);
             if (written < 0)
@@ -1329,9 +1331,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                 return false;
             }
             dat += written;
-            sz -= written;
+            sofar += (uint32_t)written;
         }
-        return sz == 0;
+        return sz == sofar;
     }
     bool stateLoad(const clap_istream *stream) noexcept override
     {
@@ -1435,7 +1437,6 @@ clap_plugin_descriptor ClapJuceWrapper::desc = {CLAP_VERSION,
                                                 JucePlugin_VersionString,
                                                 JucePlugin_Desc,
                                                 features};
-
 
 JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wredundant-decls")
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter();
