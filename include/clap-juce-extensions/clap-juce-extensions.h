@@ -19,7 +19,9 @@ class ClapJuceWrapper;
 namespace juce
 {
 class MidiBuffer;
-}
+class AudioProcessorParameter;
+class RangedAudioParameter;
+} // namespace juce
 
 namespace clap_juce_extensions
 {
@@ -212,12 +214,6 @@ struct clap_juce_parameter_capabilities
     virtual bool supportsPolyphonicModulation() { return false; }
 };
 } // namespace clap_juce_extensions
-
-namespace juce
-{
-class AudioProcessorParameter;
-class RangedAudioParameter;
-} // namespace juce
 
 /** JUCE parameter that could be ranged, or could extend the clap_juce_parameter_capabilities */
 struct JUCEParameterVariant
