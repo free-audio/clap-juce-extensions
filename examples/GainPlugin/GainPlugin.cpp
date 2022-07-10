@@ -59,56 +59,6 @@ void GainPlugin::processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer
     gain.process(juce::dsp::ProcessContextReplacing<float>{block});
 }
 
-// bool GainPlugin::supportsDirectEvent(uint16_t space_id, uint16_t type)
-//{
-//     if (space_id != CLAP_CORE_EVENT_SPACE_ID)
-//         return false;
-//
-//     return type == CLAP_EVENT_PARAM_MOD; // custom handling for parameter modulation events only
-// }
-//
-// void GainPlugin::handleDirectEvent(const clap_event_header_t *event, int /*sampleOffset*/)
-//{
-//     if (event->space_id != CLAP_CORE_EVENT_SPACE_ID || event->type != CLAP_EVENT_PARAM_MOD)
-//     {
-//         // we should not be receiving events of this type!
-//         jassertfalse;
-//         return;
-//     }
-//
-//     // custom handling for parameter modulation events:
-//     auto paramModEvent = reinterpret_cast<const clap_event_param_mod *>(event);
-//     auto *parameterVariant = static_cast<JUCEParameterVariant *>(paramModEvent->cookie);
-//
-//     if (auto *modulatableParam = parameterVariant->clapExtParameter)
-//     {
-//         if (paramModEvent->note_id >= 0)
-//         {
-//             if (!modulatableParam->supportsPolyphonicModulation())
-//             {
-//                 // The host is misbehaving! The host should know that this parameter does not
-//                 // support polyphonic modulation, and should not have sent this event.
-//                 jassertfalse;
-//                 return;
-//             }
-//
-//             // no polyphonic modulation at this time
-//         }
-//         else
-//         {
-//             if (!modulatableParam->supportsMonophonicModulation())
-//             {
-//                 // The host is misbehaving! The host should know that this parameter does not
-//                 // support monophonic modulation, and should not have sent this event.
-//                 jassertfalse;
-//                 return;
-//             }
-//
-//             modulatableParam->applyMonophonicModulation(paramModEvent->amount);
-//         }
-//     }
-// }
-
 juce::AudioProcessorEditor *GainPlugin::createEditor() { return new PluginEditor(*this); }
 
 juce::String GainPlugin::getPluginTypeString() const

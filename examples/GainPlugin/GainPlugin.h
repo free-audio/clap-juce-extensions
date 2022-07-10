@@ -32,9 +32,6 @@ class GainPlugin : public juce::AudioProcessor,
     void processBlock(juce::AudioBuffer<float> &, juce::MidiBuffer &) override;
     void processBlock(juce::AudioBuffer<double> &, juce::MidiBuffer &) override {}
 
-    //    bool supportsDirectEvent(uint16_t space_id, uint16_t type) override;
-    //    void handleDirectEvent(const clap_event_header_t *event, int sampleOffset) override;
-
     bool hasEditor() const override { return true; }
     juce::AudioProcessorEditor *createEditor() override;
 
