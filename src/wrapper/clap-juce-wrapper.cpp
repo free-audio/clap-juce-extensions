@@ -1325,7 +1325,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         auto sofar = 0U;
         while (sofar < sz)
         {
-            auto written = stream->write(stream, dat, sz);
+            auto written = stream->write(stream, dat, (uint32_t)((int)sz - sofar));
             if (written < 0)
             {
                 return false;
