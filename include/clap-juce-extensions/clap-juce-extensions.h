@@ -54,6 +54,8 @@ struct clap_properties
  */
 struct clap_juce_audio_processor_capabilities
 {
+    virtual ~clap_juce_audio_processor_capabilities() = default;
+
     /*
      * In some cases, there is no main input, and input 0 is not main. Allow your plugin
      * to advertise that. (This case is usually for synths with sidechains).
@@ -197,6 +199,8 @@ struct clap_juce_audio_processor_capabilities
  */
 struct clap_juce_parameter_capabilities
 {
+    virtual ~clap_juce_parameter_capabilities() = default;
+
     /*
      * Return true if this parameter should receive non-destructive
      * monophonic modulation rather than simple setValue when a DAW
@@ -208,10 +212,10 @@ struct clap_juce_parameter_capabilities
     virtual void applyMonophonicModulation(double /*amount*/) {}
 
     /*
-     * Return true if this parameter should receive non-destructive
-     * polyphonic modulation. As well as supporting the monophonic case
-     * this also requires your process to return note end events when
-     * voices are terminated.
+     * Return true if this parameter should receive non-destructive polyphonic modulation. If this
+     * method returns true, then the host will also expect that the paramter can handle monophonic
+     * modulation. Additionally, your plugin must return note end events when notes are terminated,
+     * by implementing either `addOutboundEventsToQueue()` or `clap_direct_process()`.
      */
     virtual bool supportsPolyphonicModulation() { return false; }
 
