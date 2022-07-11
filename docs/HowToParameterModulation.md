@@ -1,9 +1,7 @@
 # How To: Parameter Modulation
 
 One of the most exciting features available to CLAP plugins is
-non-destructive parameter modulation:
-
-<iframe width="560" height="315" src="https://www.youtube.com/embed/B2mywWyI9es" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+[non-destructive parameter modulation](https://www.youtube.com/embed/B2mywWyI9es).
 
 If you're using this repository to build your JUCE-based plugin as a CLAP,
 you may be wondering how to get parameter modulation working with your plugin.
