@@ -54,6 +54,8 @@ struct clap_properties
  */
 struct clap_juce_audio_processor_capabilities
 {
+    virtual ~clap_juce_audio_processor_capabilities() = default;
+
     /*
      * In some cases, there is no main input, and input 0 is not main. Allow your plugin
      * to advertise that. (This case is usually for synths with sidechains).
@@ -85,11 +87,11 @@ struct clap_juce_audio_processor_capabilities
      * - MIDI note on/off events
      * - MIDI CC events
      * - Parameter change events
+     * - Parameter modulation events
      *
-     * If you would like to handle these events using some custom behaviour, or
-     * if you would like to handle other CLAP events (e.g. parameter modulation or
-     * note expression), or events from another namespace, you should override
-     * this method to return true for those event types.
+     * If you would like to handle these events using some custom behaviour, or if you would like
+     * to handle other CLAP events (e.g. note expression), or events from another namespace, you
+     * should override this method to return true for those event types.
      *
      * @param space_id  The namespace ID for the given event.
      * @param type      The event type.
@@ -197,25 +199,40 @@ struct clap_juce_audio_processor_capabilities
  */
 struct clap_juce_parameter_capabilities
 {
+    virtual ~clap_juce_parameter_capabilities() = default;
+
     /*
      * Return true if this parameter should receive non-destructive
      * monophonic modulation rather than simple setValue when a DAW
-     * initiated modulation changes. Requires you to implement
-     * clap_direct_process
+     * initiated modulation changes.
      */
     virtual bool supportsMonophonicModulation() { return false; }
 
+    /** Implement this method to apply the parameter modulation event to your parameter. */
+    virtual void applyMonophonicModulation(double /*amount*/) {}
+
     /*
-     * Return true if this parameter should receive non-destructive
-     * polyphonic modulation. As well as supporting the monophonic case
-     * this also requires your process to return note end events when
-     * voices are terminated.
+     * Return true if this parameter should receive non-destructive polyphonic modulation. If this
+     * method returns true, then the host will also expect that the paramter can handle monophonic
+     * modulation. Additionally, your plugin must return note end events when notes are terminated,
+     * by implementing either `addOutboundEventsToQueue()` or `clap_direct_process()`.
      */
     virtual bool supportsPolyphonicModulation() { return false; }
+
+    /** Implement this method to apply the parameter modulation event to your parameter. */
+    virtual void applyPolyphonicModulation(int32_t /*note_id*/, int16_t /*port_index*/,
+                                           int16_t /*channel*/, int16_t /*key*/, double /*amount*/)
+    {
+    }
 };
 } // namespace clap_juce_extensions
 
-/** JUCE parameter that could be ranged, or could extend the clap_juce_parameter_capabilities */
+/**
+ * JUCE parameter that could be ranged, or could extend the clap_juce_parameter_capabilities.
+ *
+ * When handling CLAP parameter events (e.g. CLAP_EVENT_PARAM_VALUE or CLAP_EVENT_PARAM_MOD),
+ * the event `cookie` will be a `JUCEParameterVariant*`.
+ */
 struct JUCEParameterVariant
 {
     /** After the plugin has been initialized, this field should never be a nullptr! */

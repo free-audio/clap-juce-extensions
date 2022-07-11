@@ -1219,7 +1219,44 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         break;
         case CLAP_EVENT_PARAM_MOD:
         {
-            // no way to handle this with built-in JUCE parameter mechanisms
+            auto paramModEvent = reinterpret_cast<const clap_event_param_mod *>(event);
+            auto *parameterVariant = static_cast<JUCEParameterVariant *>(paramModEvent->cookie);
+
+            if (auto *modulatableParam = parameterVariant->clapExtParameter)
+            {
+                if (paramModEvent->note_id >= 0)
+                {
+                    if (!modulatableParam->supportsPolyphonicModulation())
+                    {
+                        // The host is misbehaving! The host should know that this parameter does
+                        // not support polyphonic modulation, and should not have sent this event.
+                        jassertfalse;
+                        return;
+                    }
+
+                    modulatableParam->applyPolyphonicModulation(
+                        paramModEvent->note_id, paramModEvent->port_index, paramModEvent->channel,
+                        paramModEvent->key, paramModEvent->amount);
+                }
+                else
+                {
+                    if (!modulatableParam->supportsMonophonicModulation())
+                    {
+                        // The host is misbehaving! The host should know that this parameter does
+                        // not support monophonic modulation, and should not have sent this event.
+                        jassertfalse;
+                        return;
+                    }
+
+                    modulatableParam->applyMonophonicModulation(paramModEvent->amount);
+                }
+            }
+            else
+            {
+                // The host sent a parameter modulation event for a parameter that doesn't implement
+                // clap_juce_parameter_capablities? Something must have gone wrong!
+                jassertfalse;
+            }
         }
         break;
         case CLAP_EVENT_NOTE_END:
