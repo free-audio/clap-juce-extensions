@@ -11,6 +11,11 @@ It is worth repeating that if JUCE implements CLAP support "natively"
 in the future, it is unlikely that the approach outlined here would be
 compatible with that implementation.
 
+Note that the workflow below pre-supposes that your plugin uses the modern
+JUCE parameter classes. If your plugin is using JUCE's "legacy" parameter
+mechanisms, then the CLAP JUCE wrapper cannot support parameter modulation
+(although regular parameter functionality will still work).
+
 ## Monophonic Modulation
 
 For audio effects, monophonic synthesizers, and global parameters on
@@ -62,10 +67,10 @@ public:
 Any parameters in your plugin that should support non-destructuve modulation
 should be derived from your custom parameter class. It's also important to
 make sure that when accessing the parameter's value (for example, in your
-`processBlock()` method), that you are calling `getCurrentValue()`, rather
-than using the standard JUCE parameter APIs for getting the parameter value,
-otherwise the processor will be using the un-modulated value of the parameter.
-Notably, this constraint includes
+`processBlock()` method), that you are calling `getCurrentValue()` (or the
+equivalent in your code), rather than using the standard JUCE parameter APIs
+for getting the parameter value, otherwise the processor will be using the
+un-modulated value of the parameter. Notably, this constraint includes
 `juce::AudioProcessorValueTreeState::getRawParameterValue()`.
 
 4. Add `CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES` to your CLAP CMake arguments.
@@ -192,8 +197,8 @@ public:
     void addOutboundEventsToQueue(const clap_output_events *out_events,
                                   const juce::MidiBuffer &midiBuffer, int sampleOffset) override
     {
-        // notesThatEndedDuringLastBlock is a container that holds information
-        // for all the notes that ended during the previous `processBlock()`
+        // Assuming the plugin has implemented some container `notesThatEndedDuringLastBlock`
+        // to hold information for all the notes that ended during the previous `processBlock()`
         for (auto& noteEndEvent : notesThatEndedDuringLastBlock)
         {
             auto evt = clap_event_note();
@@ -230,3 +235,10 @@ Any MIDI events in the `juce::MidiBuffer` which is passed to
 queue, however, since all the events in the queue need to be ordered sequentially, 
 the implementer may need to "interleave" the note end events with the MIDI events
 in order to make sure all the events are in the correct order.
+
+## Troubleshooting
+
+If you run into difficulties when trying to implement parameter modulation in your
+plugin, please create a GitHub Issue in this repo. If the wrapper API for supporting
+parameter modulation appears to be incomplete, Pull Requests for improving the API
+are welcome!
