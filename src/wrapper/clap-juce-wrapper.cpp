@@ -1126,6 +1126,15 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     {
         pushUIQueueToOutputEvents(out);
 
+        if (processorAsClapExtensions)
+        {
+            if (processorAsClapExtensions->supportsDirectParamsFlush())
+            {
+                processorAsClapExtensions->clap_direct_paramsFlush(in, out);
+                return;
+            }
+        }
+
         uint32_t sz = in->size(in);
         for (uint32_t i = 0; i < sz; ++i)
         {
