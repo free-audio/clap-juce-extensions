@@ -154,11 +154,19 @@ struct clap_juce_audio_processor_capabilities
      * In this mode, it is the synth designer responsibility to implement clap_direct_process
      * side by side with AudioProcessor::processBlock to use the CLAP api and synth internals
      * directly.
+     *
+     * In order to do this, you almost definitely need to both implement clap_direct_process and
+     * clap_direct_paramsFlush
      */
     virtual bool supportsDirectProcess() { return false; }
     virtual clap_process_status clap_direct_process(const clap_process * /*process*/) noexcept
     {
         return CLAP_PROCESS_CONTINUE;
+    }
+    virtual bool supportsDirectParamsFlush() { return false; }
+    virtual void clap_direct_paramsFlush(const clap_input_events * /*in*/,
+                                         const clap_output_events * /*out*/) noexcept
+    {
     }
 
     /**
