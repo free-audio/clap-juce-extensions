@@ -26,9 +26,15 @@ as follows.
     - For a CMake project, this can be done by adding
       `target_link_libraries(MyPlugin PUBLIC clap_juce_extensions)`
       to your CMake configuration.
-    - For a Projucer project, the user will need to add
-      `path/to/clap-juce-extensions/include` to the header
-      search paths.
+    - For a Projucer project, the user will need to add the
+      following include paths to your Projucer configuration:
+      - `path/to/clap-juce-extensions/include`
+      - `path/to/clap-juce-extensions/clap-libs/clap/include`
+      - `path/to/clap-juce-extensions/clap-libs/clap-helpers/include`
+
+      You'll also need to add the following file to your Projucer
+      source files:
+      - `path/to/clap-juce-extensions/src/extensions/clap-juce-extensions.cpp`
 
 2. Implement a custom parameter type, derived from
    `clap_juce_extensions::clap_juce_parameter_capabilities`.
