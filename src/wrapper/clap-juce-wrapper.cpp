@@ -811,7 +811,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                 info->flags =
                     info->flags | CLAP_PARAM_IS_MODULATABLE |
                     CLAP_PARAM_IS_MODULATABLE_PER_CHANNEL | CLAP_PARAM_IS_MODULATABLE_PER_KEY |
-                    CLAP_PARAM_IS_AUTOMATABLE_PER_NOTE_ID | CLAP_PARAM_IS_AUTOMATABLE_PER_PORT;
+                    CLAP_PARAM_IS_MODULATABLE_PER_NOTE_ID | CLAP_PARAM_IS_MODULATABLE_PER_PORT;
             }
         }
 
