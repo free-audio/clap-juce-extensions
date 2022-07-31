@@ -900,7 +900,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     }
 
     bool implementsTail() const noexcept override { return true; }
-    uint32_t tailGet(const clap_plugin_t *) const noexcept override
+    uint32_t tailGet() const noexcept override
     {
         return uint32_t(
             juce::roundToIntAccurate((double)sampleRate() * processor->getTailLengthSeconds()));
