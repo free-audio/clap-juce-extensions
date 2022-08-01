@@ -902,6 +902,20 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     bool implementsTail() const noexcept override { return true; }
     uint32_t tailGet() const noexcept override
     {
+        /*
+         * 'tailGet' is currently [mainthread audiothread] but I think it should be
+         * [ main, audio, active ] since you need to be active to get a sampleRate.
+         * Moreover, sampleRate() has an assert which in debug builds corectly fails
+         * if not active. So if this is called !isActive, which the spec allows with 1.1.1,
+         * we need to do something. We can return 0 or INT32_MAX + 1 (the spec indication for
+         * infinity) but my guess is 0 is a safer choice in this condition.
+         */
+        if (!isActive())
+        {
+            jassertfalse;
+            return 0;
+        }
+
         return uint32_t(
             juce::roundToIntAccurate((double)sampleRate() * processor->getTailLengthSeconds()));
     }
