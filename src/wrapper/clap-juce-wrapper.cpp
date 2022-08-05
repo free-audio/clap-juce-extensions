@@ -551,7 +551,15 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             DBG("Host cannot support thread check. Using atomic guard for param feedback.");
         }
 
+        if (processorAsClapProperties)
+            processorAsClapProperties->is_clap_state_active = true;
         return true;
+    }
+
+    void deactivate() noexcept override
+    {
+        if (processorAsClapProperties)
+            processorAsClapProperties->is_clap_state_active = true;
     }
 
     /* CLAP API */
@@ -577,6 +585,22 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         juce::ignoreUnused(success);
     }
 
+  protected:
+    bool startProcessing() noexcept override
+    {
+        if (processorAsClapProperties)
+            processorAsClapProperties->is_clap_state_processing = true;
+        return Plugin::startProcessing();
+    }
+
+    void stopProcessing() noexcept override
+    {
+        if (processorAsClapProperties)
+            processorAsClapProperties->is_clap_state_processing = false;
+        Plugin::startProcessing();
+    }
+
+  public:
     bool implementsAudioPorts() const noexcept override { return true; }
     uint32_t audioPortsCount(bool isInput) const noexcept override
     {
