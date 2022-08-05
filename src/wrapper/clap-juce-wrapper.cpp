@@ -559,7 +559,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     void deactivate() noexcept override
     {
         if (processorAsClapProperties)
-            processorAsClapProperties->is_clap_state_active = true;
+            processorAsClapProperties->is_clap_state_active = false;
     }
 
     /* CLAP API */
