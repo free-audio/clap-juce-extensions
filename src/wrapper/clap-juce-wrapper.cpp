@@ -552,14 +552,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         }
 
         if (processorAsClapProperties)
-            processorAsClapProperties->is_clap_state_active = true;
+            processorAsClapProperties->is_clap_active = true;
         return true;
     }
 
     void deactivate() noexcept override
     {
         if (processorAsClapProperties)
-            processorAsClapProperties->is_clap_state_active = false;
+            processorAsClapProperties->is_clap_active = false;
     }
 
     /* CLAP API */
@@ -589,14 +589,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     bool startProcessing() noexcept override
     {
         if (processorAsClapProperties)
-            processorAsClapProperties->is_clap_state_processing = true;
+            processorAsClapProperties->is_clap_processing = true;
         return Plugin::startProcessing();
     }
 
     void stopProcessing() noexcept override
     {
         if (processorAsClapProperties)
-            processorAsClapProperties->is_clap_state_processing = false;
+            processorAsClapProperties->is_clap_processing = false;
         Plugin::stopProcessing();
     }
 
