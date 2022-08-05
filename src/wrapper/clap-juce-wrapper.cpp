@@ -597,7 +597,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     {
         if (processorAsClapProperties)
             processorAsClapProperties->is_clap_state_processing = false;
-        Plugin::startProcessing();
+        Plugin::stopProcessing();
     }
 
   public:
