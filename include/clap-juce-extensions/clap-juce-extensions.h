@@ -12,6 +12,8 @@
 #include <clap/plugin.h>
 #include <clap/helpers/plugin.hh>
 
+#include <atomic>
+
 /** Forward declaration of the wrapper class. */
 class ClapJuceWrapper;
 
@@ -41,6 +43,9 @@ struct clap_properties
 
     // this will be non-null in the process block of a clap where the DAW provides transport
     const clap_event_transport *clap_transport{nullptr};
+
+    // The processing and active clap state
+    std::atomic<bool> is_clap_active{false}, is_clap_processing{false};
 
     // Internal implementation detail. Please disregard (and FIXME)
     static bool building_clap;
