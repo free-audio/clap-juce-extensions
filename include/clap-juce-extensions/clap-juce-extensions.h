@@ -45,7 +45,7 @@ struct clap_properties
     const clap_event_transport *clap_transport{nullptr};
 
     // The processing and active clap state
-    std::atomic<bool> is_clap_state_active{false}, is_clap_state_processing{false};
+    std::atomic<bool> is_clap_active{false}, is_clap_processing{false};
 
     // Internal implementation detail. Please disregard (and FIXME)
     static bool building_clap;
