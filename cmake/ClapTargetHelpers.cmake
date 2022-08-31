@@ -84,6 +84,8 @@ function(clap_juce_extensions_plugin_internal)
 
     get_target_property(products_folder ${claptarget} LIBRARY_OUTPUT_DIRECTORY)
     set(product_name "${CJA_PLUGIN_BINARY_NAME}")
+    set_target_properties(${claptarget} PROPERTIES
+            JUCE_PLUGIN_ARTEFACT_FILE "${products_folder}/${product_name}.clap")
 
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
         get_target_property(cjd clap_juce_sources CLAP_JUCE_SOURCE_DIR)
