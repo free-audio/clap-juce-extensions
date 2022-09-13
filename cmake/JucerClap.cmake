@@ -108,6 +108,6 @@ function(create_jucer_clap_target)
             target_compile_definitions(${clap_target} PRIVATE JucePlugin_EditorRequiresKeyboardFocus=0)
         endif()
 
-        _juce_link_frameworks("${clap_target}" PRIVATE AppKit Cocoa WebKit OpenGL CoreAudioKit CoreAudio CoreMidi CoreVideo CoreImage Quartz Accelerate AudioToolbox IOKit QuartzCore)
+        _juce_link_frameworks("${clap_target}" PRIVATE AppKit Cocoa WebKit OpenGL CoreAudioKit CoreAudio CoreMidi CoreVideo CoreImage Quartz Accelerate AudioToolbox IOKit QuartzCore Metal MetalKit)
     endif()
 endfunction()
