@@ -65,9 +65,17 @@ function(create_jucer_clap_target)
     )
 
     if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-        target_compile_definitions(${clap_target} PRIVATE DEBUG=1)
+        target_compile_definitions(${clap_target}
+            PRIVATE
+                DEBUG=1
+                _DEBUG=1
+        )
     else()
-        target_compile_definitions(${clap_target} PRIVATE NDEBUG=1)
+        target_compile_definitions(${clap_target}
+            PRIVATE
+                NDEBUG=1
+                _NDEBUG=1
+        )
     endif()
 
     if("${CJA_CLAP_FEATURES}" MATCHES "^instrument.*")
