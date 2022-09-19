@@ -12,6 +12,10 @@
 #define _CRT_SECURE_NO_WARNINGS 1
 #endif
 
+#if ! (JUCE_LINUX || JUCE_MAC || JUCE_WINDOWS)
+#error "You must be on one of LINUX MAC or WINDOWS for Juce Clap Extensions"
+#endif
+
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
