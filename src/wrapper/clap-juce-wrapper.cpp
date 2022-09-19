@@ -12,10 +12,6 @@
 #define _CRT_SECURE_NO_WARNINGS 1
 #endif
 
-#if ! (JUCE_LINUX || JUCE_MAC || JUCE_WINDOWS)
-#error "You must be on one of LINUX MAC or WINDOWS for Juce Clap Extensions"
-#endif
-
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -43,6 +39,15 @@ JUCE_END_IGNORE_WARNINGS_MSVC
 JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 
 #include <clap-juce-extensions/clap-juce-extensions.h>
+
+#if !JUCE_LINUX 
+#if !JUCE_MAC
+#if !JUCE_WIN
+#error "You must be on one of LINUX MAC or WINDOWS for Juce Clap Extensions"
+#endif
+#endif
+#endif
+
 
 #if JUCE_LINUX
 #if JUCE_VERSION > 0x060008
