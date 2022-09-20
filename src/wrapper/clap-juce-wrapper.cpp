@@ -244,7 +244,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     void onTimer(clap_id timerId) noexcept override
     {
         juce::ignoreUnused(timerId);
-#if LINUX
+#if JUCE_LINUX
         juce::ScopedJuceInitialiser_GUI libraryInitialiser;
         const juce::MessageManagerLock mmLock;
 
