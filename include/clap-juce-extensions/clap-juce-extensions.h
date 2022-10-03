@@ -16,6 +16,7 @@
 
 /** Forward declaration of the wrapper class. */
 class ClapJuceWrapper;
+struct JUCEParameterVariant;
 
 /** Forward declarations for any JUCE classes we might need. */
 namespace juce
@@ -200,9 +201,21 @@ struct clap_juce_audio_processor_capabilities
 
     virtual bool prefersNoteDialectClap(bool isInput) { return supportsNoteDialectClap(isInput); }
 
+    /*
+     * If you are working with a host that chooses to not implement cookies you will
+     * need to look up parameters by param_id. Use this method to do so.
+     */
+    JUCEParameterVariant *findParameterByParameterId(clap_id param_id)
+    {
+        if (lookupParamByID)
+            return lookupParamByID(param_id);
+        return nullptr;
+    }
+
   private:
     friend class ::ClapJuceWrapper;
     std::function<void(const clap_event_param_value *)> parameterChangeHandler = nullptr;
+    std::function<JUCEParameterVariant *(clap_id)> lookupParamByID = nullptr;
 };
 
 /*

@@ -1,13 +1,8 @@
 /*
- * BaconPaul's running todo
+ * clap-juce-wrapper.cpp
  *
- * - We always say we are an instrument....
- * - midi out (try stochas perhaps?)
- * - why does dexed not work?
- * - Finish populating the desc
- * - Cleanup and comment of course (including the CMake) including what's skipped
+ * Released under the MIT License, as described in LICENSE.md in this repository
  */
-
 #if _WIN32
 #define _CRT_SECURE_NO_WARNINGS 1
 #endif
@@ -182,6 +177,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                 [this](const clap_event_param_value *paramEvent) {
                     handleParameterChangeEvent(paramEvent);
                 };
+            processorAsClapExtensions->lookupParamByID = [this](clap_id param_id) {
+                return findVariantByParamId(param_id);
+            };
         };
 
         const bool forceLegacyParamIDs = false;
@@ -881,6 +879,17 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return true;
     }
 
+    JUCEParameterVariant *findVariantByParamId(clap_id param_id)
+    {
+        auto pm = paramPtrByClapID.find(param_id);
+        jassert(pm != paramPtrByClapID.end());
+        if (pm != paramPtrByClapID.end())
+        {
+            return &pm->second;
+        }
+        return nullptr;
+    }
+
     void handleParameterChangeEvent(const clap_event_param_value *paramEvent)
     {
         auto nf = paramEvent->value;
@@ -888,6 +897,15 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         jassert(&paramPtrByClapID.find(paramEvent->param_id)->second == paramEvent->cookie);
 
         auto jp = static_cast<JUCEParameterVariant *>(paramEvent->cookie);
+        jassert(jp);
+        if (!jp)  // unlikely
+        {
+            jp = findVariantByParamId(paramEvent->param_id);
+            jassert(jp);
+            if (!jp) 
+                return;
+        }
+
         paramSetValueAndNotifyIfChanged(*jp, (float)nf);
     }
 
@@ -1268,6 +1286,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         {
             auto paramModEvent = reinterpret_cast<const clap_event_param_mod *>(event);
             auto *parameterVariant = static_cast<JUCEParameterVariant *>(paramModEvent->cookie);
+            jassert(parameterVariant);
+            if (!parameterVariant) // unlikely
+            {
+                parameterVariant = findVariantByParamId(paramModEvent->param_id);
+                jassert(parameterVariant);
+                if (!parameterVariant)
+                    return;
+            }
 
             if (auto *modulatableParam = parameterVariant->clapExtParameter)
             {
