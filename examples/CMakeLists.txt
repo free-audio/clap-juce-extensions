@@ -16,3 +16,4 @@ if(CLAP_EXAMPLES_TREAT_WARNINGS_AS_ERRORS)
 endif()
 
 add_subdirectory(GainPlugin)
+add_subdirectory(NoteNamesPlugin)
