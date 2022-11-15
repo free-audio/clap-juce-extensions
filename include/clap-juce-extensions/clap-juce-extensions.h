@@ -201,6 +201,11 @@ struct clap_juce_audio_processor_capabilities
 
     virtual bool prefersNoteDialectClap(bool isInput) { return supportsNoteDialectClap(isInput); }
 
+    virtual bool supportsNoteName() const noexcept { return false; }
+    virtual int noteNameCount() noexcept { return 0; }
+    virtual bool noteNameGet(int /*index*/, clap_note_name * /*noteName*/) noexcept { return false; }
+    void noteNamesChanged() { noteNamesChangedSignal(); }
+
     /*
      * If you are working with a host that chooses to not implement cookies you will
      * need to look up parameters by param_id. Use this method to do so.
@@ -216,6 +221,7 @@ struct clap_juce_audio_processor_capabilities
     friend class ::ClapJuceWrapper;
     std::function<void(const clap_event_param_value *)> parameterChangeHandler = nullptr;
     std::function<JUCEParameterVariant *(clap_id)> lookupParamByID = nullptr;
+    std::function<void()> noteNamesChangedSignal = nullptr;
 };
 
 /*
