@@ -42,7 +42,6 @@
         <MODULEPATH id="juce_data_structures" path="../../build/_deps/juce-src/modules"/>
         <MODULEPATH id="juce_dsp" path="../../build/_deps/juce-src/modules"/>
         <MODULEPATH id="juce_audio_plugin_client" path="../../build/_deps/juce-src/modules"/>
-        <MODULEPATH id="chowdsp_plugin_base"/>
       </MODULEPATHS>
     </LINUX_MAKE>
     <VS2019 targetFolder="Builds/VisualStudio2019">
@@ -64,7 +63,6 @@
         <MODULEPATH id="juce_data_structures" path="../../build/_deps/juce-src/modules"/>
         <MODULEPATH id="juce_dsp" path="../../build/_deps/juce-src/modules"/>
         <MODULEPATH id="juce_audio_plugin_client" path="../../build/_deps/juce-src/modules"/>
-        <MODULEPATH id="chowdsp_plugin_base"/>
       </MODULEPATHS>
     </VS2019>
     <XCODE_MAC targetFolder="Builds/MacOSX">
@@ -86,7 +84,6 @@
         <MODULEPATH id="juce_data_structures" path="../../build/_deps/juce-src/modules"/>
         <MODULEPATH id="juce_dsp" path="../../build/_deps/juce-src/modules"/>
         <MODULEPATH id="juce_audio_plugin_client" path="../../build/_deps/juce-src/modules"/>
-        <MODULEPATH id="chowdsp_plugin_base"/>
       </MODULEPATHS>
     </XCODE_MAC>
   </EXPORTFORMATS>
