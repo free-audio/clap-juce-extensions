@@ -15,10 +15,12 @@ if(CLAP_EXAMPLES_TREAT_WARNINGS_AS_ERRORS)
     # We have to ignore some warnings on some platforms and with some versions of JUCE.
     # Let's remove these when we're no longer supporting some of the older version of JUCE.
     if(APPLE AND CLAP_JUCE_VERSION STREQUAL "6.0.7")
-        add_compile_options(-Wno-deprecated-declarations)
+        message(STATUS "Ignoring some warnings for JUCE 6.0.7")
+#        add_compile_options(-Wno-deprecated-declarations)
         add_compile_options(-Wno-unused-but-set-variable)
     endif()
     if(APPLE AND CLAP_JUCE_VERSION STREQUAL "6.1.6")
+        message(STATUS "Ignoring some warnings for JUCE 6.1.6")
         add_compile_options(-Wno-deprecated-copy-with-dtor)
         add_compile_options(-Wno-deprecated-copy)
     endif()
