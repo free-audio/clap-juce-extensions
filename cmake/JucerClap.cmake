@@ -116,8 +116,10 @@ function(create_jucer_clap_target)
     endif()
 
     if(APPLE)
-        # Old list: AppKit Cocoa WebKit OpenGL CoreAudioKit CoreAudio CoreMidi CoreVideo CoreImage Quartz Accelerate AudioToolbox IOKit QuartzCore Metal MetalKit
-        # Missing: AppKit CoreVideo CoreImage Metal MetalKit
+        # In a previous version of this script, we were explicitly linking pretty much every OSX framework we could
+        # think of. Now we're only linking frameworks based on what the relevant JUCE modules need. However there
+        # are a few leftover frameworks, that don't seem to have a place. If you're running into issues you may want
+        # to try manually linking one of the following: AppKit, CoreVideo, CoreImage, Metal, MetalKit
 
         # Base OSX frameworks: all JUCE apps need these:
         _juce_link_frameworks("${clap_target}" PRIVATE Cocoa Foundation IOKit)
@@ -129,7 +131,7 @@ function(create_jucer_clap_target)
                 OUTPUT_VARIABLE juce_module_paths
         )
 
-        # Frameworks are copied from the OSXFrameworks field in each module header... eventually we should get those programatically (@TODO)
+        # Frameworks are copied from the OSXFrameworks field in each module header... eventually we should get those programmatically (@TODO)
         if(juce_module_paths MATCHES "juce_audio_basics")
             _juce_link_frameworks("${clap_target}" PRIVATE Accelerate)
         endif()
@@ -162,7 +164,6 @@ function(create_jucer_clap_target)
         endif()
 
     elseif(UNIX)
-
         # Base Linux deps: all JUCE apps need these:
         set(THREADS_PREFER_PTHREAD_FLAG ON)
         find_package(Threads REQUIRED)
@@ -175,7 +176,7 @@ function(create_jucer_clap_target)
                 OUTPUT_VARIABLE juce_module_paths
         )
 
-        # Deps are copied from the linuxPackages and linuxLIbs field in each module header... eventually we should get those programatically (@TODO)
+        # Deps are copied from the linuxPackages and linuxLibs field in each module header... eventually we should get those programmatically (@TODO)
         if(juce_module_paths MATCHES "juce_audio_devices")
             find_package(ALSA REQUIRED)
             target_link_libraries(${clap_target} PUBLIC ALSA::ALSA ${ALSA_LIBRARIES})
