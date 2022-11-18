@@ -116,12 +116,77 @@ function(create_jucer_clap_target)
     endif()
 
     if(APPLE)
-        _juce_link_frameworks("${clap_target}" PRIVATE AppKit Cocoa WebKit OpenGL CoreAudioKit CoreAudio CoreMidi CoreVideo CoreImage Quartz Accelerate AudioToolbox IOKit QuartzCore Metal MetalKit)
+        # In a previous version of this script, we were explicitly linking pretty much every OSX framework we could
+        # think of. Now we're only linking frameworks based on what the relevant JUCE modules need. However there
+        # are a few leftover frameworks, that don't seem to have a place. If you're running into issues you may want
+        # to try manually linking one of the following: AppKit, CoreVideo, CoreImage, Metal, MetalKit
+
+        # Base OSX frameworks: all JUCE apps need these:
+        _juce_link_frameworks("${clap_target}" PRIVATE Cocoa Foundation IOKit)
+
+        # Link other frameworks depending on which JUCE modules are in use:
+        execute_process(
+                COMMAND bash -c "xmllint --xpath \"//JUCERPROJECT/MODULES\" *.jucer" # @TODO: what if there are multiple .jucer files hanging around?
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                OUTPUT_VARIABLE juce_module_paths
+        )
+
+        # Frameworks are copied from the OSXFrameworks field in each module header... eventually we should get those programmatically (@TODO)
+        if(juce_module_paths MATCHES "juce_audio_basics")
+            _juce_link_frameworks("${clap_target}" PRIVATE Accelerate)
+        endif()
+        if(juce_module_paths MATCHES "juce_audio_devices")
+            _juce_link_frameworks("${clap_target}" PRIVATE CoreAudio CoreMIDI AudioToolbox)
+        endif()
+        if(juce_module_paths MATCHES "juce_audio_formats")
+            _juce_link_frameworks("${clap_target}" PRIVATE CoreAudio CoreMIDI QuartzCore AudioToolbox)
+        endif()
+        if(juce_module_paths MATCHES "juce_audio_processors")
+            _juce_link_frameworks("${clap_target}" PRIVATE CoreAudio CoreMIDI AudioToolbox)
+        endif()
+        if(juce_module_paths MATCHES "juce_audio_utils")
+            _juce_link_frameworks("${clap_target}" PRIVATE CoreAudioKit DiscRecording)
+        endif()
+        if(juce_module_paths MATCHES "juce_graphics")
+            _juce_link_frameworks("${clap_target}" PRIVATE Cocoa QuartzCore)
+        endif()
+        if(juce_module_paths MATCHES "juce_gui_basics")
+            _juce_link_frameworks("${clap_target}" PRIVATE Cocoa Carbon QuartzCore)
+        endif()
+        if(juce_module_paths MATCHES "juce_gui_extra")
+            _juce_link_frameworks("${clap_target}" PRIVATE WebKit)
+        endif()
+        if(juce_module_paths MATCHES "juce_opengl")
+            _juce_link_frameworks("${clap_target}" PRIVATE OpenGL)
+        endif()
+        if(juce_module_paths MATCHES "juce_video")
+            _juce_link_frameworks("${clap_target}" PRIVATE AVKit AVFoundation CoreMedia)
+        endif()
+
     elseif(UNIX)
+        # Base Linux deps: all JUCE apps need these:
         set(THREADS_PREFER_PTHREAD_FLAG ON)
         find_package(Threads REQUIRED)
-        find_package(Freetype REQUIRED)
-        find_package(ALSA REQUIRED)
-        target_link_libraries(${clap_target} PUBLIC Threads::Threads Freetype::Freetype ALSA::ALSA ${ALSA_LIBRARIES} rt dl)
+        target_link_libraries(${clap_target} PUBLIC Threads::Threads rt dl)
+
+        # Link other deps depending on which JUCE modules are in use:
+        execute_process(
+                COMMAND bash -c "xmllint --xpath \"//JUCERPROJECT/MODULES\" *.jucer" # @TODO: what if there are multiple .jucer files hanging around?
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                OUTPUT_VARIABLE juce_module_paths
+        )
+
+        # Deps are copied from the linuxPackages and linuxLibs field in each module header... eventually we should get those programmatically (@TODO)
+        if(juce_module_paths MATCHES "juce_audio_devices")
+            find_package(ALSA REQUIRED)
+            target_link_libraries(${clap_target} PUBLIC ALSA::ALSA ${ALSA_LIBRARIES})
+        endif()
+        if(juce_module_paths MATCHES "juce_graphics")
+            find_package(Freetype REQUIRED)
+            target_link_libraries(${clap_target} PUBLIC Freetype::Freetype)
+        endif()
+        if(juce_module_paths MATCHES "juce_opengl")
+            target_link_libraries(${clap_target} PUBLIC GL)
+        endif()
     endif()
 endfunction()

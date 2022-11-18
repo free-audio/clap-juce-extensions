@@ -58,7 +58,8 @@ add_subdirectory(libs/clap-juce-extensions EXCLUDE_FROM_ALL)
 ### Projucer
 
 Given a starting point of a JUCE plugin using the Projucer, it is possible to build a CLAP plugin by adding
-a small CMake configuration alongside the Projucer build setup.
+a small CMake configuration alongside the Projucer build setup. Note that for MacOS and Linux, it is expected
+that the "xmllint" tool is available in the system path.
 
 1. Build your Projucer-based plugin.
 2. Create `CMakeLists.txt` file in the same directory as your `.jucer` file. Here's an example CMakeLists.txt:
