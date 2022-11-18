@@ -13,12 +13,16 @@ NoteNamesPlugin::NoteNamesPlugin()
                                [this](float) { noteNamesChanged(); }),
       noteNamesParam(vts.getRawParameterValue(noteNamesParamTag))
 {
+    noteMaps[0] = {
+        {60, "C"}, {62, "D"}, {64, "E"}, {65, "F"}, {67, "G"}, {69, "A"}, {71, "B"}, {72, "C"},
+    };
     noteMaps[1] = {
         {60, "Do"}, {62, "Re"}, {64, "Mi"}, {65, "Fa"},
         {67, "So"}, {69, "La"}, {71, "Ti"}, {72, "Do"},
     };
-    noteMaps[2] = {{60, "1"},     {61, "#9"}, {62, "2"},  {63, "b3"}, {64, "3"},  {65, "4"},
-                   {66, "BLUES"}, {67, "5"},  {68, "b6"}, {69, "6"},  {70, "b7"}, {71, "7"}};
+    noteMaps[2] = {
+        {60, "1"}, {62, "2"}, {64, "3"}, {65, "4"}, {67, "5"}, {69, "6"}, {71, "7"}, {72, "8"},
+    };
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout NoteNamesPlugin::createParameters()
@@ -26,7 +30,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout NoteNamesPlugin::createParam
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
 
     params.push_back(std::make_unique<juce::AudioParameterChoice>(
-        noteNamesParamTag, "Note Names", juce::StringArray{"None", "Do Re Mi", "Jazz?"}, 0));
+        noteNamesParamTag, "Note Names", juce::StringArray{"Letters", "Do Re Mi", "Numbers"}, 0));
 
     return {params.begin(), params.end()};
 }
@@ -46,6 +50,8 @@ bool NoteNamesPlugin::noteNameGet(int index, clap_note_name *noteName) noexcept
         const auto &note = noteMap[(size_t)index];
         strcpy(noteName->name, note.name.getCharPointer());
         noteName->key = (int16_t)note.key;
+        noteName->channel = 1;
+        noteName->port = -1;
         return true;
     }
 
