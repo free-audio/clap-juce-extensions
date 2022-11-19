@@ -13,6 +13,10 @@ NoteNamesPlugin::NoteNamesPlugin()
                                [this](float) { noteNamesChanged(); }),
       noteNamesParam(vts.getRawParameterValue(noteNamesParamTag))
 {
+    // At the moment, this has only been tested in Bitwig, where it works with some limitations
+    // (see https://github.com/free-audio/interop-tracker/issues/46). It would probably be good
+    // to do some tests with Reaper and some other hosts as well.
+
     noteMaps[0] = {
         {60, "C"}, {62, "D"}, {64, "E"}, {65, "F"}, {67, "G"}, {69, "A"}, {71, "B"}, {72, "C"},
     };
