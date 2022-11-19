@@ -201,9 +201,25 @@ struct clap_juce_audio_processor_capabilities
 
     virtual bool prefersNoteDialectClap(bool isInput) { return supportsNoteDialectClap(isInput); }
 
+    /** If your plugin supports custom note names, then override this method to return true. */
     virtual bool supportsNoteName() const noexcept { return false; }
+
+    /**
+     * If your plugin supports custom note names, then this method should be overriden
+     * to return how the number of note names taht your plugin has.
+     */
     virtual int noteNameCount() noexcept { return 0; }
-    virtual bool noteNameGet(int /*index*/, clap_note_name * /*noteName*/) noexcept { return false; }
+
+    /**
+     * The host will call this method to retrieve the note name for a given index
+     * in the range [0, noteNameCount()).
+     */
+    virtual bool noteNameGet(int /*index*/, clap_note_name * /*noteName*/) noexcept
+    {
+        return false;
+    }
+
+    /** Plugins should call this method when their note names have changed. */
     void noteNamesChanged() { noteNamesChangedSignal(); }
 
     /*
