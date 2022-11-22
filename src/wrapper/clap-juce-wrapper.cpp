@@ -180,6 +180,15 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             processorAsClapExtensions->lookupParamByID = [this](clap_id param_id) {
                 return findVariantByParamId(param_id);
             };
+            processorAsClapExtensions->noteNamesChangedSignal = [this]() {
+                runOnMainThread([this] {
+                    if (isBeingDestroyed())
+                        return;
+
+                    if (_host.canUseNoteName())
+                        _host.noteNameChanged();
+                });
+            };
         };
 
         const bool forceLegacyParamIDs = false;
@@ -749,6 +758,27 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         if (processorAsClapExtensions)
             return processorAsClapExtensions->voiceInfoGet(info);
         return Plugin::voiceInfoGet(info);
+    }
+
+    bool implementsNoteName() const noexcept override
+    {
+        if (processorAsClapExtensions)
+            return processorAsClapExtensions->supportsNoteName();
+        return false;
+    }
+
+    int noteNameCount() noexcept override
+    {
+        if (processorAsClapExtensions)
+            return processorAsClapExtensions->noteNameCount();
+        return 0;
+    }
+
+    bool noteNameGet(int index, clap_note_name *noteName) noexcept override
+    {
+        if (processorAsClapExtensions)
+            return processorAsClapExtensions->noteNameGet (index, noteName);
+        return false;
     }
 
   public:

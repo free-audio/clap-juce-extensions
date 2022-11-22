@@ -201,6 +201,27 @@ struct clap_juce_audio_processor_capabilities
 
     virtual bool prefersNoteDialectClap(bool isInput) { return supportsNoteDialectClap(isInput); }
 
+    /** If your plugin supports custom note names, then override this method to return true. */
+    virtual bool supportsNoteName() const noexcept { return false; }
+
+    /**
+     * If your plugin supports custom note names, then this method should be overriden
+     * to return how the number of note names taht your plugin has.
+     */
+    virtual int noteNameCount() noexcept { return 0; }
+
+    /**
+     * The host will call this method to retrieve the note name for a given index
+     * in the range [0, noteNameCount()).
+     */
+    virtual bool noteNameGet(int /*index*/, clap_note_name * /*noteName*/) noexcept
+    {
+        return false;
+    }
+
+    /** Plugins should call this method when their note names have changed. */
+    void noteNamesChanged() { noteNamesChangedSignal(); }
+
     /*
      * If you are working with a host that chooses to not implement cookies you will
      * need to look up parameters by param_id. Use this method to do so.
@@ -216,6 +237,7 @@ struct clap_juce_audio_processor_capabilities
     friend class ::ClapJuceWrapper;
     std::function<void(const clap_event_param_value *)> parameterChangeHandler = nullptr;
     std::function<JUCEParameterVariant *(clap_id)> lookupParamByID = nullptr;
+    std::function<void()> noteNamesChangedSignal = nullptr;
 };
 
 /*
