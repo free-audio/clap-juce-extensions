@@ -327,7 +327,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                     return;
 
                 if (_host.canUseParams())
-                    _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES | CLAP_PARAM_RESCAN_TEXT);
+                    _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES | CLAP_PARAM_RESCAN_TEXT |
+                                       CLAP_PARAM_RESCAN_INFO);
             });
         }
     }
