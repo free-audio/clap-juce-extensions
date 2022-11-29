@@ -119,7 +119,7 @@ function(create_jucer_clap_target)
         # In a previous version of this script, we were explicitly linking pretty much every OSX framework we could
         # think of. Now we're only linking frameworks based on what the relevant JUCE modules need. However there
         # are a few leftover frameworks, that don't seem to have a place. If you're running into issues you may want
-        # to try manually linking one of the following: AppKit, CoreVideo, CoreImage, Metal, MetalKit
+        # to try manually linking one of the following: AppKit, CoreVideo, CoreImage
 
         # Base OSX frameworks: all JUCE apps need these:
         _juce_link_frameworks("${clap_target}" PRIVATE Cocoa Foundation IOKit)
@@ -151,7 +151,7 @@ function(create_jucer_clap_target)
             _juce_link_frameworks("${clap_target}" PRIVATE Cocoa QuartzCore)
         endif()
         if(juce_module_paths MATCHES "juce_gui_basics")
-            _juce_link_frameworks("${clap_target}" PRIVATE Cocoa Carbon QuartzCore)
+            _juce_link_frameworks("${clap_target}" PRIVATE Cocoa Carbon QuartzCore Metal MetalKit)
         endif()
         if(juce_module_paths MATCHES "juce_gui_extra")
             _juce_link_frameworks("${clap_target}" PRIVATE WebKit)
