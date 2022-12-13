@@ -67,6 +67,9 @@ that the "xmllint" tool is available in the system path.
 ```cmake
 cmake_minimum_required(VERSION 3.15)
 
+# Make sure to set the same C++ version as you have set in the Projucer
+set(CMAKE_CXX_STANDARD 17)
+
 # Make sure to set the same MacOS deployment target as you have set in the Projucer
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.12" CACHE STRING "Minimum OS X deployment target")
 
