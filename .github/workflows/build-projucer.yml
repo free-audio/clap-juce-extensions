@@ -117,7 +117,7 @@ jobs:
       - name: Build CLAP
         shell: bash
         run: |
-          cmake -Bbuild-clap -G"$CLAP_GEN" -DCMAKE_BUILD_TYPE=Debug -DCLAP_WRAP_PROJUCER_PLUGIN=ON -DCLAP_JUCE_VERSION=$JUCE_VERSION -DCLAP_CXX_STANDARD=$CXX_STANDARD
+          cmake -Bbuild-clap -G"$CLAP_GEN" -DCMAKE_BUILD_TYPE=Debug -DCLAP_WRAP_PROJUCER_PLUGIN=ON -DCLAP_JUCE_VERSION=$JUCE_VERSION -DCMAKE_CXX_STANDARD=$CXX_STANDARD
           cmake --build build-clap --config Debug --target GainPlugin_CLAP
         env:
           CLAP_GEN: ${{ matrix.clap_gen }}
