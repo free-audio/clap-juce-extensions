@@ -165,7 +165,7 @@ function(create_jucer_clap_target)
 
     elseif(UNIX)
         # Base Linux deps: all JUCE apps need these:
-        target_link_libraries(${clap_target} PUBLIC juce::pkgconfig_juce_core_LINUX_DEPS)
+        target_link_libraries(${clap_target} PUBLIC rt dl pthread)
 
         # Link other deps depending on which JUCE modules are in use:
         execute_process(
@@ -181,7 +181,7 @@ function(create_jucer_clap_target)
             target_link_libraries(${clap_target} PUBLIC juce::pkgconfig_juce_graphics_LINUX_DEPS)
         endif()
         if(juce_module_paths MATCHES "juce_opengl")
-            target_link_libraries(${clap_target} PUBLIC juce::pkgconfig_juce_opengl_LINUX_DEPS)
+            target_link_libraries(${clap_target} PUBLIC GL)
         endif()
     endif()
 endfunction()
