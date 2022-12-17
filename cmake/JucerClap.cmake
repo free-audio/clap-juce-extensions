@@ -165,9 +165,7 @@ function(create_jucer_clap_target)
 
     elseif(UNIX)
         # Base Linux deps: all JUCE apps need these:
-        set(THREADS_PREFER_PTHREAD_FLAG ON)
-        find_package(Threads REQUIRED)
-        target_link_libraries(${clap_target} PUBLIC Threads::Threads rt dl)
+        target_link_libraries(${clap_target} PUBLIC juce::pkgconfig_juce_core_LINUX_DEPS)
 
         # Link other deps depending on which JUCE modules are in use:
         execute_process(
@@ -176,17 +174,13 @@ function(create_jucer_clap_target)
                 OUTPUT_VARIABLE juce_module_paths
         )
 
-        # Deps are copied from the linuxPackages and linuxLibs field in each module header... eventually we should get those programmatically (@TODO)
         if(juce_module_paths MATCHES "juce_audio_devices")
-            find_package(ALSA REQUIRED)
-            target_link_libraries(${clap_target} PUBLIC ALSA::ALSA ${ALSA_LIBRARIES})
+            target_link_libraries(${clap_target} PUBLIC juce::pkgconfig_juce_audio_devices_LINUX_DEPS)
         endif()
         if(juce_module_paths MATCHES "juce_graphics")
-            find_package(Freetype REQUIRED)
-            target_link_libraries(${clap_target} PUBLIC Freetype::Freetype)
+            target_link_libraries(${clap_target} PUBLIC juce::pkgconfig_juce_graphics_LINUX_DEPS)
         endif()
-        if(juce_module_paths MATCHES "juce_opengl")
-            target_link_libraries(${clap_target} PUBLIC GL)
+            target_link_libraries(${clap_target} PUBLIC juce::pkgconfig_juce_opengl_LINUX_DEPS)
         endif()
     endif()
 endfunction()
