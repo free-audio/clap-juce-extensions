@@ -170,7 +170,7 @@ function(create_jucer_clap_target)
             C_VISBILITY_PRESET hidden
             CXX_VISIBILITY_PRESET hidden
         )
-        target_link_options(${clap_target} PUBLIC "LINKER:-Wl,--no-undefined")
+        set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
 
         # Base Linux deps: all JUCE apps need these:
         target_link_libraries(${clap_target} PUBLIC rt dl pthread)
