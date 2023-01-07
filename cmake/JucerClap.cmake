@@ -164,6 +164,14 @@ function(create_jucer_clap_target)
         endif()
 
     elseif(UNIX)
+        # Compiler and linker flags recommended by Robbert:
+        set_target_properties(${clap_target} PROPERTIES
+            VISIBILITY_INLINES_HIDDEN TRUE
+            C_VISBILITY_PRESET hidden
+            CXX_VISIBILITY_PRESET hidden
+        )
+        target_link_options(${clap_target} PUBLIC "LINKER:-Wl,--no-undefined")
+
         # Base Linux deps: all JUCE apps need these:
         target_link_libraries(${clap_target} PUBLIC rt dl pthread)
 
