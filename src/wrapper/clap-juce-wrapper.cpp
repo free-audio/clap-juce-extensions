@@ -141,6 +141,186 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 // #undef CLAP_CHECKING_LEVEL
 // #define CLAP_CHECKING_LEVEL Maximal
 
+// class EditorContextMenu : public HostProvidedContextMenu
+//{
+//   public:
+//     EditorContextMenu(AudioProcessorEditor &editorIn,
+//                       VSTComSmartPtr<Steinberg::Vst::IContextMenu> contextMenuIn)
+//         : editor(editorIn), contextMenu(contextMenuIn)
+//     {
+//     }
+//
+//     PopupMenu getEquivalentPopupMenu() const override
+//     {
+//         using MenuItem = Steinberg::Vst::IContextMenuItem;
+//         using MenuTarget = Steinberg::Vst::IContextMenuTarget;
+//
+//         struct Submenu
+//         {
+//             PopupMenu menu;
+//             String name;
+//             bool enabled;
+//         };
+//
+//         std::vector<Submenu> menuStack(1);
+//
+//         for (int32_t i = 0, end = contextMenu->getItemCount(); i < end; ++i)
+//         {
+//             MenuItem item{};
+//             MenuTarget *target = nullptr;
+//             contextMenu->getItem(i, item, &target);
+//
+//             if ((item.flags & MenuItem::kIsGroupStart) == MenuItem::kIsGroupStart)
+//             {
+//                 menuStack.push_back(
+//                     {PopupMenu{}, toString(item.name), (item.flags & MenuItem::kIsDisabled) ==
+//                     0});
+//             }
+//             else if ((item.flags & MenuItem::kIsGroupEnd) == MenuItem::kIsGroupEnd)
+//             {
+//                 const auto back = menuStack.back();
+//                 menuStack.pop_back();
+//
+//                 if (menuStack.empty())
+//                 {
+//                     // malformed menu
+//                     jassertfalse;
+//                     return {};
+//                 }
+//
+//                 menuStack.back().menu.addSubMenu(back.name, back.menu, back.enabled);
+//             }
+//             else if ((item.flags & MenuItem::kIsSeparator) == MenuItem::kIsSeparator)
+//             {
+//                 menuStack.back().menu.addSeparator();
+//             }
+//             else
+//             {
+//                 VSTComSmartPtr<MenuTarget> ownedTarget(target);
+//                 const auto tag = item.tag;
+//                 menuStack.back().menu.addItem(
+//                     toString(item.name), (item.flags & MenuItem::kIsDisabled) == 0,
+//                     (item.flags & MenuItem::kIsChecked) != 0,
+//                     [ownedTarget, tag] { ownedTarget->executeMenuItem(tag); });
+//             }
+//         }
+//
+//         if (menuStack.size() != 1)
+//         {
+//             // malformed menu
+//             jassertfalse;
+//             return {};
+//         }
+//
+//         return menuStack.back().menu;
+//     }
+//
+//     void showNativeMenu(Point<int> pos) const override
+//     {
+//         const auto scaled = pos * Component::getApproximateScaleFactorForComponent(&editor);
+//         contextMenu->popup(scaled.x, scaled.y);
+//     }
+//
+//   private:
+//     AudioProcessorEditor &editor;
+//     VSTComSmartPtr<Steinberg::Vst::IContextMenu> contextMenu;
+// };
+
+class EditorContextMenu : public juce::HostProvidedContextMenu
+{
+    using HostType = clap::helpers::HostProxy<
+        clap::helpers::MisbehaviourHandler::CLAP_MISBEHAVIOUR_HANDLER_LEVEL,
+        clap::helpers::CheckingLevel::CLAP_CHECKING_LEVEL>;
+
+  public:
+    explicit EditorContextMenu(HostType &hostIn) : host(hostIn) {}
+
+    juce::PopupMenu getEquivalentPopupMenu() const override {}
+
+    void showNativeMenu(juce::Point<int> pos) const override
+    {
+        if (!host.contextMenuCanPopup(host.host()))
+            return;
+
+        // TODO: figure out screen index?
+        host.contextMenuPopup(host.host(), &menuTarget, 0, pos.x, pos.y);
+    }
+
+    clap_context_menu_target menuTarget{};
+
+    struct MenuBuilder
+    {
+        // TODO: implement clap_context_menu_builder here!
+    };
+
+  private:
+    HostType &host;
+};
+
+class EditorHostContext : public juce::AudioProcessorEditorHostContext
+{
+    using HostProxyType = clap::helpers::HostProxy<
+        clap::helpers::MisbehaviourHandler::CLAP_MISBEHAVIOUR_HANDLER_LEVEL,
+        clap::helpers::CheckingLevel::CLAP_CHECKING_LEVEL>;
+
+  public:
+    EditorHostContext(
+        juce::AudioProcessor &processorIn, juce::AudioProcessorEditor &editorIn,
+        HostProxyType &hostProxyIn,
+        const std::unordered_map<const juce::AudioProcessorParameter *, clap_id> &paramMapIn)
+        : processor(processorIn), editor(editorIn), hostProxy(hostProxyIn), paramMap(paramMapIn)
+    {
+    }
+
+    std::unique_ptr<juce::HostProvidedContextMenu>
+    getContextMenuForParameter(const juce::AudioProcessorParameter *parameter) const
+#if JUCE_VERSION > 0x060105
+        override
+#endif
+    {
+        if (!hostProxy.canUseContextMenu())
+            return {};
+
+        auto menu = std::make_unique<EditorContextMenu>(hostProxy);
+        if (parameter == nullptr)
+        {
+            menu->menuTarget.kind = CLAP_CONTEXT_MENU_TARGET_KIND_GLOBAL;
+            menu->menuTarget.id = 0;
+        }
+        else
+        {
+            menu->menuTarget.kind = CLAP_CONTEXT_MENU_TARGET_KIND_PARAM;
+
+            const auto paramIDIter = paramMap.find(parameter);
+            if (paramIDIter == paramMap.end())
+            {
+                jassertfalse; // could not find clap id for parameter!
+                menu->menuTarget.id = 0;
+            }
+            else
+            {
+                menu->menuTarget.id = paramIDIter->second;
+            }
+        }
+
+        return menu;
+    }
+
+#if JUCE_VERSION <= 0x060105
+    std::unique_ptr<juce::HostProvidedContextMenu>
+    getContextMenuForParameterIndex(const juce::AudioProcessorParameter *parameter) const override
+    {
+        return getContextMenuForParameter(parameter);
+    }
+#endif
+
+  private:
+    juce::AudioProcessor &processor;
+    juce::AudioProcessorEditor &editor;
+    HostProxyType &hostProxy;
+    const std::unordered_map<const juce::AudioProcessorParameter *, clap_id> &paramMap;
+};
+
 /*
  * The ClapJuceWrapper is a class which immplements a collection
  * of CLAP and JUCE APIs
@@ -1460,6 +1640,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     }
 
     std::unique_ptr<juce::AudioProcessorEditor> editor;
+    std::unique_ptr<juce::AudioProcessorEditorHostContext> editorHostContext;
     bool implementsGui() const noexcept override { return processor->hasEditor(); }
     bool guiCanResize() const noexcept override
     {
@@ -1556,7 +1737,25 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         const juce::MessageManagerLock mmLock;
         editor.reset(processor->createEditorIfNeeded());
-        editor->addComponentListener(this);
+
+        if (editor == nullptr)
+            return false;
+
+        if (editor != nullptr)
+        {
+            editorHostContext =
+                std::make_unique<EditorHostContext>(*processor, *editor, _host, clapIDByParamPtr);
+
+            editor->setHostContext(editorHostContext.get());
+
+            editor->addComponentListener(this);
+        }
+        else
+        {
+            // if hasEditor() returns true then createEditorIfNeeded has to return a valid editor
+            jassertfalse;
+        }
+
         return editor != nullptr;
     }
 
@@ -1744,7 +1943,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     // clap_id to param *
     std::unordered_map<clap_id, JUCEParameterVariant> paramPtrByClapID;
     // param * to clap_id
-    std::unordered_map<juce::AudioProcessorParameter *, clap_id> clapIDByParamPtr;
+    std::unordered_map<const juce::AudioProcessorParameter *, clap_id> clapIDByParamPtr;
     // Every id we have issued
     std::unordered_set<clap_id> allClapIDs;
 
