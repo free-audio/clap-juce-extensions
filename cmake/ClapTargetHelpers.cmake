@@ -105,6 +105,7 @@ function(clap_juce_extensions_plugin_internal)
                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${cjd}/cmake/macos_bundle/PkgInfo" "$<TARGET_FILE_DIR:${claptarget}>/.."
                COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${claptarget}>/../Resources"
                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${cjd}/cmake/macos_bundle/clap.icns" "$<TARGET_FILE_DIR:${claptarget}>/../Resources"
+               VERBATIM
                )
     else()
         set_target_properties(${claptarget} PROPERTIES
@@ -152,16 +153,18 @@ function(clap_juce_extensions_plugin_internal)
         message(STATUS "Copy After Build" )
         if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
             add_custom_command(TARGET ${claptarget} POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E echo "Installing ${products_folder}/${product_name}.clap to ~/Library/Audio/Plug-Ins/CLAP/"
-                    COMMAND ${CMAKE_COMMAND} -E make_directory "~/Library/Audio/Plug-Ins/CLAP"
-                    COMMAND ${CMAKE_COMMAND} -E copy_directory "${products_folder}/${product_name}.clap" "~/Library/Audio/Plug-Ins/CLAP/${product_name}.clap"
+                    COMMAND ${CMAKE_COMMAND} -E echo "Installing ${products_folder}/${product_name}.clap to $ENV{HOME}/Library/Audio/Plug-Ins/CLAP/"
+                    COMMAND ${CMAKE_COMMAND} -E make_directory "$ENV{HOME}/Library/Audio/Plug-Ins/CLAP"
+                    COMMAND ${CMAKE_COMMAND} -E copy_directory "${products_folder}/${product_name}.clap" "$ENV{HOME}/Library/Audio/Plug-Ins/CLAP/${product_name}.clap"
+                    VERBATIM
                     )
         endif()
         if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
             add_custom_command(TARGET ${claptarget} POST_BUILD
                     COMMAND ${CMAKE_COMMAND} -E echo "Installing ${products_folder}/${product_name}.clap"
-                    COMMAND ${CMAKE_COMMAND} -E make_directory "~/.clap"
-                    COMMAND ${CMAKE_COMMAND} -E copy "${products_folder}/${product_name}.clap" "~/.clap/"
+                    COMMAND ${CMAKE_COMMAND} -E make_directory "$ENV{HOME}/.clap"
+                    COMMAND ${CMAKE_COMMAND} -E copy "${products_folder}/${product_name}.clap" "$ENV{HOME}/.clap/"
+                    VERBATIM
                     )
         endif()
     endif()
