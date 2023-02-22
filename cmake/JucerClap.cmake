@@ -123,8 +123,8 @@ function(create_jucer_clap_target)
         # are a few leftover frameworks, that don't seem to have a place. If you're running into issues you may want
         # to try manually linking one of the following: AppKit, CoreVideo, CoreImage
 
-        # Base OSX frameworks: all JUCE apps need these:
-        _juce_link_frameworks("${clap_target}" PRIVATE Cocoa Foundation IOKit)
+        # Base OSX frameworks: all JUCE apps need these. Secuity is new as of develop post 7.0.5
+        _juce_link_frameworks("${clap_target}" PRIVATE Cocoa Foundation IOKit Security)
 
         # Link other frameworks depending on which JUCE modules are in use:
         execute_process(
