@@ -189,7 +189,25 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                         _host.noteNameChanged();
                 });
             };
-        };
+            processorAsClapExtensions->remoteControlsChangedSignal = [this]() {
+                runOnMainThread([this] {
+                    if (isBeingDestroyed())
+                        return;
+
+                    if (_host.canUseRemoteControls())
+                        _host.remoteControlsChanged();
+                });
+            };
+            processorAsClapExtensions->suggestRemoteControlsPageSignal = [this](uint32_t pageID) {
+                runOnMainThread([this, pageID] {
+                    if (isBeingDestroyed())
+                        return;
+
+                    if (_host.canUseRemoteControls())
+                        _host.remoteControlsSuggestPage(pageID);
+                });
+            };
+        }
 
         const bool forceLegacyParamIDs = false;
 
@@ -778,7 +796,55 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     bool noteNameGet(int index, clap_note_name *noteName) noexcept override
     {
         if (processorAsClapExtensions)
-            return processorAsClapExtensions->noteNameGet (index, noteName);
+            return processorAsClapExtensions->noteNameGet(index, noteName);
+        return false;
+    }
+
+    bool implementRemoteControls() const noexcept override
+    {
+        if (processorAsClapExtensions)
+            return processorAsClapExtensions->supportsRemoteControls();
+        return false;
+    }
+
+    uint32_t remoteControlsPageCount() noexcept override
+    {
+        if (processorAsClapExtensions)
+            return processorAsClapExtensions->remoteControlsPageCount();
+        return 0;
+    }
+
+    bool remoteControlsPageGet(uint32_t pageIndex,
+                               clap_remote_controls_page *page) noexcept override
+    {
+        if (processorAsClapExtensions)
+        {
+            juce::String sectionName{};
+            juce::String pageName{};
+            clap_id pageID{};
+            std::array<juce::AudioProcessorParameter *, CLAP_REMOTE_CONTROLS_COUNT> params{};
+
+            const auto result = processorAsClapExtensions->remoteControlsPageFill(
+                pageIndex, sectionName, pageID, pageName, params);
+
+            if (!result)
+                return false;
+
+            sectionName.copyToUTF8(page->section_name, CLAP_NAME_SIZE);
+            pageName.copyToUTF8(page->page_name, CLAP_NAME_SIZE);
+            page->page_id = pageID;
+            page->is_for_preset = false; // (Jatin) Not 100% sure what to do with this
+
+            for (size_t i = 0; i < CLAP_REMOTE_CONTROLS_COUNT; ++i)
+            {
+                if (params[i] == nullptr)
+                    page->param_ids[i] = CLAP_INVALID_ID;
+                else
+                    page->param_ids[i] = clapIDByParamPtr[params[i]];
+            }
+
+            return true;
+        }
         return false;
     }
 
@@ -929,11 +995,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         auto jp = static_cast<JUCEParameterVariant *>(paramEvent->cookie);
         jassert(jp);
-        if (!jp)  // unlikely
+        if (!jp) // unlikely
         {
             jp = findVariantByParamId(paramEvent->param_id);
             jassert(jp);
-            if (!jp) 
+            if (!jp)
                 return;
         }
 

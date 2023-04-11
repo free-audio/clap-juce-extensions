@@ -24,6 +24,7 @@ namespace juce
 class MidiBuffer;
 class AudioProcessorParameter;
 class RangedAudioParameter;
+class String;
 } // namespace juce
 
 namespace clap_juce_extensions
@@ -206,7 +207,7 @@ struct clap_juce_audio_processor_capabilities
 
     /**
      * If your plugin supports custom note names, then this method should be overriden
-     * to return how the number of note names taht your plugin has.
+     * to return how the number of note names that your plugin has.
      */
     virtual int noteNameCount() noexcept { return 0; }
 
@@ -221,6 +222,30 @@ struct clap_juce_audio_processor_capabilities
 
     /** Plugins should call this method when their note names have changed. */
     void noteNamesChanged() { noteNamesChangedSignal(); }
+
+    /** If your plugin supports remote controls, then override this method to return true. */
+    virtual bool supportsRemoteControls() const noexcept { return false; }
+
+    /** If your plugin supports remote controls, then override this method to return the number of
+     * pages. */
+    virtual uint32_t remoteControlsPageCount() noexcept { return 0; }
+
+    /** If your plugin supports remote controls, then override this method to fill in the page
+     * information. */
+    virtual bool
+    remoteControlsPageFill(uint32_t /*pageIndex*/, juce::String & /*sectionName*/,
+                           uint32_t & /*pageID*/, juce::String & /*pageName*/,
+                           std::array<juce::AudioProcessorParameter *, CLAP_REMOTE_CONTROLS_COUNT>
+                               & /*params*/) noexcept
+    {
+        return false;
+    }
+
+    /** Plugins should call this method when their remote controls have changed. */
+    void remoteControlsChanged() { remoteControlsChangedSignal(); }
+
+    /** Plugins should call this method to suggest the host show a remote controls page. */
+    void suggestRemoteControlsPage(uint32_t pageID) { suggestRemoteControlsPageSignal(pageID); }
 
     /*
      * If you are working with a host that chooses to not implement cookies you will
@@ -238,6 +263,8 @@ struct clap_juce_audio_processor_capabilities
     std::function<void(const clap_event_param_value *)> parameterChangeHandler = nullptr;
     std::function<JUCEParameterVariant *(clap_id)> lookupParamByID = nullptr;
     std::function<void()> noteNamesChangedSignal = nullptr;
+    std::function<void()> remoteControlsChangedSignal = nullptr;
+    std::function<void(uint32_t)> suggestRemoteControlsPageSignal = nullptr;
 };
 
 /*
