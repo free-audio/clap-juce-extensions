@@ -231,7 +231,8 @@ struct clap_juce_audio_processor_capabilities
     virtual uint32_t remoteControlsPageCount() noexcept { return 0; }
 
     /** If your plugin supports remote controls, then override this method to fill in the page
-     * information. */
+     * information. If you would like to leave some of the parameter slots blank, then set the
+     * parameters for those slots to `nullptr`. */
     virtual bool
     remoteControlsPageFill(uint32_t /*pageIndex*/, juce::String & /*sectionName*/,
                            uint32_t & /*pageID*/, juce::String & /*pageName*/,
