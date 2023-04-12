@@ -1595,7 +1595,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                 return false;
             }
         }
-        catch (std::bad_alloc &a)
+        catch (std::bad_alloc &)
         {
             // it is unlikely to be that useful to return false if you can't
             // incrementally allocate a 4096 sized block. But try anyway.
