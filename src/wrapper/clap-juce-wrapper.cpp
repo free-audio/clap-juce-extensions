@@ -1578,12 +1578,22 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         juce::ScopedLock lock(stateInformationLock);
         chunkMemory.reset();
-        // There must be a better way
-        char block[256];
+
+        // Read the stream blockwise until completeion or error
+        constexpr int32_t blockSize{4096};
+        char block[blockSize];
         int64_t rd;
-        while ((rd = stream->read(stream, block, 256)) > 0)
+        while ((rd = stream->read(stream, block, blockSize)) > 0)
             chunkMemory.append(block, (size_t)rd);
 
+        // A stream which ends with < 0 has an IO error
+        if (rd < 0)
+        {
+            return false;
+        }
+
+        // JUCE has no way to report an unstream error; setStateInformation is void
+        // So we just have to assume it works.
         processor->setStateInformation(chunkMemory.getData(), (int)chunkMemory.getSize());
         chunkMemory.reset();
         return true;
