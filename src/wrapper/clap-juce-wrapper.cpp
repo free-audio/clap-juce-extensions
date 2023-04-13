@@ -55,6 +55,12 @@ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
         onetime_ = true;                                                                           \
     }
 
+
+
+#if CLAP_SUPPORTS_CUSTOM_FACTORY
+extern void *clapJuceExtensionCustomFactory(const char*);
+#endif
+
 /*
  * This is a utility lock free queue based on the JUCE abstract fifo
  */
@@ -1814,6 +1820,10 @@ static const void *clap_get_factory(const char *factory_id)
     {
         return &juce_clap_plugin_factory;
     }
+
+#if CLAP_SUPPORTS_CUSTOM_FACTORY
+    return ::clapJuceExtensionCustomFactory(factory_id);
+#endif
 
     return nullptr;
 }

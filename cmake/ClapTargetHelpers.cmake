@@ -1,7 +1,7 @@
 function(clap_juce_extensions_plugin_internal)
     set(oneValueArgs TARGET TARGET_PATH PLUGIN_BINARY_NAME IS_JUCER PLUGIN_VERSION DO_COPY CLAP_MANUAL_URL
             CLAP_SUPPORT_URL CLAP_MISBEHAVIOUR_HANDLER_LEVEL CLAP_CHECKING_LEVEL CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES
-            CLAP_ALWAYS_SPLIT_BLOCK CLAP_USE_JUCE_PARAMETER_RANGES)
+            CLAP_ALWAYS_SPLIT_BLOCK CLAP_USE_JUCE_PARAMETER_RANGES CLAP_SUPPORTS_CUSTOM_FACTORY)
     set(multiValueArgs CLAP_ID CLAP_FEATURES)
   
     cmake_parse_arguments(CJA "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -45,6 +45,13 @@ function(clap_juce_extensions_plugin_internal)
         set(CJA_CLAP_ALWAYS_SPLIT_BLOCK 0)
     else()
         message( STATUS "Setting \"Always split block\" to ${CJA_CLAP_ALWAYS_SPLIT_BLOCK}")
+    endif()
+
+    if ("${CJA_CLAP_SUPPORTS_CUSTOM_FACTORY}" STREQUAL "")
+        set(CJA_CLAP_SUPPORTS_CUSTOM_FACTORY 0)
+    endif()
+    if (${CJA_CLAP_SUPPORTS_CUSTOM_FACTORY} GREATER 0)
+        message( STATUS "Custom Factory support engaged. You must implement clapJuceExtensionCustomFactory(const char *)")
     endif()
 
     if ("${CJA_CLAP_USE_JUCE_PARAMETER_RANGES}" STREQUAL "")
@@ -125,6 +132,7 @@ function(clap_juce_extensions_plugin_internal)
             CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES=${CJA_CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES}
             CLAP_ALWAYS_SPLIT_BLOCK=${CJA_CLAP_ALWAYS_SPLIT_BLOCK}
             CLAP_USE_JUCE_PARAMETER_RANGES=CLAP_USE_JUCE_PARAMETER_RANGES_${CJA_CLAP_USE_JUCE_PARAMETER_RANGES}
+            CLAP_SUPPORTS_CUSTOM_FACTORY=${CJA_CLAP_SUPPORTS_CUSTOM_FACTORY}
             )
 
     if(${CJA_IS_JUCER})
