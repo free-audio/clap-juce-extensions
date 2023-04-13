@@ -51,7 +51,7 @@ function(clap_juce_extensions_plugin_internal)
         set(CJA_CLAP_SUPPORTS_CUSTOM_FACTORY 0)
     endif()
     if (${CJA_CLAP_SUPPORTS_CUSTOM_FACTORY} GREATER 0)
-        message( STATUS "Custom Factory support engaged. Please implement createFactory()")
+        message( STATUS "Custom Factory support engaged. You must implement clapJuceExtensionCustomFactory(const char *)")
     endif()
 
     if ("${CJA_CLAP_USE_JUCE_PARAMETER_RANGES}" STREQUAL "")
