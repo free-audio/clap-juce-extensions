@@ -221,7 +221,11 @@ struct clap_juce_audio_processor_capabilities
     }
 
     /** Plugins should call this method when their note names have changed. */
-    void noteNamesChanged() { noteNamesChangedSignal(); }
+    void noteNamesChanged()
+    {
+        if (noteNamesChangedSignal != nullptr)
+            noteNamesChangedSignal();
+    }
 
     /** If your plugin supports remote controls, then override this method to return true. */
     virtual bool supportsRemoteControls() const noexcept { return false; }
@@ -243,10 +247,18 @@ struct clap_juce_audio_processor_capabilities
     }
 
     /** Plugins should call this method when their remote controls have changed. */
-    void remoteControlsChanged() { remoteControlsChangedSignal(); }
+    void remoteControlsChanged()
+    {
+        if (remoteControlsChangedSignal != nullptr)
+            remoteControlsChangedSignal();
+    }
 
     /** Plugins should call this method to suggest the host show a remote controls page. */
-    void suggestRemoteControlsPage(uint32_t pageID) { suggestRemoteControlsPageSignal(pageID); }
+    void suggestRemoteControlsPage(uint32_t pageID)
+    {
+        if (suggestRemoteControlsPageSignal != nullptr)
+            suggestRemoteControlsPageSignal(pageID);
+    }
 
     /*
      * If you are working with a host that chooses to not implement cookies you will
