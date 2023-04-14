@@ -15,10 +15,14 @@ struct SliderWithContextMenu : juce::Slider
     {
         if (e.mods.isPopupMenu())
         {
-#if JUCE_VERSION > 0x060007
+#if JUCE_VERSION >= 0x060008
             if (auto *pluginHostContext = editor.getHostContext())
             {
+#if JUCE_VERSION > 0x060105
+                if (auto menu = pluginHostContext->getContextMenuForParameter(&param))
+#else
                 if (auto menu = pluginHostContext->getContextMenuForParameterIndex(&param))
+#endif
                 {
                     // If we wanted to show the native menu, we could do:
                     // menu->showNativeMenu(editor.getLocalBounds().getCentre());
@@ -80,10 +84,14 @@ void PluginEditor::mouseDown(const juce::MouseEvent &e)
 {
     if (e.mods.isPopupMenu())
     {
-#if JUCE_VERSION > 0x060007
+#if JUCE_VERSION >= 0x060008
         if (auto *pluginHostContext = getHostContext())
         {
+#if JUCE_VERSION > 0x060105
+            if (auto menu = pluginHostContext->getContextMenuForParameter(nullptr))
+#else
             if (auto menu = pluginHostContext->getContextMenuForParameterIndex(nullptr))
+#endif
             {
                 // If we wanted to show the native menu, we could do:
                 // menu->showNativeMenu(e.getPosition());

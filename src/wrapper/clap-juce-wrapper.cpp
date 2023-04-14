@@ -140,6 +140,8 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 // #undef CLAP_CHECKING_LEVEL
 // #define CLAP_CHECKING_LEVEL Maximal
 
+/* Host context menus are only availble in JUCe 6.0.8 and later */
+#if JUCE_VERSION >= 0x060008
 class EditorContextMenu : public juce::HostProvidedContextMenu
 {
     using HostType = clap::helpers::HostProxy<
@@ -148,10 +150,6 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
 
   public:
     explicit EditorContextMenu(HostType &hostIn) : host(hostIn) {}
-    ~EditorContextMenu() override
-    {
-        std::cout << std::endl;
-    }
 
     juce::PopupMenu getEquivalentPopupMenu() const override
     {
@@ -340,6 +338,7 @@ class EditorHostContext : public juce::AudioProcessorEditorHostContext
     HostProxyType &hostProxy;
     const std::unordered_map<const juce::AudioProcessorParameter *, clap_id> &paramMap;
 };
+#endif // JUCE_VERSION >= 0x060008
 
 /*
  * The ClapJuceWrapper is a class which immplements a collection
@@ -1660,7 +1659,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     }
 
     std::unique_ptr<juce::AudioProcessorEditor> editor;
+#if JUCE_VERSION >= 0x060008
     std::unique_ptr<juce::AudioProcessorEditorHostContext> editorHostContext;
+#endif
     bool implementsGui() const noexcept override { return processor->hasEditor(); }
     bool guiCanResize() const noexcept override
     {
@@ -1763,8 +1764,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         if (editor != nullptr)
         {
+#if JUCE_VERSION >= 0x060008
             editorHostContext = std::make_unique<EditorHostContext>(_host, clapIDByParamPtr);
             editor->setHostContext(editorHostContext.get());
+#endif
             editor->addComponentListener(this);
         }
         else
@@ -1778,7 +1781,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     void guiDestroy() noexcept override
     {
+#if JUCE_VERSION >= 0x060008
         editorHostContext.reset();
+#endif
         processor->editorBeingDeleted(editor.get());
         guiParentAttached = false;
         editor.reset(nullptr);
