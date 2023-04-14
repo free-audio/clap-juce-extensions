@@ -15,18 +15,21 @@ struct SliderWithContextMenu : juce::Slider
     {
         if (e.mods.isPopupMenu())
         {
-            if (auto *hostContext = editor.getHostContext())
+#if JUCE_VERSION > 0x060007
+            if (auto *pluginHostContext = editor.getHostContext())
             {
-                if (auto menu = hostContext->getContextMenuForParameterIndex(&param))
+                if (auto menu = pluginHostContext->getContextMenuForParameterIndex(&param))
                 {
                     // If we wanted to show the native menu, we could do:
                     // menu->showNativeMenu(editor.getLocalBounds().getCentre());
 
                     // Instead we'll show a JUCE-style menu:
                     menu->getEquivalentPopupMenu().showMenuAsync(
-                        juce::PopupMenu::Options().withMinimumWidth (500).withParentComponent(&editor));
+                        juce::PopupMenu::Options().withMinimumWidth(500).withParentComponent(
+                            &editor));
                 }
             }
+#endif
             return;
         }
 
@@ -73,22 +76,24 @@ void PluginEditor::paint(juce::Graphics &g)
     g.drawFittedText(titleText, titleBounds, juce::Justification::centred, 1);
 }
 
-void PluginEditor::mouseDown (const juce::MouseEvent& e)
+void PluginEditor::mouseDown(const juce::MouseEvent &e)
 {
     if (e.mods.isPopupMenu())
     {
-        if (auto *hostContext = getHostContext())
+#if JUCE_VERSION > 0x060007
+        if (auto *pluginHostContext = getHostContext())
         {
-            if (auto menu = hostContext->getContextMenuForParameterIndex(nullptr))
+            if (auto menu = pluginHostContext->getContextMenuForParameterIndex(nullptr))
             {
                 // If we wanted to show the native menu, we could do:
                 // menu->showNativeMenu(e.getPosition());
 
                 // Instead we'll show a JUCE-style menu:
                 menu->getEquivalentPopupMenu().showMenuAsync(
-                    juce::PopupMenu::Options().withMinimumWidth (200).withParentComponent(this));
+                    juce::PopupMenu::Options().withMinimumWidth(200).withParentComponent(this));
             }
         }
+#endif
     }
 }
 
