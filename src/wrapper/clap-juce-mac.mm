@@ -9,5 +9,4 @@
  * the objective C symbols available.
  */
 
-#define JucePlugin_Build_VST3 1
-#include "juce_audio_plugin_client/VST/juce_VST_Wrapper.mm"
+#include "clap-juce-wrapper.cpp"
