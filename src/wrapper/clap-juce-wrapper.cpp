@@ -27,6 +27,7 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4100 4127 4244)
 #undef None
 #endif
 #include <clap/helpers/checking-level.hh>
+#include <clap/helpers/context-menu-builder.hh>
 #include <clap/helpers/host-proxy.hh>
 #include <clap/helpers/host-proxy.hxx>
 #include <clap/helpers/plugin.hh>
@@ -55,10 +56,8 @@ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
         onetime_ = true;                                                                           \
     }
 
-
-
 #if CLAP_SUPPORTS_CUSTOM_FACTORY
-extern void *clapJuceExtensionCustomFactory(const char*);
+extern void *clapJuceExtensionCustomFactory(const char *);
 #endif
 
 /*
@@ -149,8 +148,18 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
 
   public:
     explicit EditorContextMenu(HostType &hostIn) : host(hostIn) {}
+    ~EditorContextMenu() override
+    {
+        std::cout << std::endl;
+    }
 
-    juce::PopupMenu getEquivalentPopupMenu() const override {}
+    juce::PopupMenu getEquivalentPopupMenu() const override
+    {
+        host.contextMenuPopulate(host.host(), &menuTarget, builder.builder());
+
+        jassert(builder.menuStack.size() == 1); // one of the sub-menus has not been closed?
+        return builder.menuStack.front();
+    }
 
     void showNativeMenu(juce::Point<int> pos) const override
     {
@@ -163,13 +172,112 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
 
     clap_context_menu_target menuTarget{};
 
-    struct MenuBuilder
-    {
-        // TODO: implement clap_context_menu_builder here!
-    };
-
   private:
     HostType &host;
+
+    struct MenuBuilder : clap::helpers::ContextMenuBuilder
+    {
+        int menuIDCounter = 0;
+        std::vector<juce::PopupMenu> menuStack;
+
+        juce::String currentSubMenuLabel;
+        bool currentSubMenuEnabled = false;
+
+        HostType &host;
+        const clap_context_menu_target *menuTarget;
+
+        MenuBuilder(HostType &h, const clap_context_menu_target *target)
+            : host(h), menuTarget(target)
+        {
+            reset();
+        }
+
+        void reset()
+        {
+            menuIDCounter = 0;
+            menuStack.clear();
+            menuStack.emplace_back();
+        }
+
+        bool addItem(clap_context_menu_item_kind_t item_kind, const void *item_data) override
+        {
+            auto &currentMenu = menuStack.back();
+
+            if (item_kind == CLAP_CONTEXT_MENU_ITEM_ENTRY)
+            {
+                const auto entry = static_cast<const clap_context_menu_entry *>(item_data);
+
+                juce::PopupMenu::Item item;
+                item.itemID = ++menuIDCounter;
+                item.text = entry->label;
+                item.isEnabled = entry->is_enabled;
+                item.action = [&host = this->host, target = *this->menuTarget,
+                               id = entry->action_id] {
+                    host.contextMenuPerform(host.host(), &target, id);
+                };
+
+                currentMenu.addItem(item);
+            }
+            else if (item_kind == CLAP_CONTEXT_MENU_ITEM_CHECK_ENTRY)
+            {
+                const auto entry =
+                    static_cast<const clap_context_menu_check_entry *>(item_data);
+
+                juce::PopupMenu::Item item;
+                item.itemID = ++menuIDCounter;
+                item.text = entry->label;
+                item.isEnabled = entry->is_enabled;
+                item.isTicked = entry->is_checked;
+                item.action = [&host = this->host, target = *this->menuTarget,
+                               id = entry->action_id] {
+                    host.contextMenuPerform(host.host(), &target, id);
+                };
+
+                currentMenu.addItem(item);
+            }
+            else if (item_kind == CLAP_CONTEXT_MENU_ITEM_SEPARATOR)
+            {
+                currentMenu.addSeparator();
+            }
+            else if (item_kind == CLAP_CONTEXT_MENU_ITEM_BEGIN_SUBMENU)
+            {
+                const auto entry = static_cast<const clap_context_menu_submenu *>(item_data);
+
+                // add a new menu to the stack for this sub-menu
+                menuStack.emplace_back();
+
+                // copy the sub-menu info for when we add it to the parent menu later
+                currentSubMenuLabel = entry->label;
+                currentSubMenuEnabled = entry->is_enabled;
+            }
+            else if (item_kind == CLAP_CONTEXT_MENU_ITEM_END_SUBMENU)
+            {
+                // copy current menu (which is a sub-menu)
+                const auto subMenu = currentMenu;
+
+                // pop the current menu from the stack
+                jassert(menuStack.size() > 1); // trying to end a sub-menu that we didn't start?
+                menuStack.pop_back();
+
+                // add the sub-menu to the menu one level up
+                menuStack.back().addSubMenu(currentSubMenuLabel, subMenu,
+                                            currentSubMenuEnabled);
+            }
+            else if (item_kind == CLAP_CONTEXT_MENU_ITEM_TITLE)
+            {
+                const auto entry = static_cast<const clap_context_menu_item_title *>(item_data);
+                currentMenu.addSectionHeader(entry->title);
+                // CLAP allows a title to be disabled, but JUCE doesn't,
+                // so for now we'll just say that titles are always enabled.
+            }
+
+            return true;
+        }
+
+        // Currently, JUCE supports all the item kinds that CLAP supports!
+        bool supports(clap_context_menu_item_kind_t /*item_kind*/) override { return true; }
+    };
+    MenuBuilder builder{host, &menuTarget};
 };
 
 class EditorHostContext : public juce::AudioProcessorEditorHostContext
@@ -180,10 +288,9 @@ class EditorHostContext : public juce::AudioProcessorEditorHostContext
 
   public:
     EditorHostContext(
-        juce::AudioProcessor &processorIn, juce::AudioProcessorEditor &editorIn,
         HostProxyType &hostProxyIn,
         const std::unordered_map<const juce::AudioProcessorParameter *, clap_id> &paramMapIn)
-        : processor(processorIn), editor(editorIn), hostProxy(hostProxyIn), paramMap(paramMapIn)
+        : hostProxy(hostProxyIn), paramMap(paramMapIn)
     {
     }
 
@@ -230,8 +337,6 @@ class EditorHostContext : public juce::AudioProcessorEditorHostContext
 #endif
 
   private:
-    juce::AudioProcessor &processor;
-    juce::AudioProcessorEditor &editor;
     HostProxyType &hostProxy;
     const std::unordered_map<const juce::AudioProcessorParameter *, clap_id> &paramMap;
 };
@@ -1658,11 +1763,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         if (editor != nullptr)
         {
-            editorHostContext =
-                std::make_unique<EditorHostContext>(*processor, *editor, _host, clapIDByParamPtr);
-
+            editorHostContext = std::make_unique<EditorHostContext>(_host, clapIDByParamPtr);
             editor->setHostContext(editorHostContext.get());
-
             editor->addComponentListener(this);
         }
         else
@@ -1676,6 +1778,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     void guiDestroy() noexcept override
     {
+        editorHostContext.reset();
         processor->editorBeingDeleted(editor.get());
         guiParentAttached = false;
         editor.reset(nullptr);
@@ -1787,8 +1890,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             // incrementally allocate a 4096 sized block. But try anyway.
             return false;
         }
-
-
 
         // JUCE has no way to report an unstream error; setStateInformation is void
         // So we just have to assume it works.
