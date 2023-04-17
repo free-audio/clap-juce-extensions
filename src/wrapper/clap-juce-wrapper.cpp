@@ -273,7 +273,7 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
         }
 
         // Currently, JUCE supports all the item kinds that CLAP supports!
-        bool supports(clap_context_menu_item_kind_t /*item_kind*/) override { return true; }
+        bool supports(clap_context_menu_item_kind_t /*item_kind*/) const noexcept override { return true; }
     };
     MenuBuilder builder{host, &menuTarget};
 };
