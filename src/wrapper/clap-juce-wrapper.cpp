@@ -207,7 +207,7 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
 
                 juce::PopupMenu::Item item;
                 item.itemID = ++menuIDCounter;
-                item.text = entry->label;
+                item.text = juce::CharPointer_UTF8(entry->label);
                 item.isEnabled = entry->is_enabled;
                 item.action = [&host = this->host, target = *this->menuTarget,
                                id = entry->action_id] {
@@ -223,7 +223,7 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
 
                 juce::PopupMenu::Item item;
                 item.itemID = ++menuIDCounter;
-                item.text = entry->label;
+                item.text = juce::CharPointer_UTF8(entry->label);
                 item.isEnabled = entry->is_enabled;
                 item.isTicked = entry->is_checked;
                 item.action = [&host = this->host, target = *this->menuTarget,
@@ -245,7 +245,7 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
                 menuStack.emplace_back();
 
                 // copy the sub-menu info for when we add it to the parent menu later
-                currentSubMenuLabel = entry->label;
+                currentSubMenuLabel = juce::CharPointer_UTF8(entry->label);
                 currentSubMenuEnabled = entry->is_enabled;
             }
             else if (item_kind == CLAP_CONTEXT_MENU_ITEM_END_SUBMENU)
@@ -264,7 +264,7 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
             else if (item_kind == CLAP_CONTEXT_MENU_ITEM_TITLE)
             {
                 const auto entry = static_cast<const clap_context_menu_item_title *>(item_data);
-                currentMenu.addSectionHeader(entry->title);
+                currentMenu.addSectionHeader(juce::CharPointer_UTF8(entry->title));
                 // CLAP allows a title to be disabled, but JUCE doesn't,
                 // so for now we'll just say that titles are always enabled.
             }
