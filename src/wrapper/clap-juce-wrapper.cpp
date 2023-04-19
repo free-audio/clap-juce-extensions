@@ -153,6 +153,11 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
         return builder.menuStack.front();
     }
 
+#if ! JUCE_MAC
+    template <typename T>
+    using Point = juce::Point<T>;
+#endif
+
     void showNativeMenu(Point<int> pos) const override
     {
         if (!host.contextMenuCanPopup(host.host()))
