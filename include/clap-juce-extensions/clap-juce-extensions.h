@@ -31,6 +31,7 @@ class MidiBuffer;
 class AudioProcessorParameter;
 class RangedAudioParameter;
 class String;
+class Colour;
 } // namespace juce
 
 namespace clap_juce_extensions
@@ -231,6 +232,20 @@ struct clap_juce_audio_processor_capabilities
     {
         if (noteNamesChangedSignal != nullptr)
             noteNamesChangedSignal();
+    }
+
+    virtual bool supportsParamIndication() const noexcept { return false; }
+    virtual void paramIndicationSetMapping(const juce::RangedAudioParameter & /*param*/,
+                                           bool /*has_mapping*/, const juce::Colour * /*colour*/,
+                                           const juce::String & /*label*/,
+                                           const juce::String & /*description*/) noexcept
+    {
+    }
+
+    virtual void paramIndicationSetAutomation(const juce::RangedAudioParameter & /*param*/,
+                                              uint32_t /*automation_state*/,
+                                              const juce::Colour * /*colour*/) noexcept
+    {
     }
 
     /** If your plugin supports remote controls, then override this method to return true. */

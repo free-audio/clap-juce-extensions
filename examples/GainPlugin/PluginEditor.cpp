@@ -54,6 +54,7 @@ PluginEditor::PluginEditor(GainPlugin &plug) : juce::AudioProcessorEditor(plug),
         std::make_unique<juce::SliderParameterAttachment>(*gainParameter, *gainSlider, nullptr);
 
     plugin.getValueTreeState().addParameterListener(gainParameter->paramID, this);
+    plugin.paramIndicationHelper.addListener(this);
 
     setSize(300, 300);
     setResizable (true, true);
@@ -67,6 +68,7 @@ PluginEditor::~PluginEditor()
 {
     auto *gainParameter = plugin.getGainParameter();
     plugin.getValueTreeState().removeParameterListener(gainParameter->paramID, this);
+    plugin.paramIndicationHelper.removeListener(this);
 }
 
 void PluginEditor::resized()
@@ -83,6 +85,18 @@ void PluginEditor::paint(juce::Graphics &g)
     const auto titleBounds = getLocalBounds().removeFromTop(30);
     const auto titleText = "Gain Plugin " + plugin.getPluginTypeString();
     g.drawFittedText(titleText, titleBounds, juce::Justification::centred, 1);
+
+    if (auto *paramIndicatorInfo =
+            plugin.paramIndicationHelper.getParamIndicatorInfo(*plugin.getGainParameter()))
+    {
+        g.setColour(paramIndicatorInfo->colour);
+        g.fillRect(juce::Rectangle<int>{0, 0, 15, 15});
+
+        g.setColour(juce::Colours::black);
+        const auto paramIndicationTextBounds = getLocalBounds().removeFromBottom(30);
+        g.drawFittedText(paramIndicatorInfo->text, paramIndicationTextBounds,
+                         juce::Justification::centred, 1);
+    }
 }
 
 void PluginEditor::mouseDown(const juce::MouseEvent &e)
@@ -123,4 +137,11 @@ void PluginEditor::parameterChanged(const juce::String &, float)
 
     auto &animator = juce::Desktop::getInstance().getAnimator();
     animator.fadeOut(&flashComp, 100);
+}
+
+void PluginEditor::paramIndicatorInfoChanged(const juce::RangedAudioParameter &param)
+{
+    if (&param != plugin.getGainParameter())
+        return;
+    repaint();
 }
