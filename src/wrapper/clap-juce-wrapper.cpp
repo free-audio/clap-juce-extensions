@@ -437,8 +437,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             processorAsClapExtensions->onPresetLoadError =
                 [this](uint32_t location_kind, const char *location, const char *load_key,
                        int32_t os_error, const juce::String &msg) {
-                    _host.presetLoadOnError(location_kind, location, load_key, os_error,
-                                            msg.toRawUTF8());
+                    if (_host.canUsePresetLoad())
+                        _host.presetLoadOnError(location_kind, location, load_key, os_error,
+                                                msg.toRawUTF8());
                 };
             processorAsClapExtensions->extensionGet = [this](const char *name) {
                 return _host.host()->get_extension(_host.host(), name);
@@ -1101,7 +1102,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             if (processorAsClapExtensions->presetLoadFromLocation(location_kind, location,
                                                                   load_key))
             {
-                _host.presetLoadLoaded(location_kind, location, load_key);
+                if (_host.canUsePresetLoad())
+                    _host.presetLoadLoaded(location_kind, location, load_key);
                 return true;
             }
         }
