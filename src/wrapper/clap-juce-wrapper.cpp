@@ -1711,6 +1711,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
      */
     bool guiAdjustSize(uint32_t *w, uint32_t *h) noexcept override
     {
+        std::cout << "guiADJUST SIZE " << *w << " " << *h << std::endl;
         if (!editor)
             return false;
 
@@ -1730,6 +1731,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         // There is no std::clamp in c++14
         auto width = juce::jlimit(minW, maxW, *w);
         auto height = juce::jlimit(minH, maxH, *h);
+
 
         auto aspectRatio = (float)cst->getFixedAspectRatio();
 
@@ -1753,12 +1755,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         *w = width;
         *h = height;
+        std::cout << "End of GAdj " << width << " " << height << std::endl;
 
         return true;
     }
 
     bool guiSetSize(uint32_t width, uint32_t height) noexcept override
     {
+        std::cout << "GUI SET SIZE " << width << " " << height << std::endl;
         if (!editor)
             return false;
 
@@ -1855,6 +1859,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     }
 
     bool guiSetScale(double scale) noexcept override {
+        std::cout << "GUI SET SCALE " << scale << std::endl;
         if (editor)
         {
             if (scale > 50)
@@ -1873,7 +1878,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         if (editor)
         {
             auto b = editor->getBounds();
+            std::cout << "GUI Get Size " << b.toString() << std::endl;
             b = b.transformedBy(editor->getTransform().inverted());
+
+            std::cout << "    POST size " << b.toString() << std::endl;
             *width = (uint32_t)b.getWidth();
             *height = (uint32_t)b.getHeight();
             return true;
