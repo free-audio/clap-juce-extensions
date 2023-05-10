@@ -1765,7 +1765,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         if (!editor->isResizable())
             return false;
 
-        editor->setSize(static_cast<int>(width), static_cast<int>(height));
+        juce::Rectangle<int> b(width, height);
+        b = b.transformedBy(editor->getTransform().inverted());
+
+        editor->setSize(b.getWidth(), b.getHeight());
         return true;
     }
 
@@ -1851,12 +1854,26 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return false;
     }
 
+    bool guiSetScale(double scale) noexcept override {
+        if (editor)
+        {
+            if (scale > 50)
+            {
+                // this is almost definitely a units error
+                scale *= 0.01;
+            }
+            editor->setScaleFactor(scale);
+        }
+        return false;
+    }
+
     bool guiGetSize(uint32_t *width, uint32_t *height) noexcept override
     {
         const juce::MessageManagerLock mmLock;
         if (editor)
         {
             auto b = editor->getBounds();
+            b = b.transformedBy(editor->getTransform().inverted());
             *width = (uint32_t)b.getWidth();
             *height = (uint32_t)b.getHeight();
             return true;
