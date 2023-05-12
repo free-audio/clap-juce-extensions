@@ -291,8 +291,6 @@ struct clap_juce_audio_processor_capabilities
             onPresetLoadError (location_kind, location, load_key, os_error, message);
     }
 
-    // @TODO (jatin): callbacks for preset load error and success
-
     /*
      * If you are working with a host that chooses to not implement cookies you will
      * need to look up parameters by param_id. Use this method to do so.

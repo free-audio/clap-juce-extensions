@@ -133,7 +133,7 @@ function(clap_juce_extensions_plugin_internal)
                 )
     endif()
 
-    target_compile_definitions(${claptarget} PRIVATE
+    target_compile_definitions(${target} PUBLIC
             CLAP_ID="${CJA_CLAP_ID}"
             CLAP_FEATURES=${CJA_CLAP_FEATURES_PARSED}
             CLAP_MANUAL_URL="${CJA_CLAP_MANUAL_URL}"
