@@ -1574,6 +1574,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                                 (int)midiEvent->header.time - sampleOffset);
         }
         break;
+        case CLAP_EVENT_MIDI_SYSEX:
+        {
+            auto midiSysexEvent = reinterpret_cast<const clap_event_midi_sysex *>(event);
+            midiBuffer.addEvent(juce::MidiMessage(midiSysexEvent->buffer, (int)midiSysexEvent->size,
+                                                  midiSysexEvent->header.time),
+                                (int)midiSysexEvent->header.time - sampleOffset);
+        }
+        break;
         case CLAP_EVENT_TRANSPORT:
         {
             // handle this case
