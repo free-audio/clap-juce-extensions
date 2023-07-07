@@ -68,7 +68,7 @@ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
     }
 
 #if CLAP_SUPPORTS_CUSTOM_FACTORY
-extern void *clapJuceExtensionCustomFactory(const char *);
+extern const void *clapJuceExtensionCustomFactory(const char *);
 #endif
 
 #if !JUCE_MAC
