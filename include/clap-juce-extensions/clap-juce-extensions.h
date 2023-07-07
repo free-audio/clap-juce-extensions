@@ -274,21 +274,21 @@ struct clap_juce_audio_processor_capabilities
      * The plugin should override this method to attempt to load a preset from a location,
      * and return true if the load occurred successfully.
      */
-    virtual bool presetLoadFromLocation(uint32_t location_kind, const char *location,
-                                        const char *load_key) noexcept
+    virtual bool presetLoadFromLocation(uint32_t location_kind, const char * /*location*/,
+                                        const char * /*load_key*/) noexcept
     {
         return false;
     }
 
     /**
-     * The plugin should call this from within presetLoadFromLocation() to report an error when trying
-     * to load the preset, and then return false from presetLoadFromLocation().
+     * The plugin should call this from within presetLoadFromLocation() to report an error when
+     * trying to load the preset, and then return false from presetLoadFromLocation().
      */
-    void reportPresetLoadError(uint32_t location_kind, const char *location, const char *load_key,
-                               int32_t os_error, const juce::String &message)
+    void reportPresetLoadError(uint32_t location_kind, const char * location, const char * load_key,
+                               int32_t os_error, const juce::String & message)
     {
         if (onPresetLoadError != nullptr)
-            onPresetLoadError (location_kind, location, load_key, os_error, message);
+            onPresetLoadError(location_kind, location, load_key, os_error, message);
     }
 
     /*
