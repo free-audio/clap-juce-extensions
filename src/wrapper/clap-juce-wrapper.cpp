@@ -70,9 +70,10 @@ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 extern void *clapJuceExtensionCustomFactory(const char *);
 #endif
 
-#if JUCE_VERSION >= 0x070006 && ! JUCE_MAC
+#if ! JUCE_MAC
 template <typename T>
 using Point = juce::Point<T>;
+using Component = juce::Component;
 #endif
 
 /*
@@ -496,7 +497,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         juce::ScopedJuceInitialiser_GUI libraryInitialiser;
         const juce::MessageManagerLock mmLock;
 
-#if JUCE_VERSION > 0x060008
+#if JUCE_VERSION >= 0x070006
+        while (juce::detail::dispatchNextMessageOnSystemQueue(true))
+        {
+        }
+#elif JUCE_VERSION > 0x060008
         while (juce::dispatchNextMessageOnSystemQueue(true))
         {
         }
