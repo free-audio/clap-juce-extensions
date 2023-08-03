@@ -16,12 +16,12 @@
 #define JUCE_GUI_BASICS_INCLUDE_XHEADERS 1
 #include <juce_core/system/juce_CompilerWarnings.h>
 #include <juce_core/system/juce_TargetPlatform.h>
-#include <juce_audio_plugin_client/detail/juce_IncludeSystemHeaders.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/format_types/juce_LegacyAudioParameter.cpp>
 
 #if JUCE_VERSION >= 0x070006
+#include <juce_audio_plugin_client/detail/juce_IncludeSystemHeaders.h>
 #include <juce_audio_plugin_client/detail/juce_PluginUtilities.h>
 #include <juce_audio_plugin_client/detail/juce_VSTWindowUtilities.h>
 #endif
@@ -46,7 +46,9 @@ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 #include <clap-juce-extensions/clap-juce-extensions.h>
 
 #if JUCE_LINUX
-#if JUCE_VERSION > 0x060008
+#if JUCE_VERSION >= 0x070006
+#include <juce_audio_plugin_client/detail/juce_LinuxMessageThread.h>
+#elif JUCE_VERSION > 0x060008
 #include <juce_audio_plugin_client/utility/juce_LinuxMessageThread.h>
 #endif
 #endif
