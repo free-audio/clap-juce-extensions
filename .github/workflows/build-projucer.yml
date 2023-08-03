@@ -22,12 +22,12 @@ jobs:
             jucer: build/_deps/juce-src/extras/Projucer/Builds/LinuxMakefile/build/Projucer
             clap_gen: "Unix Makefiles"
             juce_version: "7.0.6"
-            cxx_standard: 14
+            cxx_standard: 17
           - os: macos-latest
             jucer: build/_deps/juce-src/extras/Projucer/Builds/MacOSX/build/Debug/Projucer.app/Contents/MacOS/Projucer
             clap_gen: "Xcode"
             juce_version: "7.0.6"
-            cxx_standard: 14
+            cxx_standard: 17
           - os: windows-2022
             jucer: build/_deps/juce-src/extras/Projucer/Builds/VisualStudio2019/x64/Debug/App/Projucer.exe
             clap_gen: "Visual Studio 17 2022"
