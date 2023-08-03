@@ -70,7 +70,7 @@ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 extern void *clapJuceExtensionCustomFactory(const char *);
 #endif
 
-#if ! JUCE_MAC
+#if JUCE_VERSION < 0x070006 && ! JUCE_MAC
 template <typename T>
 using Point = juce::Point<T>;
 using Component = juce::Component;
@@ -1731,7 +1731,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         auto aspectRatio = (float)cst->getFixedAspectRatio();
 
-        if (aspectRatio != 0.0f)
+        if (aspectRatio > 0.0f)
         {
             /*
              * This is obviously an unsatisfactory algorithm, but we wanted to have
