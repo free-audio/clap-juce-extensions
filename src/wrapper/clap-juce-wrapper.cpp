@@ -70,10 +70,12 @@ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 extern void *clapJuceExtensionCustomFactory(const char *);
 #endif
 
-#if JUCE_VERSION < 0x070006 && ! JUCE_MAC
+#if ! JUCE_MAC
 template <typename T>
 using Point = juce::Point<T>;
+#if JUCE_VERSION < 0x070006
 using Component = juce::Component;
+#endif
 #endif
 
 /*
