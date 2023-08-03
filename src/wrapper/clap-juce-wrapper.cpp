@@ -14,11 +14,19 @@
 #include <new>
 
 #define JUCE_GUI_BASICS_INCLUDE_XHEADERS 1
+#include <juce_core/system/juce_CompilerWarnings.h>
+#include <juce_core/system/juce_TargetPlatform.h>
+#include <juce_audio_plugin_client/detail/juce_IncludeSystemHeaders.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/format_types/juce_LegacyAudioParameter.cpp>
 
-JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter", "-Wsign-conversion", "-Wfloat-conversion")
+#if JUCE_VERSION >= 0x070006
+#include <juce_audio_plugin_client/detail/juce_PluginUtilities.h>
+#include <juce_audio_plugin_client/detail/juce_VSTWindowUtilities.h>
+#endif
+
+JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter", "-Wsign-conversion", "-Wfloat-conversion", "-Wfloat-equal")
 JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4100 4127 4244)
 // Sigh - X11.h eventually does a #define None 0L which doesn't work
 // with an enum in clap land being called None, so just undef it
@@ -60,6 +68,11 @@ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 extern void *clapJuceExtensionCustomFactory(const char *);
 #endif
 
+#if JUCE_VERSION >= 0x070006 && ! JUCE_MAC
+template <typename T>
+using Point = juce::Point<T>;
+#endif
+
 /*
  * This is a utility lock free queue based on the JUCE abstract fifo
  */
@@ -97,6 +110,7 @@ template <typename T, int qSize = 4096> class PushPopQ
     T dq[(size_t)qSize];
 };
 
+#if JUCE_VERSION < 0x070006
 /*
  * These functions are the JUCE VST2/3 NSView attachment functions. We compile them into
  * our clap dll by, on macos, also linking clap_juce_mac.mm
@@ -107,6 +121,7 @@ extern JUCE_API void initialiseMacVST();
 extern JUCE_API void *attachComponentToWindowRefVST(Component *, void *parentWindowOrView,
                                                     bool isNSView);
 } // namespace juce
+#endif
 
 JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 
@@ -159,7 +174,7 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
         return builder.menuStack.front();
     }
 
-    void showNativeMenu(juce::Point<int> pos) const override
+    void showNativeMenu(Point<int> pos) const override
     {
         if (!host.contextMenuCanPopup(host.host()))
             return;
@@ -1216,8 +1231,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     {
         newValue = getNormalisedParameterValue(param, newValue);
 
+        JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wfloat-equal")
         if (param.processorParam->getValue() == newValue)
             return;
+        JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 
         param.processorParam->setValue(newValue);
 
@@ -1658,7 +1675,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         }
     }
 
-    void componentMovedOrResized(juce::Component &component, bool wasMoved,
+    void componentMovedOrResized(Component &component, bool wasMoved,
                                  bool wasResized) override
     {
         juce::ignoreUnused(wasMoved);
@@ -1915,8 +1932,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 #if JUCE_MAC
     bool guiCocoaAttach(void *nsView) noexcept
     {
+#if JUCE_VERSION < 0x070006
         juce::initialiseMacVST();
         auto hostWindow = juce::attachComponentToWindowRefVST(editor.get(), nsView, true);
+#else
+        const auto desktopFlags = juce::detail::PluginUtilities::getDesktopFlags (editor.get());
+        auto hostWindow = juce::detail::VSTWindowUtilities::attachComponentToWindowRefVST(editor.get(), desktopFlags, nsView);
+#endif
         juce::ignoreUnused(hostWindow);
         return true;
     }

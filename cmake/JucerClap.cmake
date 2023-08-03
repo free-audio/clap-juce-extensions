@@ -109,7 +109,11 @@ function(create_jucer_clap_target)
         message(WARNING "Plugin code not set! Using \"Xyz5\"")
         set(CJA_PLUGIN_CODE "Xyz5")
     endif()
-    target_compile_definitions(${clap_target} PRIVATE JucePlugin_PluginCode=${CJA_PLUGIN_CODE})
+    target_compile_definitions(${clap_target}
+        PRIVATE
+            JucePlugin_PluginCode="${CJA_PLUGIN_CODE}"
+            JucePlugin_VSTUniqueID="${CJA_PLUGIN_CODE}"
+    )
 
     if(${CJA_EDITOR_NEEDS_KEYBOARD_FOCUS})
         target_compile_definitions(${clap_target} PRIVATE JucePlugin_EditorRequiresKeyboardFocus=1)
