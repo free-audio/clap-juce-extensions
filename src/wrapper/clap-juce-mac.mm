@@ -1,3 +1,6 @@
+#include <juce_core/juce_core.h>
+
+#if JUCE_VERSION < 0x070006
 /*
  * This file allows our CLAP extension to load the objective
  * C extensions that JUCE uses to create a UI on mac in the
@@ -11,3 +14,6 @@
 
 #define JucePlugin_Build_VST3 1
 #include "juce_audio_plugin_client/VST/juce_VST_Wrapper.mm"
+#endif
+
+#include "clap-juce-wrapper.cpp"
