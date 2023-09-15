@@ -1697,7 +1697,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return false;
     }
 
-    struct EditorWrapperComponent : juce::Component
+    struct EditorWrapperComponent : Component
     {
         using HostType = clap::helpers::HostProxy<
             clap::helpers::MisbehaviourHandler::CLAP_MISBEHAVIOUR_HANDLER_LEVEL,
@@ -1782,7 +1782,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
                 {
                     const juce::ScopedValueSetter<bool> resizingParentSetter(resizingParent, true);
-                    host.guiRequestResize(b.getWidth(), b.getHeight());
+                    host.guiRequestResize((uint32_t)b.getWidth(), (uint32_t)b.getHeight());
                 }
 
                 setBounds(editorBounds.withPosition(0, 0));
@@ -2115,7 +2115,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         juce::initialiseMacVST();
         auto hostWindow = juce::attachComponentToWindowRefVST(editorWrapper.get(), nsView, true);
 #else
-        const auto desktopFlags = juce::detail::PluginUtilities::getDesktopFlags (editorWrapper.get());
+        const auto desktopFlags = juce::detail::PluginUtilities::getDesktopFlags (editorWrapper->editor.get());
         auto hostWindow = juce::detail::VSTWindowUtilities::attachComponentToWindowRefVST(editorWrapper.get(), desktopFlags, nsView);
 #endif
         juce::ignoreUnused(hostWindow);
