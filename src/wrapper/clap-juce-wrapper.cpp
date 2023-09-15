@@ -1868,6 +1868,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                 scale *= 0.01;
             }
             editor->setScaleFactor(scale);
+            _host.guiRequestResize((uint32_t)editor->getWidth(), (uint32_t)editor->getHeight());
+            return true;
         }
         return false;
     }
@@ -1879,7 +1881,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         {
             auto b = editor->getBounds();
             std::cout << "GUI Get Size " << b.toString() << std::endl;
-            b = b.transformedBy(editor->getTransform().inverted());
+            b = b.transformedBy(editor->getTransform());
 
             std::cout << "    POST size " << b.toString() << std::endl;
             *width = (uint32_t)b.getWidth();
