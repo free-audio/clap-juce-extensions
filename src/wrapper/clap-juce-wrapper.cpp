@@ -238,8 +238,7 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
             }
             else if (item_kind == CLAP_CONTEXT_MENU_ITEM_CHECK_ENTRY)
             {
-                const auto entry =
-                    static_cast<const clap_context_menu_check_entry *>(item_data);
+                const auto entry = static_cast<const clap_context_menu_check_entry *>(item_data);
 
                 juce::PopupMenu::Item item;
                 item.itemID = ++menuIDCounter;
@@ -278,8 +277,7 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
                 menuStack.pop_back();
 
                 // add the sub-menu to the menu one level up
-                menuStack.back().addSubMenu(currentSubMenuLabel, subMenu,
-                                            currentSubMenuEnabled);
+                menuStack.back().addSubMenu(currentSubMenuLabel, subMenu, currentSubMenuEnabled);
             }
             else if (item_kind == CLAP_CONTEXT_MENU_ITEM_TITLE)
             {
@@ -293,7 +291,10 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
         }
 
         // Currently, JUCE supports all the item kinds that CLAP supports!
-        bool supports(clap_context_menu_item_kind_t /*item_kind*/) const noexcept override { return true; }
+        bool supports(clap_context_menu_item_kind_t /*item_kind*/) const noexcept override
+        {
+            return true;
+        }
     };
     MenuBuilder builder{host, &menuTarget};
 };
@@ -1687,9 +1688,23 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     void componentMovedOrResized(Component &component, bool wasMoved,
                                  bool wasResized) override
     {
+        if (guiSkipResizeCallback)
+            return;
+
+        if (editor.get() != &component)
+        {
+            // the wrapper should _only_ be listening to the editor component!
+            jassertfalse;
+            return;
+        }
+
+        juce::ScopedValueSetter svs{guiSkipResizeCallback, true};
         juce::ignoreUnused(wasMoved);
         if (wasResized && _host.canUseGui())
-            _host.guiRequestResize((uint32_t)component.getWidth(), (uint32_t)component.getHeight());
+        {
+            const auto b = getBoundsHostScale(editor->getBounds());
+            _host.guiRequestResize((uint32_t)b.getWidth(), (uint32_t)b.getHeight());
+        }
     }
 
     std::unique_ptr<juce::AudioProcessorEditor> editor;
@@ -1723,15 +1738,16 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         if (!cst)
             return true; // we have no constraints. Whaever is fine!
 
-        auto minW = (uint32_t)cst->getMinimumWidth();
-        auto maxW = (uint32_t)cst->getMaximumWidth();
-        auto minH = (uint32_t)cst->getMinimumHeight();
-        auto maxH = (uint32_t)cst->getMaximumHeight();
+        const auto maxBounds = getBoundsHostScale (juce::Rectangle { cst->getMaximumWidth(), cst->getMaximumHeight() });
+        const auto minBounds = getBoundsHostScale (juce::Rectangle { cst->getMinimumWidth(), cst->getMinimumHeight() });
+        auto minW = (uint32_t)minBounds.getWidth();
+        auto maxW = (uint32_t)maxBounds.getWidth();
+        auto minH = (uint32_t)minBounds.getHeight();
+        auto maxH = (uint32_t)maxBounds.getHeight();
 
         // There is no std::clamp in c++14
         auto width = juce::jlimit(minW, maxW, *w);
         auto height = juce::jlimit(minH, maxH, *h);
-
 
         auto aspectRatio = (float)cst->getFixedAspectRatio();
 
@@ -1769,9 +1785,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         if (!editor->isResizable())
             return false;
 
-        juce::Rectangle<int> b(width, height);
-        b = b.transformedBy(editor->getTransform().inverted());
-
+        const auto b = getBoundsEditorScale(juce::Rectangle{(int)width, (int)height});
         editor->setSize(b.getWidth(), b.getHeight());
         return true;
     }
@@ -1789,6 +1803,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     }
 
     bool guiParentAttached{false};
+    float guiScaleFactor = 1.0f;
     bool guiCreate(const char *api, bool isFloating) noexcept override
     {
         juce::ignoreUnused(api);
@@ -1810,6 +1825,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             editor->setHostContext(editorHostContext.get());
 #endif
             editor->addComponentListener(this);
+            editor->setScaleFactor(guiScaleFactor);
         }
         else
         {
@@ -1858,7 +1874,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return false;
     }
 
-    bool guiSetScale(double scale) noexcept override {
+    bool guiSetScale(double scale) noexcept override
+    {
         std::cout << "GUI SET SCALE " << scale << std::endl;
         if (editor)
         {
@@ -1867,8 +1884,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                 // this is almost definitely a units error
                 scale *= 0.01;
             }
-            editor->setScaleFactor(scale);
-            _host.guiRequestResize((uint32_t)editor->getWidth(), (uint32_t)editor->getHeight());
+            guiScaleFactor = static_cast<float> (scale);
+            editor->setScaleFactor(guiScaleFactor);
             return true;
         }
         return false;
@@ -1879,9 +1896,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         const juce::MessageManagerLock mmLock;
         if (editor)
         {
-            auto b = editor->getBounds();
-            std::cout << "GUI Get Size " << b.toString() << std::endl;
-            b = b.transformedBy(editor->getTransform());
+            std::cout << "GUI Get Size " << editor->getBounds().toString() << std::endl;
+            const auto b = getBoundsHostScale(editor->getBounds());
 
             std::cout << "    POST size " << b.toString() << std::endl;
             *width = (uint32_t)b.getWidth();

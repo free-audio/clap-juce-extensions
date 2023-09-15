@@ -56,6 +56,11 @@ PluginEditor::PluginEditor(GainPlugin &plug) : juce::AudioProcessorEditor(plug),
     plugin.getValueTreeState().addParameterListener(gainParameter->paramID, this);
 
     setSize(300, 300);
+    setResizable (true, true);
+
+    constrainer.setSizeLimits (100, 100, 500, 500);
+    constrainer.setFixedAspectRatio (1.0);
+    setConstrainer (&constrainer);
 }
 
 PluginEditor::~PluginEditor()
