@@ -1881,12 +1881,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     void guiDestroy() noexcept override
     {
-#if JUCE_VERSION >= 0x060008
-        editorWrapper->editorHostContext.reset();
-#endif
-        processor->editorBeingDeleted(editorWrapper->editor.get());
+        editorWrapper.reset(nullptr);
         guiParentAttached = false;
-        editorWrapper->editor.reset(nullptr);
     }
 
     bool guiSetParent(const clap_window *window) noexcept override
