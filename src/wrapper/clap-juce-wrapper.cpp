@@ -160,7 +160,7 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
 // #undef CLAP_CHECKING_LEVEL
 // #define CLAP_CHECKING_LEVEL Maximal
 
-/* Host context menus are only availble in JUCe 6.0.8 and later */
+/* Host context menus are only availble in JUCE 6.0.8 and later */
 #if JUCE_VERSION >= 0x060008
 class EditorContextMenu : public juce::HostProvidedContextMenu
 {
@@ -468,8 +468,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     ~ClapJuceWrapper() override
     {
-        processor->editorBeingDeleted(editor.get());
-
 #if JUCE_LINUX
         if (_host.canUseTimerSupport())
         {
@@ -1685,37 +1683,264 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         }
     }
 
-    void componentMovedOrResized(Component &component, bool wasMoved,
-                                 bool wasResized) override
+    // START GUI CODE
+    bool implementsGui() const noexcept override { return processor->hasEditor(); }
+    bool guiIsApiSupported(const char *api, bool isFloating) noexcept override
     {
-//        if (guiSkipResizeCallback)
-//            return;
+        if (isFloating)
+            return false;
 
-        if (editor.get() != &component)
-        {
-            // the wrapper should _only_ be listening to the editor component!
-            jassertfalse;
-            return;
-        }
+        if (strcmp(api, CLAP_WINDOW_API_WIN32) == 0 || strcmp(api, CLAP_WINDOW_API_COCOA) == 0 ||
+            strcmp(api, CLAP_WINDOW_API_X11) == 0)
+            return true;
 
-        juce::ScopedValueSetter svs{guiSkipResizeCallback, true};
-        juce::ignoreUnused(wasMoved);
-        if (wasResized && _host.canUseGui())
-        {
-            const auto b = getBoundsHostScale(editor->getBounds());
-            _host.guiRequestResize((uint32_t)b.getWidth(), (uint32_t)b.getHeight());
-        }
+        return false;
     }
 
-    std::unique_ptr<juce::AudioProcessorEditor> editor;
+    struct EditorWrapperComponent : juce::Component
+    {
+        using HostType = clap::helpers::HostProxy<
+            clap::helpers::MisbehaviourHandler::CLAP_MISBEHAVIOUR_HANDLER_LEVEL,
+            clap::helpers::CheckingLevel::CLAP_CHECKING_LEVEL>;
+        EditorWrapperComponent(HostType &_host, ClapJuceWrapper &_clapWrapper)
+            : host(_host), clapWrapper(_clapWrapper)
+        {
+            setOpaque(true);
+            setBroughtToFrontOnMouseClick(true);
+        }
+
+        ~EditorWrapperComponent() override
+        {
+            if (editor != nullptr)
+            {
+                juce::PopupMenu::dismissAllActiveMenus();
+                editor->processor.editorBeingDeleted(editor.get());
+            }
+        }
+
+        void createEditor(juce::AudioProcessor &plugin)
+        {
+            editor.reset(plugin.createEditorIfNeeded());
+
+            if (editor != nullptr)
+            {
 #if JUCE_VERSION >= 0x060008
-    std::unique_ptr<juce::AudioProcessorEditorHostContext> editorHostContext;
+                editorHostContext =
+                    std::make_unique<EditorHostContext>(host, clapWrapper.clapIDByParamPtr);
+                editor->setHostContext(editorHostContext.get());
 #endif
-    bool implementsGui() const noexcept override { return processor->hasEditor(); }
+#if !JUCE_MAC
+                editor->setScaleFactor(clapWrapper.guiScaleFactor);
+#endif
+
+                addAndMakeVisible(editor.get());
+                editor->setTopLeftPosition(0, 0);
+
+                lastBounds = getSizeToContainChild();
+
+                {
+                    const juce::ScopedValueSetter<bool> resizingParentSetter{resizingParent, true};
+                    setBounds(lastBounds);
+                }
+            }
+            else
+            {
+                // if hasEditor() returns true then createEditorIfNeeded has to return a valid
+                // editor
+                jassertfalse;
+            }
+        }
+
+        juce::Rectangle<int> getSizeToContainChild()
+        {
+            if (editor != nullptr)
+                return getLocalArea(editor.get(), editor->getLocalBounds());
+
+            return {};
+        }
+
+        static juce::Rectangle<int> convertToHostBounds(juce::Rectangle<int> pluginRect)
+        {
+            const auto desktopScale = juce::Desktop::getInstance().getGlobalScaleFactor();
+
+            if (juce::isWithin(desktopScale, 1.0f, 1.0e-3f))
+                return pluginRect;
+
+            return {juce::roundToInt((float)pluginRect.getX() * desktopScale),
+                    juce::roundToInt((float)pluginRect.getY() * desktopScale),
+                    juce::roundToInt((float)pluginRect.getWidth() * desktopScale),
+                    juce::roundToInt((float)pluginRect.getHeight() * desktopScale)};
+        }
+
+        void resizeHostWindow()
+        {
+            if (editor != nullptr)
+            {
+                auto editorBounds = getSizeToContainChild();
+                auto b =
+                    convertToHostBounds({0, 0, editorBounds.getWidth(), editorBounds.getHeight()});
+
+                {
+                    const juce::ScopedValueSetter<bool> resizingParentSetter(resizingParent, true);
+                    host.guiRequestResize(b.getWidth(), b.getHeight());
+                }
+
+                setBounds(editorBounds.withPosition(0, 0));
+            }
+        }
+
+        void setEditorScaleFactor(float scale)
+        {
+            if (editor != nullptr)
+            {
+                auto prevEditorBounds = editor->getLocalArea(this, lastBounds);
+
+                {
+                    const juce::ScopedValueSetter<bool> resizingChildSetter{resizingChild, true};
+
+                    editor->setScaleFactor(scale);
+                    editor->setBounds(prevEditorBounds.withPosition(0, 0));
+                }
+
+                lastBounds = getSizeToContainChild();
+
+                resizeHostWindow();
+                repaint();
+            }
+        }
+
+        void paint(juce::Graphics &g) override { g.fillAll(juce::Colours::red); }
+        void resized() override
+        {
+            if (editor != nullptr)
+            {
+                if (!resizingParent)
+                {
+                    auto newBounds = getLocalBounds();
+
+                    {
+                        const juce::ScopedValueSetter<bool> resizingChildSetter{resizingChild,
+                                                                                true};
+                        editor->setBounds(editor->getLocalArea(this, newBounds).withPosition(0, 0));
+                    }
+
+                    lastBounds = newBounds;
+                }
+            }
+        }
+
+        void childBoundsChanged(Component *) override
+        {
+            if (resizingChild)
+                return;
+
+            auto newBounds = getSizeToContainChild();
+
+            if (newBounds != lastBounds)
+            {
+                resizeHostWindow();
+
+                repaint();
+
+                lastBounds = newBounds;
+            }
+        }
+
+        HostType &host;
+        ClapJuceWrapper &clapWrapper;
+        std::unique_ptr<juce::AudioProcessorEditor> editor;
+#if JUCE_VERSION >= 0x060008
+        std::unique_ptr<juce::AudioProcessorEditorHostContext> editorHostContext;
+#endif
+
+      private:
+        juce::Rectangle<int> lastBounds;
+        bool resizingChild = false, resizingParent = false;
+        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EditorWrapperComponent)
+    };
+    std::unique_ptr<EditorWrapperComponent> editorWrapper;
+
+    bool guiParentAttached{false};
+    float guiScaleFactor = 1.0f;
+    bool guiCreate(const char *api, bool isFloating) noexcept override
+    {
+        juce::ignoreUnused(api);
+
+        // Should never happen
+        if (isFloating)
+            return false;
+
+        const juce::MessageManagerLock mmLock;
+
+        if (editorWrapper == nullptr)
+            editorWrapper = std::make_unique<EditorWrapperComponent>(_host, *this);
+
+        editorWrapper->createEditor(*processor);
+        return editorWrapper->editor != nullptr;
+    }
+
+    void guiDestroy() noexcept override
+    {
+#if JUCE_VERSION >= 0x060008
+        editorWrapper->editorHostContext.reset();
+#endif
+        processor->editorBeingDeleted(editorWrapper->editor.get());
+        guiParentAttached = false;
+        editorWrapper->editor.reset(nullptr);
+    }
+
+    bool guiSetParent(const clap_window *window) noexcept override
+    {
+        guiParentAttached = true;
+#if JUCE_MAC
+        return guiCocoaAttach(window->cocoa);
+#elif JUCE_LINUX
+        return guiX11Attach(nullptr, window->x11);
+#elif JUCE_WINDOWS
+        return guiWin32Attach(window->win32);
+#else
+        guiParentAttached = false;
+        return false;
+#endif
+    }
+
+    // Show doesn't really exist in JUCE per se. If there's an editor and its attached
+    // we are good.
+    bool guiShow() noexcept override
+    {
+#if JUCE_MAC || JUCE_LINUX || JUCE_WINDOWS
+        if (editorWrapper != nullptr && editorWrapper->editor != nullptr)
+        {
+            return guiParentAttached;
+        }
+#endif
+        return false;
+    }
+
     bool guiCanResize() const noexcept override
     {
-        if (editor)
-            return editor->isResizable();
+        if (editorWrapper != nullptr && editorWrapper->editor != nullptr)
+            return editorWrapper->editor->isResizable();
+        return true;
+    }
+
+    bool guiSetScale(double scale) noexcept override
+    {
+        std::cout << "GUI SET SCALE " << scale << std::endl;
+
+        if (scale > 50)
+        {
+            // this is almost definitely a units error
+            scale *= 0.01;
+        }
+        guiScaleFactor = static_cast<float>(scale);
+
+        if (editorWrapper != nullptr)
+        {
+            editorWrapper->setEditorScaleFactor(guiScaleFactor);
+            return true;
+        }
+
         return true;
     }
 
@@ -1727,19 +1952,21 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     bool guiAdjustSize(uint32_t *w, uint32_t *h) noexcept override
     {
         std::cout << "guiADJUST SIZE " << *w << " " << *h << std::endl;
-        if (!editor)
+        if (editorWrapper == nullptr || editorWrapper->editor == nullptr)
             return false;
 
-        if (!editor->isResizable())
+        if (!editorWrapper->editor->isResizable())
             return false;
 
-        auto cst = editor->getConstrainer();
+        auto cst = editorWrapper->editor->getConstrainer();
 
         if (!cst)
             return true; // we have no constraints. Whaever is fine!
 
-        const auto maxBounds = getBoundsHostScale (juce::Rectangle { cst->getMaximumWidth(), cst->getMaximumHeight() });
-        const auto minBounds = getBoundsHostScale (juce::Rectangle { cst->getMinimumWidth(), cst->getMinimumHeight() });
+        const auto minBounds = EditorWrapperComponent::convertToHostBounds(
+            {cst->getMinimumWidth(), cst->getMinimumHeight()});
+        const auto maxBounds = EditorWrapperComponent::convertToHostBounds(
+            {cst->getMaximumWidth(), cst->getMaximumHeight()});
         auto minW = (uint32_t)minBounds.getWidth();
         auto maxW = (uint32_t)maxBounds.getWidth();
         auto minH = (uint32_t)minBounds.getHeight();
@@ -1779,125 +2006,24 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     bool guiSetSize(uint32_t width, uint32_t height) noexcept override
     {
         std::cout << "GUI SET SIZE " << width << " " << height << std::endl;
-        if (!editor)
+        if (editorWrapper == nullptr || editorWrapper->editor == nullptr)
             return false;
 
-        if (!editor->isResizable())
+        if (!editorWrapper->editor->isResizable())
             return false;
 
-        const auto b = getBoundsEditorScale(juce::Rectangle{(int)width, (int)height});
-        editor->setSize(b.getWidth(), b.getHeight());
+        const auto b = juce::Rectangle{(int)width, (int)height};
+        editorWrapper->setSize(b.getWidth(), b.getHeight());
         return true;
-    }
-
-    bool guiIsApiSupported(const char *api, bool isFloating) noexcept override
-    {
-        if (isFloating)
-            return false;
-
-        if (strcmp(api, CLAP_WINDOW_API_WIN32) == 0 || strcmp(api, CLAP_WINDOW_API_COCOA) == 0 ||
-            strcmp(api, CLAP_WINDOW_API_X11) == 0)
-            return true;
-
-        return false;
-    }
-
-    bool guiParentAttached{false};
-    float guiScaleFactor = 1.0f;
-    bool guiCreate(const char *api, bool isFloating) noexcept override
-    {
-        juce::ignoreUnused(api);
-
-        // Should never happen
-        if (isFloating)
-            return false;
-
-        const juce::MessageManagerLock mmLock;
-        editor.reset(processor->createEditorIfNeeded());
-
-        if (editor == nullptr)
-            return false;
-
-        if (editor != nullptr)
-        {
-#if JUCE_VERSION >= 0x060008
-            editorHostContext = std::make_unique<EditorHostContext>(_host, clapIDByParamPtr);
-            editor->setHostContext(editorHostContext.get());
-#endif
-            editor->addComponentListener(this);
-            editor->setScaleFactor(guiScaleFactor);
-        }
-        else
-        {
-            // if hasEditor() returns true then createEditorIfNeeded has to return a valid editor
-            jassertfalse;
-        }
-
-        return editor != nullptr;
-    }
-
-    void guiDestroy() noexcept override
-    {
-#if JUCE_VERSION >= 0x060008
-        editorHostContext.reset();
-#endif
-        processor->editorBeingDeleted(editor.get());
-        guiParentAttached = false;
-        editor.reset(nullptr);
-    }
-
-    bool guiSetParent(const clap_window *window) noexcept override
-    {
-        guiParentAttached = true;
-#if JUCE_MAC
-        return guiCocoaAttach(window->cocoa);
-#elif JUCE_LINUX
-        return guiX11Attach(nullptr, window->x11);
-#elif JUCE_WINDOWS
-        return guiWin32Attach(window->win32);
-#else
-        guiParentAttached = false;
-        return false;
-#endif
-    }
-
-    // Show doesn't really exist in JUCE per se. If there's an editor and its attached
-    // we are good.
-    bool guiShow() noexcept override
-    {
-#if JUCE_MAC || JUCE_LINUX || JUCE_WINDOWS
-        if (editor)
-        {
-            return guiParentAttached;
-        }
-#endif
-        return false;
-    }
-
-    bool guiSetScale(double scale) noexcept override
-    {
-        std::cout << "GUI SET SCALE " << scale << std::endl;
-        if (editor)
-        {
-            if (scale > 50)
-            {
-                // this is almost definitely a units error
-                scale *= 0.01;
-            }
-            guiScaleFactor = static_cast<float> (scale);
-            editor->setScaleFactor(guiScaleFactor);
-            return true;
-        }
-        return false;
     }
 
     bool guiGetSize(uint32_t *width, uint32_t *height) noexcept override
     {
         const juce::MessageManagerLock mmLock;
-        if (editor)
+        if (editorWrapper != nullptr && editorWrapper->editor != nullptr)
         {
-            std::cout << "GUI Get Size " << editor->getBounds().toString() << std::endl;
-            const auto b = getBoundsHostScale(editor->getBounds());
+            std::cout << "GUI Get Size " << editorWrapper->getBounds().toString() << std::endl;
+            const auto b = editorWrapper->getBounds();
 
             std::cout << "    POST size " << b.toString() << std::endl;
             *width = (uint32_t)b.getWidth();
@@ -1911,6 +2037,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         }
         return false;
     }
+    // END GUI CODE
 
   protected:
     juce::CriticalSection stateInformationLock;
@@ -1986,10 +2113,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     {
 #if JUCE_VERSION < 0x070006
         juce::initialiseMacVST();
-        auto hostWindow = juce::attachComponentToWindowRefVST(editor.get(), nsView, true);
+        auto hostWindow = juce::attachComponentToWindowRefVST(editorWrapper.get(), nsView, true);
 #else
-        const auto desktopFlags = juce::detail::PluginUtilities::getDesktopFlags (editor.get());
-        auto hostWindow = juce::detail::VSTWindowUtilities::attachComponentToWindowRefVST(editor.get(), desktopFlags, nsView);
+        const auto desktopFlags = juce::detail::PluginUtilities::getDesktopFlags (editorWrapper.get());
+        auto hostWindow = juce::detail::VSTWindowUtilities::attachComponentToWindowRefVST(editorWrapper.get(), desktopFlags, nsView);
 #endif
         juce::ignoreUnused(hostWindow);
         return true;
@@ -2001,24 +2128,23 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     {
         juce::ignoreUnused(displayName);
         const juce::MessageManagerLock mmLock;
-        editor->setVisible(false);
-        editor->addToDesktop(0, (void *)window);
+        editorWrapper->setVisible(false);
+        editorWrapper->addToDesktop(0, (void *)window);
         auto *display = juce::XWindowSystem::getInstance()->getDisplay();
-        juce::X11Symbols::getInstance()->xReparentWindow(display, (Window)editor->getWindowHandle(),
-                                                         window, 0, 0);
-        editor->setVisible(true);
+        juce::X11Symbols::getInstance()->xReparentWindow(
+            display, (Window)editorWrapper->getWindowHandle(), window, 0, 0);
+        editorWrapper->setVisible(true);
         return true;
     }
 #endif
 
 #if JUCE_WINDOWS
-    bool guiWin32Attach(clap_hwnd window) noexcept
+    bool guiWin32Attach(clap_hwnd window) const noexcept
     {
-        editor->setVisible(false);
-        editor->setOpaque(true);
-        editor->setTopLeftPosition(0, 0);
-        editor->addToDesktop(0, (void *)window);
-        editor->setVisible(true);
+        editorWrapper->setVisible(false);
+        editorWrapper->setTopLeftPosition(0, 0);
+        editorWrapper->addToDesktop(0, (void *)window);
+        editorWrapper->setVisible(true);
         return true;
     }
 #endif
