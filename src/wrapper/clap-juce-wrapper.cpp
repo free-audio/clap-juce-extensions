@@ -1688,8 +1688,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     void componentMovedOrResized(Component &component, bool wasMoved,
                                  bool wasResized) override
     {
-        if (guiSkipResizeCallback)
-            return;
+//        if (guiSkipResizeCallback)
+//            return;
 
         if (editor.get() != &component)
         {
