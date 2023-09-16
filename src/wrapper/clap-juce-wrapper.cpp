@@ -26,7 +26,8 @@
 #include <juce_audio_plugin_client/detail/juce_VSTWindowUtilities.h>
 #endif
 
-JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter", "-Wsign-conversion", "-Wfloat-conversion", "-Wfloat-equal")
+JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wunused-parameter", "-Wsign-conversion", "-Wfloat-conversion",
+                                    "-Wfloat-equal")
 JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4100 4127 4244)
 // Sigh - X11.h eventually does a #define None 0L which doesn't work
 // with an enum in clap land being called None, so just undef it
@@ -70,9 +71,8 @@ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 extern void *clapJuceExtensionCustomFactory(const char *);
 #endif
 
-#if ! JUCE_MAC
-template <typename T>
-using Point = juce::Point<T>;
+#if !JUCE_MAC
+template <typename T> using Point = juce::Point<T>;
 #if JUCE_VERSION < 0x070006
 using Component = juce::Component;
 #endif
@@ -1759,10 +1759,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             return {};
         }
 
-        static juce::Rectangle<int> convertToHostBounds(juce::Rectangle<int> pluginRect)
+        juce::Rectangle<int> convertToHostBounds(juce::Rectangle<int> pluginRect)
         {
-            const auto desktopScale = juce::Desktop::getInstance().getGlobalScaleFactor();
-
+            const auto desktopScale = clapWrapper.guiScaleFactor;
             if (juce::isWithin(desktopScale, 1.0f, 1.0e-3f))
                 return pluginRect;
 
@@ -1922,8 +1921,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     bool guiSetScale(double scale) noexcept override
     {
-        std::cout << "GUI SET SCALE " << scale << std::endl;
-
         if (scale > 50)
         {
             // this is almost definitely a units error
@@ -1947,7 +1944,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
      */
     bool guiAdjustSize(uint32_t *w, uint32_t *h) noexcept override
     {
-        std::cout << "guiADJUST SIZE " << *w << " " << *h << std::endl;
         if (editorWrapper == nullptr || editorWrapper->editor == nullptr)
             return false;
 
@@ -1957,12 +1953,12 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         auto cst = editorWrapper->editor->getConstrainer();
 
         if (!cst)
-            return true; // we have no constraints. Whaever is fine!
+            return true; // we have no constraints. Whatever is fine!
 
-        const auto minBounds = EditorWrapperComponent::convertToHostBounds(
-            {cst->getMinimumWidth(), cst->getMinimumHeight()});
-        const auto maxBounds = EditorWrapperComponent::convertToHostBounds(
-            {cst->getMaximumWidth(), cst->getMaximumHeight()});
+        const auto minBounds =
+            editorWrapper->convertToHostBounds({cst->getMinimumWidth(), cst->getMinimumHeight()});
+        const auto maxBounds =
+            editorWrapper->convertToHostBounds({cst->getMaximumWidth(), cst->getMaximumHeight()});
         auto minW = (uint32_t)minBounds.getWidth();
         auto maxW = (uint32_t)maxBounds.getWidth();
         auto minH = (uint32_t)minBounds.getHeight();
@@ -1994,14 +1990,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         *w = width;
         *h = height;
-        std::cout << "End of GAdj " << width << " " << height << std::endl;
 
         return true;
     }
 
     bool guiSetSize(uint32_t width, uint32_t height) noexcept override
     {
-        std::cout << "GUI SET SIZE " << width << " " << height << std::endl;
+        //        std::cout << "GUI SET SIZE " << width << " " << height << std::endl;
         if (editorWrapper == nullptr || editorWrapper->editor == nullptr)
             return false;
 
@@ -2018,10 +2013,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         const juce::MessageManagerLock mmLock;
         if (editorWrapper != nullptr && editorWrapper->editor != nullptr)
         {
-            std::cout << "GUI Get Size " << editorWrapper->getBounds().toString() << std::endl;
             const auto b = editorWrapper->getBounds();
-
-            std::cout << "    POST size " << b.toString() << std::endl;
             *width = (uint32_t)b.getWidth();
             *height = (uint32_t)b.getHeight();
             return true;
@@ -2111,8 +2103,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         juce::initialiseMacVST();
         auto hostWindow = juce::attachComponentToWindowRefVST(editorWrapper.get(), nsView, true);
 #else
-        const auto desktopFlags = juce::detail::PluginUtilities::getDesktopFlags (editorWrapper->editor.get());
-        auto hostWindow = juce::detail::VSTWindowUtilities::attachComponentToWindowRefVST(editorWrapper.get(), desktopFlags, nsView);
+        const auto desktopFlags =
+            juce::detail::PluginUtilities::getDesktopFlags(editorWrapper->editor.get());
+        auto hostWindow = juce::detail::VSTWindowUtilities::attachComponentToWindowRefVST(
+            editorWrapper.get(), desktopFlags, nsView);
 #endif
         juce::ignoreUnused(hostWindow);
         return true;
@@ -2263,7 +2257,7 @@ extern "C"
 #if JUCE_MINGW
     extern
 #endif
-    const CLAP_EXPORT struct clap_plugin_entry clap_entry = {CLAP_VERSION, ClapAdapter::clap_init,
-                                                             ClapAdapter::clap_deinit,
-                                                             ClapAdapter::clap_get_factory};
+        const CLAP_EXPORT struct clap_plugin_entry clap_entry = {
+            CLAP_VERSION, ClapAdapter::clap_init, ClapAdapter::clap_deinit,
+            ClapAdapter::clap_get_factory};
 }
