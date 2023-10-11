@@ -3,6 +3,14 @@
 #include <juce_dsp/juce_dsp.h>
 #include "ModulatableFloatParameter.h"
 
+JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wc++98-compat-extra-semi",
+                                    "-Wgnu-anonymous-struct",
+                                    "-Wzero-as-null-pointer-constant",
+                                    "-Wextra-semi",
+                                    "-Wunused-parameter")
+#include "reaper_plugin.h"
+JUCE_END_IGNORE_WARNINGS_GCC_LIKE
+
 class ModulatableFloatParameter;
 class GainPlugin : public juce::AudioProcessor,
                    public clap_juce_extensions::clap_juce_audio_processor_capabilities,
@@ -42,7 +50,7 @@ class GainPlugin : public juce::AudioProcessor,
     auto *getGainParameter() { return gainDBParameter; }
     auto &getValueTreeState() { return vts; }
 
-    const void* reaperPluginExtension = nullptr;
+    const reaper_plugin_info_t* reaperPluginExtension = nullptr;
 
   private:
     ModulatableFloatParameter *gainDBParameter = nullptr;
