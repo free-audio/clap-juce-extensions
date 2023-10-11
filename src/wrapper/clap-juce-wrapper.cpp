@@ -434,6 +434,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                         _host.remoteControlsSuggestPage(pageID);
                 });
             };
+            processorAsClapExtensions->extensionGet = [this](const char* name) {
+                return _host.host()->get_extension(_host.host(), name);
+            };
         }
 
         const bool forceLegacyParamIDs = false;

@@ -271,6 +271,13 @@ struct clap_juce_audio_processor_capabilities
         return nullptr;
     }
 
+    const void * getExtension(const char* name)
+    {
+        if (extensionGet)
+            return extensionGet(name);
+        return nullptr;
+    }
+
   private:
     friend class ::ClapJuceWrapper;
     std::function<void(const clap_event_param_value *)> parameterChangeHandler = nullptr;
@@ -278,6 +285,7 @@ struct clap_juce_audio_processor_capabilities
     std::function<void()> noteNamesChangedSignal = nullptr;
     std::function<void()> remoteControlsChangedSignal = nullptr;
     std::function<void(uint32_t)> suggestRemoteControlsPageSignal = nullptr;
+    std::function<const void *(const char *)> extensionGet = nullptr;
 };
 
 /*

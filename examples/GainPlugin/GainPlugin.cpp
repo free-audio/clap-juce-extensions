@@ -13,6 +13,10 @@ GainPlugin::GainPlugin()
       vts(*this, nullptr, juce::Identifier("Parameters"), createParameters())
 {
     gainDBParameter = dynamic_cast<ModulatableFloatParameter *>(vts.getParameter(gainParamTag));
+
+    // can't check here, because getExtension isn't initialized yet!
+//    reaperPluginExtension = getExtension("cockos.reaper_extension");
+//    jassert (reaperPluginExtension != nullptr || ! juce::PluginHostType{}.isReaper());
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout GainPlugin::createParameters()
@@ -46,6 +50,9 @@ bool GainPlugin::isBusesLayoutSupported(const juce::AudioProcessor::BusesLayout 
 
 void GainPlugin::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
+    reaperPluginExtension = getExtension("cockos.reaper_extension");
+    jassert (reaperPluginExtension != nullptr || ! juce::PluginHostType{}.isReaper());
+
     gain.prepare(
         {sampleRate, (juce::uint32)samplesPerBlock, (juce::uint32)getMainBusNumOutputChannels()});
     gain.setRampDurationSeconds(0.05);

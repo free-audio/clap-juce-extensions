@@ -42,6 +42,8 @@ class GainPlugin : public juce::AudioProcessor,
     auto *getGainParameter() { return gainDBParameter; }
     auto &getValueTreeState() { return vts; }
 
+    const void* reaperPluginExtension = nullptr;
+
   private:
     ModulatableFloatParameter *gainDBParameter = nullptr;
 
