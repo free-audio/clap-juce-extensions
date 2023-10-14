@@ -14,9 +14,22 @@ GainPlugin::GainPlugin()
 {
     gainDBParameter = dynamic_cast<ModulatableFloatParameter *>(vts.getParameter(gainParamTag));
 
-    // can't check here, because getExtension isn't initialized yet!
-    //    reaperPluginExtension = getExtension("cockos.reaper_extension");
-    //    jassert (reaperPluginExtension != nullptr || ! juce::PluginHostType{}.isReaper());
+    reaperPluginExtension =
+        static_cast<const reaper_plugin_info_t *>(extensionGet("cockos.reaper_extension"));
+    jassert(reaperPluginExtension != nullptr || !juce::PluginHostType{}.isReaper());
+
+    if (reaperPluginExtension != nullptr)
+    {
+        MediaTrack *(*getTrackFunc)(ReaProject *, int);
+        *((void **)&getTrackFunc) = reaperPluginExtension->GetFunc("GetTrack");
+        auto *track0 = (*getTrackFunc)(nullptr, 0);
+
+        int (*setMuteFunc)(MediaTrack *track, int mute, int igngroupflags);
+        *((void **)&setMuteFunc) = reaperPluginExtension->GetFunc("SetTrackUIMute");
+        auto result = (*setMuteFunc)(track0, 1, 0);
+        jassert (result == 1);
+    }
+
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout GainPlugin::createParameters()
@@ -50,22 +63,6 @@ bool GainPlugin::isBusesLayoutSupported(const juce::AudioProcessor::BusesLayout 
 
 void GainPlugin::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
-    reaperPluginExtension =
-        static_cast<const reaper_plugin_info_t *>(getExtension("cockos.reaper_extension"));
-    jassert(reaperPluginExtension != nullptr || !juce::PluginHostType{}.isReaper());
-
-    if (reaperPluginExtension != nullptr)
-    {
-        MediaTrack *(*getTrackFunc)(ReaProject *, int);
-        *((void **)&getTrackFunc) = reaperPluginExtension->GetFunc("GetTrack");
-        auto *track0 = (*getTrackFunc)(nullptr, 0);
-
-        int (*setMuteFunc)(MediaTrack *track, int mute, int igngroupflags);
-        *((void **)&setMuteFunc) = reaperPluginExtension->GetFunc("SetTrackUIMute");
-        auto result = (*setMuteFunc)(track0, 1, 0);
-        jassert (result == 1);
-    }
-
     gain.prepare(
         {sampleRate, (juce::uint32)samplesPerBlock, (juce::uint32)getMainBusNumOutputChannels()});
     gain.setRampDurationSeconds(0.05);
