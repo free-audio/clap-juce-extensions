@@ -2207,8 +2207,8 @@ static const clap_plugin_descriptor *clap_get_plugin_descriptor(const struct cla
     return &ClapJuceWrapper::desc;
 }
 
-static const clap_plugin *clap_create_plugin(const struct clap_plugin_factory *,
-                                             const clap_host *host, const char *plugin_id)
+const clap_plugin *clap_create_plugin(const struct clap_plugin_factory *, const clap_host *host,
+                                      const char *plugin_id)
 {
     juce::ScopedJuceInitialiser_GUI libraryInitialiser;
 

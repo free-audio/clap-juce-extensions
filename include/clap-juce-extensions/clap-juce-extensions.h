@@ -20,9 +20,10 @@ struct JUCEParameterVariant;
 
 namespace ClapAdapter
 {
-[[maybe_unused]] static const clap_plugin *clap_create_plugin(const struct clap_plugin_factory *,
-                                                              const clap_host *, const char *);
+const clap_plugin *clap_create_plugin(const struct clap_plugin_factory *, const clap_host *,
+                                      const char *);
 }
+
 
 /** Forward declarations for any JUCE classes we might need. */
 namespace juce
