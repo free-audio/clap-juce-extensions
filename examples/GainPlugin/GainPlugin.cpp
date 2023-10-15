@@ -13,23 +13,6 @@ GainPlugin::GainPlugin()
       vts(*this, nullptr, juce::Identifier("Parameters"), createParameters())
 {
     gainDBParameter = dynamic_cast<ModulatableFloatParameter *>(vts.getParameter(gainParamTag));
-
-    reaperPluginExtension =
-        static_cast<const reaper_plugin_info_t *>(getExtension("cockos.reaper_extension"));
-    jassert(reaperPluginExtension != nullptr || !juce::PluginHostType{}.isReaper());
-
-    if (reaperPluginExtension != nullptr)
-    {
-        MediaTrack *(*getTrackFunc)(ReaProject *, int);
-        *((void **)&getTrackFunc) = reaperPluginExtension->GetFunc("GetTrack");
-        auto *track0 = (*getTrackFunc)(nullptr, 0);
-
-        int (*setMuteFunc)(MediaTrack *track, int mute, int igngroupflags);
-        *((void **)&setMuteFunc) = reaperPluginExtension->GetFunc("SetTrackUIMute");
-        auto result = (*setMuteFunc)(track0, 1, 0);
-        jassert (result == 1);
-    }
-
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout GainPlugin::createParameters()
