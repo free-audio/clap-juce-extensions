@@ -434,10 +434,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                         _host.remoteControlsSuggestPage(pageID);
                 });
             };
-        }
-        if (processorAsClapProperties != nullptr)
-        {
-            processorAsClapProperties->extensionGet = [this](const char *name) {
+            processorAsClapExtensions->extensionGet = [this](const char *name) {
                 return _host.host()->get_extension(_host.host(), name);
             };
         }
@@ -2226,12 +2223,10 @@ static const clap_plugin *clap_create_plugin(const struct clap_plugin_factory *,
     clap_juce_extensions::clap_properties::clap_version_major = CLAP_VERSION_MAJOR;
     clap_juce_extensions::clap_properties::clap_version_minor = CLAP_VERSION_MINOR;
     clap_juce_extensions::clap_properties::clap_version_revision = CLAP_VERSION_REVISION;
-    clap_juce_extensions::clap_properties::extensionGetStatic = [host](const char *name) {
-        return host->get_extension(host, name);
-    };
+    clap_juce_extensions::clap_juce_audio_processor_capabilities::clapHostStatic = host;
     auto *const pluginInstance = ::createPluginFilter();
     clap_juce_extensions::clap_properties::building_clap = false;
-    clap_juce_extensions::clap_properties::extensionGetStatic = nullptr;
+    clap_juce_extensions::clap_juce_audio_processor_capabilities::clapHostStatic = nullptr;
     auto *wrapper = new ClapJuceWrapper(host, pluginInstance);
     return wrapper->clapPlugin();
 }
