@@ -9,6 +9,8 @@ PluginEditor::PluginEditor(HostSpecificExtensionsPlugin &plug)
         using GetTrackFunc = MediaTrack *(*)(ReaProject *, int);
         auto getTrackFunc = reinterpret_cast<GetTrackFunc>(reaperExt->GetFunc("GetTrack"));
         auto *track0 = getTrackFunc(nullptr, 0);
+        if (track0 == nullptr)
+            return;
 
         using ColorToNativeFunc = int (*)(int r, int g, int b);
         auto colorToNativeFunc =

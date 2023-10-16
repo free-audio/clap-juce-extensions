@@ -15,15 +15,15 @@ HostSpecificExtensionsPlugin::HostSpecificExtensionsPlugin()
     {
         // we want to check that we can load/use the extensions in the plugin constructor.
         // for REAPER our silly test is to try muting track 0.
-        using GetTrackFunc = MediaTrack *(*)(ReaProject *, int);
-        auto getTrackFunc =
-            reinterpret_cast<GetTrackFunc>(reaperPluginExtension->GetFunc("GetTrack"));
-        auto *track0 = getTrackFunc(nullptr, 0);
+        using GetMasterTrackFunc = MediaTrack *(*)(ReaProject *);
+        auto getMasterTrackFunc =
+            reinterpret_cast<GetMasterTrackFunc>(reaperPluginExtension->GetFunc("GetMasterTrack"));
+        auto *masterTrack = getMasterTrackFunc(nullptr);
 
         using SetMuteFunc = int (*)(MediaTrack *track, int mute, int igngroupflags);
         auto setMuteFunc =
             reinterpret_cast<SetMuteFunc>(reaperPluginExtension->GetFunc("SetTrackUIMute"));
-        auto result = (*setMuteFunc)(track0, 1, 0);
+        auto result = (*setMuteFunc)(masterTrack, 1, 0);
         jassert(result == 1);
     }
 }
