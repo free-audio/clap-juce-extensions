@@ -17,3 +17,4 @@ endif()
 
 add_subdirectory(GainPlugin)
 add_subdirectory(NoteNamesPlugin)
+add_subdirectory(HostSpecificExtensionsPlugin)

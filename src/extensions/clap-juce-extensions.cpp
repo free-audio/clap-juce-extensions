@@ -12,4 +12,5 @@ uint32_t clap_properties::clap_version_major{0}, clap_properties::clap_version_m
 
 clap_properties::clap_properties() : is_clap{building_clap} {}
 
+const clap_host* clap_juce_audio_processor_capabilities::clapHostStatic{nullptr};
 } // namespace clap_juce_extensions
