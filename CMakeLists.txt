@@ -42,7 +42,7 @@ if(CMAKE_GENERATOR STREQUAL Xcode)
         message(STATUS "Enabling Xcode 15 linker workaround!")
         add_link_options("-Wl,-ld_classic")
         add_compile_definitions(JUCE_SILENCE_XCODE_15_LINKER_WARNING=1)
-        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum OS X deployment target")
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum OS X deployment target" FORCE)
     endif()
 endif()
 
