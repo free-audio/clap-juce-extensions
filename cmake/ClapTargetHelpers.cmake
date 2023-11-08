@@ -118,7 +118,7 @@ function(clap_juce_extensions_plugin_internal)
         # Address the xcode linker juce issue
         # see: https://forum.juce.com/t/vst-au-builds-fail-after-upgrading-to-xcode-15/57936/43
         if( ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "15.0.0" AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS "15.1")
-            target_link_options(${claptarget} PUBLIC "-Wl,,-ld_classic")
+            target_link_options(${claptarget} PUBLIC "-Wl,-ld_classic")
             target_compile_definitions(${claptarget} PUBLIC JUCE_SILENCE_XCODE_15_LINKER_WARNING=TRUE)
             if (${CMAKE_OSX_DEPLOYMENT_TARGET} VERSION_LESS "10.13")
                message(STATUS "Changing OSX Deployment Target from ${CMAKE_OSX_DEPLOYMENT_TARGET} to 10.13 for XCode 15")
