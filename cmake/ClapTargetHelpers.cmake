@@ -114,6 +114,12 @@ function(clap_juce_extensions_plugin_internal)
                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${cjd}/cmake/macos_bundle/clap.icns" "$<TARGET_FILE_DIR:${claptarget}>/../Resources"
                VERBATIM
                )
+
+        # Address the xcode linker juce issue
+        if( ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "15.0.0" )
+            target_link_options(${claptarget} PUBLIC "-Wl,,-ld_classic")
+            target_compile_definitions(${claptarget} PUBLIC JUCE_SILENCE_XCODE_15_LINKER_WARNING=TRUE)
+        endif()
     else()
         set_target_properties(${claptarget} PROPERTIES
                 PREFIX ""
