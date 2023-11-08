@@ -35,16 +35,6 @@ endif()
 message( STATUS "Building CLAP with CLAP_CXX_STANDARD=${CLAP_CXX_STANDARD}")
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(CMAKE_GENERATOR STREQUAL Xcode)
-    # Funky work around for Xcode 15, see: https://forum.juce.com/t/vst-au-builds-fail-after-upgrading-to-xcode-15/57936/43
-    message(STATUS "Configuring CJE with Xcode version ${XCODE_VERSION}")
-    if((${XCODE_VERSION} STREQUAL "15.0") OR (${XCODE_VERSION} STREQUAL "15.0.1"))
-        message(STATUS "Enabling Xcode 15 linker workaround!")
-        add_link_options("-Wl,-ld_classic")
-        add_compile_definitions(JUCE_SILENCE_XCODE_15_LINKER_WARNING=1)
-        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum OS X deployment target" FORCE)
-    endif()
-endif()
 
 option(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES "Add targets for building and running clap-juce-extensions examples" ${is_toplevel})
 if(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES)
