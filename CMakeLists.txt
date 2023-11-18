@@ -35,25 +35,24 @@ endif()
 message( STATUS "Building CLAP with CLAP_CXX_STANDARD=${CLAP_CXX_STANDARD}")
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+include(./cmake/CPM.cmake)
 
 option(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES "Add targets for building and running clap-juce-extensions examples" ${is_toplevel})
 if(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES)
     # The examples need JUCE to be imported before the CLAP helper targets
     set(CLAP_JUCE_VERSION "7.0.6" CACHE STRING "Version of JUCE to use for building example plugins")
     message(STATUS "Building examples with JUCE version: ${CLAP_JUCE_VERSION}")
-    include(examples/cmake/CPM.cmake)
     CPMAddPackage("gh:juce-framework/JUCE#${CLAP_JUCE_VERSION}")
 endif()
 
-add_subdirectory(clap-libs/clap clapjuceext_clap EXCLUDE_FROM_ALL)
-add_subdirectory(clap-libs/clap-helpers clapjuceext_claphelpers EXCLUDE_FROM_ALL)
+CPMAddPackage("gh:free-audio/clap#main")
+CPMAddPackage("gh:free-audio/clap-helpers#main")
 
 add_library(clap_juce_extensions STATIC src/extensions/clap-juce-extensions.cpp)
 set_property(TARGET clap_juce_extensions PROPERTY CXX_STANDARD ${CLAP_CXX_STANDARD})
-target_include_directories(clap_juce_extensions PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_compile_definitions(clap_juce_extensions PUBLIC
-        HAS_CLAP_JUCE_EXTENSIONS=1)
-target_link_libraries(clap_juce_extensions PUBLIC clap-core clap-helpers)
+target_include_directories(clap_juce_extensions PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${clap_SOURCE_DIR}/include)
+target_compile_definitions(clap_juce_extensions PUBLIC HAS_CLAP_JUCE_EXTENSIONS=1)
+target_link_libraries(clap_juce_extensions PUBLIC clap clap-helpers)
 
 set_target_properties(clap_juce_extensions PROPERTIES
     POSITION_INDEPENDENT_CODE TRUE
