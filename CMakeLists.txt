@@ -14,11 +14,11 @@ cmake_minimum_required (VERSION 3.21 FATAL_ERROR)
 
 get_directory_property(parent_dir PARENT_DIRECTORY)
 if ("${parent_dir}" STREQUAL "")
-    # OSX deployment target needs to be set before the `project()` call
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "Minimum OS X deployment target")
-    set(is_toplevel 1)
+  # OSX deployment target needs to be set before the `project()` call
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "Minimum OS X deployment target")
+  set(is_toplevel 1)
 else ()
-    set(is_toplevel 0)
+  set(is_toplevel 0)
 endif ()
 
 project(clap-juce-extensions VERSION 0.1.0 LANGUAGES C CXX)
@@ -39,10 +39,10 @@ include(./cmake/CPM.cmake)
 
 option(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES "Add targets for building and running clap-juce-extensions examples" ${is_toplevel})
 if(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES)
-    # The examples need JUCE to be imported before the CLAP helper targets
-    set(CLAP_JUCE_VERSION "7.0.6" CACHE STRING "Version of JUCE to use for building example plugins")
-    message(STATUS "Building examples with JUCE version: ${CLAP_JUCE_VERSION}")
-    CPMAddPackage("gh:juce-framework/JUCE#${CLAP_JUCE_VERSION}")
+  # The examples need JUCE to be imported before the CLAP helper targets
+  set(CLAP_JUCE_VERSION "7.0.8" CACHE STRING "Version of JUCE to use for building example plugins")
+  message(STATUS "Building examples with JUCE version: ${CLAP_JUCE_VERSION}")
+  CPMAddPackage("gh:juce-framework/JUCE#${CLAP_JUCE_VERSION}")
 endif()
 
 CPMAddPackage("gh:free-audio/clap#main")
@@ -74,6 +74,6 @@ target_include_directories(clap_juce_sources INTERFACE ${CMAKE_CURRENT_SOURCE_DI
 include(cmake/ClapTargetHelpers.cmake)
 
 if(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES)
-    message(STATUS "Configuring clap-juce-extensions examples")
-    add_subdirectory(examples)
+  message(STATUS "Configuring clap-juce-extensions examples")
+  add_subdirectory(examples)
 endif()
