@@ -73,6 +73,9 @@ set(CMAKE_CXX_STANDARD 17)
 # Make sure to set the same MacOS deployment target as you have set in the Projucer
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.12" CACHE STRING "Minimum OS X deployment target")
 
+# If you want to build a universal binary on Mac by default, you may want to include this line
+# set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
+
 # If the Projucer is using "static runtime" for Visual Studio:
 # set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "Runtime")
 # set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Release>:Release>" CACHE STRING "Runtime")

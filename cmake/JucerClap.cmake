@@ -170,10 +170,16 @@ function(create_jucer_clap_target)
         endif()
 
     elseif(UNIX)
+        # Compiler and linker flags recommended by Robbert:
+        set_target_properties(${clap_target} PROPERTIES
+            VISIBILITY_INLINES_HIDDEN TRUE
+            C_VISBILITY_PRESET hidden
+            CXX_VISIBILITY_PRESET hidden
+        )
+        set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
+
         # Base Linux deps: all JUCE apps need these:
-        set(THREADS_PREFER_PTHREAD_FLAG ON)
-        find_package(Threads REQUIRED)
-        target_link_libraries(${clap_target} PUBLIC Threads::Threads rt dl)
+        target_link_libraries(${clap_target} PUBLIC rt dl pthread)
 
         # Link other deps depending on which JUCE modules are in use:
         execute_process(
@@ -182,14 +188,11 @@ function(create_jucer_clap_target)
                 OUTPUT_VARIABLE juce_module_paths
         )
 
-        # Deps are copied from the linuxPackages and linuxLibs field in each module header... eventually we should get those programmatically (@TODO)
         if(juce_module_paths MATCHES "juce_audio_devices")
-            find_package(ALSA REQUIRED)
-            target_link_libraries(${clap_target} PUBLIC ALSA::ALSA ${ALSA_LIBRARIES})
+            target_link_libraries(${clap_target} PUBLIC juce::pkgconfig_juce_audio_devices_LINUX_DEPS)
         endif()
         if(juce_module_paths MATCHES "juce_graphics")
-            find_package(Freetype REQUIRED)
-            target_link_libraries(${clap_target} PUBLIC Freetype::Freetype)
+            target_link_libraries(${clap_target} PUBLIC juce::pkgconfig_juce_graphics_LINUX_DEPS)
         endif()
         if(juce_module_paths MATCHES "juce_opengl")
             target_link_libraries(${clap_target} PUBLIC GL)
