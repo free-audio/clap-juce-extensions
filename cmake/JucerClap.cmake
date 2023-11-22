@@ -37,11 +37,6 @@ function(create_jucer_clap_target)
 
     message(STATUS "Plugin SharedCode library path: ${PLUGIN_LIBRARY_PATH}")
 
-    if(NOT CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES)
-        add_subdirectory(${PATH_TO_JUCE} clap_juce_juce)
-        add_subdirectory(${PATH_TO_CLAP_EXTENSIONS} clap_juce_clapext EXCLUDE_FROM_ALL)
-    endif()
-
     clap_juce_extensions_plugin_jucer(
         TARGET_PATH "${PLUGIN_LIBRARY_PATH}"
         PLUGIN_BINARY_NAME "${CJA_BINARY_NAME}"

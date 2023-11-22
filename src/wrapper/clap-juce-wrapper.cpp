@@ -173,7 +173,7 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
 
     juce::PopupMenu getEquivalentPopupMenu() const override
     {
-        host.contextMenuPopulate(host.host(), &menuTarget, builder.builder());
+        host.contextMenuPopulate(&menuTarget, builder.builder());
 
         jassert(builder.menuStack.size() == 1); // one of the sub-menus has not been closed?
         return builder.menuStack.front();
@@ -181,11 +181,11 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
 
     void showNativeMenu(Point<int> pos) const override
     {
-        if (!host.contextMenuCanPopup(host.host()))
+        if (!host.contextMenuCanPopup())
             return;
 
         // TODO: figure out screen index?
-        host.contextMenuPopup(host.host(), &menuTarget, 0, pos.x, pos.y);
+        host.contextMenuPopup(&menuTarget, 0, pos.x, pos.y);
     }
 
     clap_context_menu_target menuTarget{};
@@ -230,9 +230,7 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
                 item.text = juce::CharPointer_UTF8(entry->label);
                 item.isEnabled = entry->is_enabled;
                 item.action = [&host = this->host, target = *this->menuTarget,
-                               id = entry->action_id] {
-                    host.contextMenuPerform(host.host(), &target, id);
-                };
+                               id = entry->action_id] { host.contextMenuPerform(&target, id); };
 
                 currentMenu.addItem(item);
             }
@@ -246,9 +244,7 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
                 item.isEnabled = entry->is_enabled;
                 item.isTicked = entry->is_checked;
                 item.action = [&host = this->host, target = *this->menuTarget,
-                               id = entry->action_id] {
-                    host.contextMenuPerform(host.host(), &target, id);
-                };
+                               id = entry->action_id] { host.contextMenuPerform(&target, id); };
 
                 currentMenu.addItem(item);
             }
@@ -1018,17 +1014,17 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return false;
     }
 
-    int noteNameCount() noexcept override
+    uint32_t noteNameCount() noexcept override
     {
         if (processorAsClapExtensions)
-            return processorAsClapExtensions->noteNameCount();
+            return (uint32_t)processorAsClapExtensions->noteNameCount();
         return 0;
     }
 
-    bool noteNameGet(int index, clap_note_name *noteName) noexcept override
+    bool noteNameGet(uint32_t index, clap_note_name *noteName) noexcept override
     {
         if (processorAsClapExtensions)
-            return processorAsClapExtensions->noteNameGet(index, noteName);
+            return processorAsClapExtensions->noteNameGet((int)index, noteName);
         return false;
     }
 
