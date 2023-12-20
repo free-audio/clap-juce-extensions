@@ -216,13 +216,13 @@ struct clap_juce_audio_processor_capabilities
      * If your plugin supports custom note names, then this method should be overriden
      * to return how the number of note names that your plugin has.
      */
-    virtual int noteNameCount() noexcept { return 0; }
+    virtual uint32_t noteNameCount() noexcept { return 0; }
 
     /**
      * The host will call this method to retrieve the note name for a given index
      * in the range [0, noteNameCount()).
      */
-    virtual bool noteNameGet(int /*index*/, clap_note_name * /*noteName*/) noexcept
+    virtual bool noteNameGet(uint32_t /*index*/, clap_note_name * /*noteName*/) noexcept
     {
         return false;
     }
