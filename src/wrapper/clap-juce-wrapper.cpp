@@ -68,7 +68,7 @@ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
     }
 
 #if CLAP_SUPPORTS_CUSTOM_FACTORY
-extern const void * JUCE_CALLTYPE clapJuceExtensionCustomFactory(const char *);
+extern const void *JUCE_CALLTYPE clapJuceExtensionCustomFactory(const char *);
 #endif
 
 #if !JUCE_MAC
@@ -230,9 +230,7 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
                 item.text = juce::CharPointer_UTF8(entry->label);
                 item.isEnabled = entry->is_enabled;
                 item.action = [&host = this->host, target = *this->menuTarget,
-                               id = entry->action_id] {
-                    host.contextMenuPerform(&target, id);
-                };
+                               id = entry->action_id] { host.contextMenuPerform(&target, id); };
 
                 currentMenu.addItem(item);
             }
@@ -246,9 +244,7 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
                 item.isEnabled = entry->is_enabled;
                 item.isTicked = entry->is_checked;
                 item.action = [&host = this->host, target = *this->menuTarget,
-                               id = entry->action_id] {
-                    host.contextMenuPerform(&target, id);
-                };
+                               id = entry->action_id] { host.contextMenuPerform(&target, id); };
 
                 currentMenu.addItem(item);
             }

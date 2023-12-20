@@ -24,7 +24,6 @@ const clap_plugin *clap_create_plugin(const struct clap_plugin_factory *, const 
                                       const char *);
 }
 
-
 /** Forward declarations for any JUCE classes we might need. */
 namespace juce
 {
@@ -284,8 +283,8 @@ struct clap_juce_audio_processor_capabilities
      * The plugin should call this from within presetLoadFromLocation() to report an error when
      * trying to load the preset, and then return false from presetLoadFromLocation().
      */
-    void reportPresetLoadError(uint32_t location_kind, const char * location, const char * load_key,
-                               int32_t os_error, const juce::String & message)
+    void reportPresetLoadError(uint32_t location_kind, const char *location, const char *load_key,
+                               int32_t os_error, const juce::String &message)
     {
         if (onPresetLoadError != nullptr)
             onPresetLoadError(location_kind, location, load_key, os_error, message);
@@ -319,8 +318,8 @@ struct clap_juce_audio_processor_capabilities
     std::function<void()> remoteControlsChangedSignal = nullptr;
     std::function<void(uint32_t)> suggestRemoteControlsPageSignal = nullptr;
     std::function<void(uint32_t location_kind, const char *location, const char *load_key,
-                   int32_t os_error, const juce::String &msg)>
-    onPresetLoadError = nullptr;
+                       int32_t os_error, const juce::String &msg)>
+        onPresetLoadError = nullptr;
     std::function<const void *(const char *)> extensionGet = nullptr;
 
     friend const clap_plugin *ClapAdapter::clap_create_plugin(const struct clap_plugin_factory *,
