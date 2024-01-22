@@ -41,6 +41,11 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4100 4127 4244)
 #include <clap/helpers/host-proxy.hxx>
 #include <clap/helpers/plugin.hh>
 #include <clap/helpers/plugin.hxx>
+
+#if CLAP_VERSION_LT(1,2,0)
+static_assert(false, "CLAP juce wrapper requires at least clap 1.2.0");
+#endif
+
 JUCE_END_IGNORE_WARNINGS_MSVC
 JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 
