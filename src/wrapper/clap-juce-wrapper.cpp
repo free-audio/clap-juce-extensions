@@ -42,7 +42,7 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4100 4127 4244)
 #include <clap/helpers/plugin.hh>
 #include <clap/helpers/plugin.hxx>
 
-#if CLAP_VERSION_LT(1,2,0)
+#if CLAP_VERSION_LT(1, 2, 0)
 static_assert(false, "CLAP juce wrapper requires at least clap 1.2.0");
 #endif
 
@@ -441,6 +441,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                     if (_host.canUsePresetLoad())
                         _host.presetLoadOnError(location_kind, location, load_key, os_error,
                                                 msg.toRawUTF8());
+                };
+            processorAsClapExtensions->onPresetLoaded =
+                [this](uint32_t location_kind, const char *location, const char *load_key) {
+                    if (_host.canUsePresetLoad())
+                        _host.presetLoadLoaded(location_kind, location, load_key);
                 };
             processorAsClapExtensions->extensionGet = [this](const char *name) {
                 return _host.host()->get_extension(_host.host(), name);
