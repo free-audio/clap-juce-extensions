@@ -290,6 +290,17 @@ struct clap_juce_audio_processor_capabilities
             onPresetLoadError(location_kind, location, load_key, os_error, message);
     }
 
+    /**
+     * The plugin should call this when it has loaded a preset (whether requested from the host,
+     * or from internally within the plugin). The provided information will help the host to
+     * keep it's preset browser in-sync with the plugin.
+     */
+    void reportPresetLoaded(uint32_t location_kind, const char *location, const char *load_key)
+    {
+        if (onPresetLoaded != nullptr)
+            onPresetLoaded(location_kind, location, load_key);
+    }
+
     /*
      * If you are working with a host that chooses to not implement cookies you will
      * need to look up parameters by param_id. Use this method to do so.
@@ -320,6 +331,8 @@ struct clap_juce_audio_processor_capabilities
     std::function<void(uint32_t location_kind, const char *location, const char *load_key,
                        int32_t os_error, const juce::String &msg)>
         onPresetLoadError = nullptr;
+    std::function<void(uint32_t location_kind, const char *location, const char *load_key)>
+        onPresetLoaded = nullptr;
     std::function<const void *(const char *)> extensionGet = nullptr;
 
     friend const clap_plugin *ClapAdapter::clap_create_plugin(const struct clap_plugin_factory *,
