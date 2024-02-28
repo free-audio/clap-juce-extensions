@@ -2,6 +2,7 @@
 
 #include <juce_dsp/juce_dsp.h>
 #include "ModulatableFloatParameter.h"
+#include "ParamIndicationHelper.h"
 
 class ModulatableFloatParameter;
 class GainPlugin : public juce::AudioProcessor,
@@ -37,6 +38,15 @@ class GainPlugin : public juce::AudioProcessor,
 
     void getStateInformation(juce::MemoryBlock &data) override;
     void setStateInformation(const void *data, int sizeInBytes) override;
+
+    bool supportsParamIndication() const noexcept override { return true; }
+    void paramIndicationSetMapping(const juce::RangedAudioParameter &param, bool has_mapping,
+                                   const juce::Colour *colour, const juce::String &label,
+                                   const juce::String &description) noexcept override;
+    void paramIndicationSetAutomation(const juce::RangedAudioParameter &param,
+                                      uint32_t automation_state,
+                                      const juce::Colour *colour) noexcept override;
+    ParamIndicationHelper paramIndicationHelper;
 
     juce::String getPluginTypeString() const;
     auto *getGainParameter() { return gainDBParameter; }

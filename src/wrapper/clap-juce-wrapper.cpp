@@ -362,6 +362,12 @@ class EditorHostContext : public juce::AudioProcessorEditorHostContext
 };
 #endif // JUCE_VERSION >= 0x060008
 
+/** Converts a clap_color to a juce::Colour */
+static juce::Colour clapColourToJUCEColour(const clap_color &clapColour)
+{
+    return {clapColour.red, clapColour.green, clapColour.blue, clapColour.alpha};
+}
+
 /*
  * The ClapJuceWrapper is a class which immplements a collection
  * of CLAP and JUCE APIs
@@ -1043,6 +1049,53 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         if (processorAsClapExtensions)
             return processorAsClapExtensions->noteNameGet(index, noteName);
         return false;
+    }
+
+    bool implementsParamIndication() const noexcept override
+    {
+        if (processorAsClapExtensions)
+            return processorAsClapExtensions->supportsParamIndication();
+        return false;
+    }
+    void paramIndicationSetMapping(clap_id param_id, bool has_mapping, const clap_color_t *color,
+                                   const char *label, const char *description) noexcept override
+    {
+        if (!processorAsClapExtensions)
+            return;
+
+        const auto &param = paramPtrByClapID[param_id];
+
+        juce::Colour juceColour{};
+        if (color != nullptr)
+            juceColour = clapColourToJUCEColour(*color);
+        const juce::Colour *juceColourPtr = color == nullptr ? nullptr : &juceColour;
+
+        juce::String labelStr{};
+        if (label != nullptr)
+            labelStr = (juce::CharPointer_UTF8)label;
+
+        juce::String descStr{};
+        if (label != nullptr)
+            descStr = (juce::CharPointer_UTF8)description;
+
+        processorAsClapExtensions->paramIndicationSetMapping(*param.rangedParameter, has_mapping,
+                                                             juceColourPtr, labelStr, descStr);
+    }
+    void paramIndicationSetAutomation(clap_id param_id, uint32_t automation_state,
+                                      const clap_color_t *color) noexcept override
+    {
+        if (!processorAsClapExtensions)
+            return;
+
+        const auto &param = paramPtrByClapID[param_id];
+
+        juce::Colour juceColour{};
+        if (color != nullptr)
+            juceColour = clapColourToJUCEColour(*color);
+        const juce::Colour *juceColourPtr = color == nullptr ? nullptr : &juceColour;
+
+        processorAsClapExtensions->paramIndicationSetAutomation(*param.rangedParameter,
+                                                                automation_state, juceColourPtr);
     }
 
     bool implementRemoteControls() const noexcept override

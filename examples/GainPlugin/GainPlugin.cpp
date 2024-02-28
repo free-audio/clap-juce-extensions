@@ -85,5 +85,20 @@ void GainPlugin::setStateInformation(const void *data, int sizeInBytes)
             vts.replaceState(juce::ValueTree::fromXml(*xmlState));
 }
 
+void GainPlugin::paramIndicationSetMapping(const juce::RangedAudioParameter &param,
+                                           bool has_mapping, const juce::Colour *colour,
+                                           const juce::String &label,
+                                           const juce::String &description) noexcept
+{
+    paramIndicationHelper.paramIndicationSetMapping(param, has_mapping, colour, label, description);
+}
+
+void GainPlugin::paramIndicationSetAutomation(const juce::RangedAudioParameter &param,
+                                              uint32_t automation_state,
+                                              const juce::Colour *colour) noexcept
+{
+    paramIndicationHelper.paramIndicationSetAutomation(param, automation_state, colour);
+}
+
 // This creates new instances of the plugin
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter() { return new GainPlugin(); }

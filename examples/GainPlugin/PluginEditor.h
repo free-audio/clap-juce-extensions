@@ -3,7 +3,8 @@
 #include "GainPlugin.h"
 
 class PluginEditor : public juce::AudioProcessorEditor,
-                     private juce::AudioProcessorValueTreeState::Listener
+                     private juce::AudioProcessorValueTreeState::Listener,
+                     private ParamIndicationHelper::Listener
 {
   public:
     explicit PluginEditor(GainPlugin &plugin);
@@ -12,9 +13,11 @@ class PluginEditor : public juce::AudioProcessorEditor,
     void resized() override;
     void paint(juce::Graphics &g) override;
 
+    void paramIndicatorInfoChanged(const juce::RangedAudioParameter &) override;
+
   private:
     void parameterChanged(const juce::String &parameterID, float newValue) override;
-    void mouseDown (const juce::MouseEvent& e) override;
+    void mouseDown(const juce::MouseEvent &e) override;
 
     GainPlugin &plugin;
 
