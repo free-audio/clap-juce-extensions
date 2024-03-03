@@ -39,6 +39,8 @@ class GainPlugin : public juce::AudioProcessor,
     void getStateInformation(juce::MemoryBlock &data) override;
     void setStateInformation(const void *data, int sizeInBytes) override;
 
+    void updateTrackProperties(const TrackProperties &properties) override;
+
     bool supportsParamIndication() const noexcept override { return true; }
     void paramIndicationSetMapping(const juce::RangedAudioParameter &param, bool has_mapping,
                                    const juce::Colour *colour, const juce::String &label,
@@ -51,6 +53,9 @@ class GainPlugin : public juce::AudioProcessor,
     juce::String getPluginTypeString() const;
     auto *getGainParameter() { return gainDBParameter; }
     auto &getValueTreeState() { return vts; }
+    const auto& getTrackProperties() const { return trackProperties; }
+
+    std::function<void()> updateEditor = nullptr;
 
   private:
     ModulatableFloatParameter *gainDBParameter = nullptr;
@@ -58,6 +63,8 @@ class GainPlugin : public juce::AudioProcessor,
     juce::AudioProcessorValueTreeState vts;
 
     juce::dsp::Gain<float> gain;
+
+    TrackProperties trackProperties{};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GainPlugin)
 };

@@ -62,6 +62,12 @@ PluginEditor::PluginEditor(GainPlugin &plug) : juce::AudioProcessorEditor(plug),
     constrainer.setSizeLimits (200, 200, 500, 500);
     constrainer.setFixedAspectRatio (1.0);
     setConstrainer (&constrainer);
+
+    plugin.updateEditor = [this] {
+        gainSlider->setColour (juce::Slider::rotarySliderFillColourId, plugin.getTrackProperties().colour);
+        repaint();
+    };
+    plugin.updateEditor();
 }
 
 PluginEditor::~PluginEditor()
@@ -69,6 +75,7 @@ PluginEditor::~PluginEditor()
     auto *gainParameter = plugin.getGainParameter();
     plugin.getValueTreeState().removeParameterListener(gainParameter->paramID, this);
     plugin.paramIndicationHelper.removeListener(this);
+    plugin.updateEditor = nullptr;
 }
 
 void PluginEditor::resized()
@@ -83,7 +90,7 @@ void PluginEditor::paint(juce::Graphics &g)
     g.setColour(juce::Colours::black);
     g.setFont(25.0f);
     const auto titleBounds = getLocalBounds().removeFromTop(30);
-    const auto titleText = "Gain Plugin " + plugin.getPluginTypeString();
+    const auto titleText = "Gain Plugin " + plugin.getPluginTypeString() + " (" + plugin.getTrackProperties().name + ")";
     g.drawFittedText(titleText, titleBounds, juce::Justification::centred, 1);
 
     if (auto *paramIndicatorInfo =
