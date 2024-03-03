@@ -85,6 +85,13 @@ void GainPlugin::setStateInformation(const void *data, int sizeInBytes)
             vts.replaceState(juce::ValueTree::fromXml(*xmlState));
 }
 
+void GainPlugin::updateTrackProperties(const TrackProperties &properties)
+{
+    trackProperties = properties;
+    if (updateEditor)
+        updateEditor();
+}
+
 void GainPlugin::paramIndicationSetMapping(const juce::RangedAudioParameter &param,
                                            bool has_mapping, const juce::Colour *colour,
                                            const juce::String &label,

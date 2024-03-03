@@ -1051,6 +1051,28 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return false;
     }
 
+    bool implementsTrackInfo() const noexcept override { return true; }
+
+    void trackInfoChanged() noexcept override
+    {
+        clap_track_info clapTrackInfo {};
+        if (_host.trackInfoGet(&clapTrackInfo))
+        {
+            juce::AudioProcessor::TrackProperties juceTrackInfo{};
+
+            if (clapTrackInfo.flags & CLAP_TRACK_INFO_HAS_TRACK_NAME)
+            {
+                juceTrackInfo.name = juce::CharPointer_UTF8(clapTrackInfo.name);
+            }
+            if (clapTrackInfo.flags & CLAP_TRACK_INFO_HAS_TRACK_COLOR)
+            {
+                juceTrackInfo.colour = clapColourToJUCEColour(clapTrackInfo.color);
+            }
+
+            processor->updateTrackProperties(juceTrackInfo);
+        }
+    }
+
     bool implementsParamIndication() const noexcept override
     {
         if (processorAsClapExtensions)
