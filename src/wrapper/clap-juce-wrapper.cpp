@@ -133,7 +133,13 @@ extern JUCE_API void *attachComponentToWindowRefVST(Component *, void *parentWin
 } // namespace juce
 #endif
 
-JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996) // allow strncpy
+// Some compilers generate warnings when we use `strncpy` instead
+// of `strncpy_s`. However, other compilers don't support `strncpy_s`.
+// So for now, we ignore those warnings, but once all the compilers
+// that we care about support `strncpy_s`, we should remove these
+// warnings guards and use `strncpy_s`.
+JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wdeprecated-declarations")
+JUCE_BEGIN_IGNORE_WARNINGS_MSVC(4996)
 
 #if !defined(CLAP_MISBEHAVIOUR_HANDLER_LEVEL)
 #define CLAP_MISBEHAVIOUR_HANDLER_LEVEL "Ignore"
@@ -2284,6 +2290,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     bool hasTransportInfo{false};
 };
 
+JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 JUCE_END_IGNORE_WARNINGS_MSVC
 
 const char *features[] = {CLAP_FEATURES, nullptr};
