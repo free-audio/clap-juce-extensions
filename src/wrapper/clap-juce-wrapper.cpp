@@ -1262,8 +1262,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         if (paramVariant.processorParam->isAutomatable())
             info->flags = info->flags | CLAP_PARAM_IS_AUTOMATABLE;
 
-        if (paramVariant.processorParam->isBoolean() || paramVariant.processorParam->isDiscrete())
+        if (paramVariant.processorParam->isBoolean())
         {
+            // This condition used to say || paramVariant.processorParam->isDiscrete())
+            // but AudioProcessorChoice and Int normalize to 0...1 in
+            // JUCE so this ends up breaking the built in controls
+            // at the edge in CLAP vs VST3
+
             info->flags = info->flags | CLAP_PARAM_IS_STEPPED;
         }
 
