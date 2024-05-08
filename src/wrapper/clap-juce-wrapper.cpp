@@ -1583,7 +1583,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             {
                 for (uint32_t ch = 0; ch < process->audio_inputs[idx].channel_count; ++ch)
                 {
-                    if (supportsDouble && process->audio_outputs[idx].data64 != nullptr)
+                    if (supportsDouble && process->audio_inputs[idx].data64 != nullptr)
                     {
                         auto *ic = process->audio_inputs[idx].data64[ch] + n;
                         if (inputChannels < outputChannels)
