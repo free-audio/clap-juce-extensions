@@ -920,6 +920,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             info->flags = 0;
         }
 
+        if (processor->supportsDoublePrecisionProcessing())
+        {
+            info->flags |= CLAP_AUDIO_PORT_SUPPORTS_64BITS;
+            info->flags |= CLAP_AUDIO_PORT_PREFERS_64BITS;
+            info->flags |= CLAP_AUDIO_PORT_REQUIRES_COMMON_SAMPLE_SIZE;
+        }
+
         if (processor->getBus(!isInput, (int)index) != nullptr)
         {
             // this bus has a corresponding bus on the other side, so it can do in-place processing
@@ -1477,7 +1484,16 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
          */
         static constexpr uint32_t maxBuses = 128;
         std::array<float *, maxBuses> busses{};
+        std::array<double *, maxBuses> doubleBusses{};
         busses.fill(nullptr);
+
+        bool supportsDouble = processor->supportsDoublePrecisionProcessing();
+        bool hostCalledWithDouble = false;
+
+        if (supportsDouble)
+        {
+            doubleBusses.fill(nullptr);
+        }
 
         // we can't advance `n` until we know how many samples we're processing,
         // so we'll increment it inside the loop.
@@ -1548,7 +1564,15 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             {
                 for (uint32_t ch = 0; ch < process->audio_outputs[idx].channel_count; ++ch)
                 {
-                    busses[outputChannels] = process->audio_outputs[idx].data32[ch] + n;
+                    if (supportsDouble && process->audio_outputs[idx].data64 != nullptr)
+                    {
+                        doubleBusses[outputChannels] = process->audio_outputs[idx].data64[ch] + n;
+                        hostCalledWithDouble = true;
+                    }
+                    else
+                    {
+                        busses[outputChannels] = process->audio_outputs[idx].data32[ch] + n;
+                    }
                     outputChannels++;
                 }
             }
@@ -1559,39 +1583,83 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             {
                 for (uint32_t ch = 0; ch < process->audio_inputs[idx].channel_count; ++ch)
                 {
-                    auto *ic = process->audio_inputs[idx].data32[ch] + n;
-                    if (inputChannels < outputChannels)
+                    if (supportsDouble && process->audio_outputs[idx].data64 != nullptr)
                     {
-                        if (ic == busses[inputChannels])
+                        auto *ic = process->audio_inputs[idx].data64[ch] + n;
+                        if (inputChannels < outputChannels)
                         {
-                            // The buffers overlap - no need to do anything
+                            if (ic == doubleBusses[inputChannels])
+                            {
+                                // The buffers overlap - no need to do anything
+                            }
+                            else
+                            {
+                                juce::FloatVectorOperations::copy(doubleBusses[inputChannels], ic,
+                                                                  numSamplesToProcess);
+                            }
                         }
                         else
                         {
-                            juce::FloatVectorOperations::copy(busses[inputChannels], ic,
-                                                              numSamplesToProcess);
+                            doubleBusses[inputChannels] = ic;
                         }
+                        hostCalledWithDouble = true;
                     }
                     else
                     {
-                        busses[inputChannels] = ic;
+                        auto *ic = process->audio_inputs[idx].data32[ch] + n;
+                        if (inputChannels < outputChannels)
+                        {
+                            if (ic == busses[inputChannels])
+                            {
+                                // The buffers overlap - no need to do anything
+                            }
+                            else
+                            {
+                                juce::FloatVectorOperations::copy(busses[inputChannels], ic,
+                                                                  numSamplesToProcess);
+                            }
+                        }
+                        else
+                        {
+                            busses[inputChannels] = ic;
+                        }
                     }
                     inputChannels++;
                 }
             }
 
             auto totalChans = juce::jmax(inputChannels, outputChannels);
-            juce::AudioBuffer<float> buffer(busses.data(), (int)totalChans, numSamplesToProcess);
-
-            if (processor->isSuspended())
+            if (hostCalledWithDouble)
             {
-                buffer.clear();
+                juce::AudioBuffer<double> buffer(doubleBusses.data(), (int)totalChans,
+                                                numSamplesToProcess);
+
+                if (processor->isSuspended())
+                {
+                    buffer.clear();
+                }
+                else
+                {
+                    FIXME("Handle bypass and deactivated states")
+                    processor->processBlock(buffer, midiBuffer);
+                }
             }
             else
             {
-                FIXME("Handle bypass and deactivated states")
-                processor->processBlock(buffer, midiBuffer);
+                juce::AudioBuffer<float> buffer(busses.data(), (int)totalChans,
+                                                numSamplesToProcess);
+
+                if (processor->isSuspended())
+                {
+                    buffer.clear();
+                }
+                else
+                {
+                    FIXME("Handle bypass and deactivated states")
+                    processor->processBlock(buffer, midiBuffer);
+                }
             }
+
 
             if (processorAsClapExtensions && processorAsClapExtensions->supportsOutboundEvents())
             {
