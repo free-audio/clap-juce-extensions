@@ -33,7 +33,13 @@ somewhere in your dev environment, setting a few CMake variables, and adding a c
 The instructions are as follows:
 
 1. Add `https://github.com/free-audio/clap-juce-extensions.git` as a submodule of your project, or otherwise make the
-   source available to your cmake (CPM, side by side check out in CI, etc...).
+   source available to your cmake (CPM, side by side check out in CI, etc...). For example:
+
+```git
+git submodule add -b main https://github.com/free-audio/clap-juce-extensions.git libs/clap-juce-extensions
+git submodule update --init --recursive # important, this will grab clap and clap-helpers
+```
+   
 2. Load the `clap-juce-extension` in your CMake after you have loaded JUCE. For instance, you could do
 
 ```cmake
