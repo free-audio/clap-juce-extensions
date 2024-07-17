@@ -788,6 +788,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                                        CLAP_BEATTIME_FACTOR);
                 posinfo.setPpqPositionOfLastBarStart(1.0 * (double)transportInfo->bar_start /
                                                      CLAP_BEATTIME_FACTOR);
+                juce::AudioPlayHead::LoopPoints loopPoints {
+                    1.0 * (double) transportInfo->loop_start_beats / CLAP_BEATTIME_FACTOR,
+                    1.0 * (double) transportInfo->loop_end_beats / CLAP_BEATTIME_FACTOR
+                };
+                posinfo.setLoopPoints(loopPoints);
             }
             if (flags & CLAP_TRANSPORT_HAS_SECONDS_TIMELINE)
             {
