@@ -2076,7 +2076,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     void guiDestroy() noexcept override
     {
-        editorWrapper.reset(nullptr);
+        if (editorWrapper)
+        {
+            juce::PopupMenu::dismissAllActiveMenus();
+            editorWrapper.reset(nullptr);
+        }
         guiParentAttached = false;
     }
 
