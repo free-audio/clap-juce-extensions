@@ -1,4 +1,4 @@
-# JUCE6 and 7 Unofficial CLAP Plugin Support
+# JUCE6, 7 and 8 Unofficial CLAP Plugin Support
 
 This is a set of code which, combined with a JUCE 6 or JUCE 7 plugin project, allows you to build a CLAP plugin. It
 is licensed under the MIT license, and can be used for both open and closed source projects.
