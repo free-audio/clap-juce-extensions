@@ -1383,14 +1383,25 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         param.processorParam->setValue(newValue);
 
+#if 0 // PARAM_LISTENERS_ON_MAIN_THREAD
         // we want to trigger the parameter listener callbacks on the main thread,
         // but MessageManager::callAsync is not safe to call from the audio thread.
+        // This assumption though turns out to be wrong. We want to call the listener
+        // from the audio thread and leave it up to the pugin to be smart.
         audioThreadParamListenerQ.push(ParamListenerCall{param.processorParam, newValue});
         _host.requestCallback();
+#else
+        {
+            juce::ScopedValueSetter<bool> suppressCallbacks{supressParameterChangeMessages, true};
+            param.processorParam->sendValueChangedMessageToListeners(newValue);
+        }
+#endif
+
     }
 
     void onMainThread() noexcept override
     {
+#if 0 // PARAM_LISTENERS_ON_MAIN_THREAD
         // handle parameter change listener callbacks
         juce::ScopedValueSetter<bool> suppressCallbacks{supressParameterChangeMessages, true};
         ParamListenerCall listenerCall{};
@@ -1398,6 +1409,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         {
             listenerCall.parameter->sendValueChangedMessageToListeners(listenerCall.newValue);
         }
+#endif
     }
 
     bool implementsLatency() const noexcept override { return true; }
