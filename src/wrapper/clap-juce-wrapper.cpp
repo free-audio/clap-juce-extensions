@@ -517,6 +517,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return true;
     }
 
+    void reset() noexcept override
+    {
+        processor->reset();
+    }
+
   public:
     bool implementsTimerSupport() const noexcept override { return true; }
     void onTimer(clap_id timerId) noexcept override
