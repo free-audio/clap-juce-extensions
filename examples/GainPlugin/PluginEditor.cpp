@@ -64,7 +64,13 @@ PluginEditor::PluginEditor(GainPlugin &plug) : juce::AudioProcessorEditor(plug),
     setConstrainer (&constrainer);
 
     plugin.updateEditor = [this] {
+#if JUCE_VERSION >= 0x080005
+        const auto newColour = plugin.getTrackProperties().colour;
+        if (newColour.has_value())
+            gainSlider->setColour (juce::Slider::rotarySliderFillColourId, *newColour);
+#else
         gainSlider->setColour (juce::Slider::rotarySliderFillColourId, plugin.getTrackProperties().colour);
+#endif
         repaint();
     };
     plugin.updateEditor();
@@ -87,10 +93,14 @@ void PluginEditor::paint(juce::Graphics &g)
 {
     g.fillAll(juce::Colours::grey);
 
+    auto titleText = "Gain Plugin " + plugin.getPluginTypeString();
+    const auto trackName = plugin.getTrackProperties().name;
+    if (trackName.has_value())
+        titleText += " (" + *trackName + ")";
+
     g.setColour(juce::Colours::black);
     g.setFont(25.0f);
     const auto titleBounds = getLocalBounds().removeFromTop(30);
-    const auto titleText = "Gain Plugin " + plugin.getPluginTypeString() + " (" + plugin.getTrackProperties().name + ")";
     g.drawFittedText(titleText, titleBounds, juce::Justification::centred, 1);
 
     if (auto *paramIndicatorInfo =

@@ -2349,7 +2349,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             return false;
         }
 
-        if (chunkMemory.isEmpty())
+        // On newer JUCE versions we can use chunkMemory.isEmpty(), but older JUCE didn't have that
+        if (chunkMemory.getSize() == 0)
             return false;
 
         // JUCE has no way to report an unstream error; setStateInformation is void
