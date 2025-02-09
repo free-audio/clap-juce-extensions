@@ -209,6 +209,9 @@ struct clap_juce_audio_processor_capabilities
 
     virtual bool prefersNoteDialectClap(bool isInput) { return supportsNoteDialectClap(isInput); }
 
+    // JUCE added support for note names in juce::AudioProcessor
+    // in version 8.0.5, so we don't need these methods anymore.
+#if JUCE_VERSION < 0x080005
     /** If your plugin supports custom note names, then override this method to return true. */
     virtual bool supportsNoteName() const noexcept { return false; }
 
@@ -226,6 +229,7 @@ struct clap_juce_audio_processor_capabilities
     {
         return false;
     }
+#endif
 
     /** Plugins should call this method when their note names have changed. */
     void noteNamesChanged()
