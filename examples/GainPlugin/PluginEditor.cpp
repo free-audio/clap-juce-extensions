@@ -95,8 +95,12 @@ void PluginEditor::paint(juce::Graphics &g)
 
     auto titleText = "Gain Plugin " + plugin.getPluginTypeString();
     const auto trackName = plugin.getTrackProperties().name;
+#if JUCE_VERSION >= 0x080005
     if (trackName.has_value())
         titleText += " (" + *trackName + ")";
+#else
+        titleText += " (" + trackName + ")";
+#endif
 
     g.setColour(juce::Colours::black);
     g.setFont(25.0f);
