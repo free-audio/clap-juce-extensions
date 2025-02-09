@@ -1076,7 +1076,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             {
                 const auto optionalNoteName = processor->getNameForMidiNoteNumber (key, channel + 1);
                 if (optionalNoteName.has_value())
-                    noteNameInfoCached.emplace_back (*optionalNoteName, (int16_t) key, (int16_t) channel);
+                    noteNameInfoCached.push_back ({ *optionalNoteName, (int16_t) key, (int16_t) channel });
             }
         }
 

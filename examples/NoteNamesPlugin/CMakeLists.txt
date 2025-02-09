@@ -26,7 +26,7 @@ target_compile_definitions(NoteNamesPlugin PUBLIC
     JUCE_REPORT_APP_USAGE=0
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
-    JUCE_JACK=1
+    JUCE_JACK=0
     JUCE_ALSA=1
     JUCE_MODAL_LOOPS_PERMITTED=1 # required for Linux FileChooser with JUCE 6.0.7
     JUCE_VST3_CAN_REPLACE_VST2=0

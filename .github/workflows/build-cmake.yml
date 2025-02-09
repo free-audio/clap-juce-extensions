@@ -18,7 +18,7 @@ jobs:
       fail-fast: false # show all errors for each platform (vs. cancel jobs on error)
       matrix:
         os: [ubuntu-latest, windows-2019, macOS-latest] # win 2019 needed for juce 6
-        juce_version: ["6.0.7", "6.1.5", "6.1.6", "7.0.0", "7.0.6", "7.0.12","8.0.4"]
+        juce_version: ["6.0.7", "6.1.5", "6.1.6", "7.0.0", "7.0.6", "7.0.12","8.0.6"]
 
 
     steps:
