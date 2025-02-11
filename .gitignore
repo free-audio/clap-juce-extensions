@@ -76,6 +76,9 @@ cmake-stamp
 *.txt.user
 *.txt.user.*
 
+# Projucer
+JuceLibraryCode/
+
 # CMake
 build/
 build32/

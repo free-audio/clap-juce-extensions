@@ -684,6 +684,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     bool supressParameterChangeMessages{false};
     void audioProcessorParameterChanged(juce::AudioProcessor *, int index, float newValue) override
     {
+#if 0 // PARAM_LISTENERS_ON_MAIN_THREAD
         if (cacheHostCanUseThreadCheck)
         {
             // Parameter change messages should not be coming from the audio thread!
@@ -695,6 +696,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                 return;
             }
         }
+#endif
 
         // This change message came from an event that we've already handled.
         // Let's return here to avoid creating a feedback loop!
@@ -1053,6 +1055,47 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return Plugin::voiceInfoGet(info);
     }
 
+#if JUCE_VERSION >= 0x080005
+    bool implementsNoteName() const noexcept override
+    {
+        return true;
+    }
+
+    uint32_t noteNameCount() noexcept override
+    {
+        noteNameInfoCached.clear();
+
+        // The JUCE docs say that plugins need to be able to handle
+        // note name requests for notes above 127, but CLAP only supports
+        // notes in range [0, 127].
+        for (int key = 0; key < 128; ++key)
+        {
+            // JUCE expects MIDI channels in range [1, 16].
+            // CLAP expects MIDI channels in range [0, 15].
+            for (int channel = 0; channel < 16; ++channel)
+            {
+                const auto optionalNoteName = processor->getNameForMidiNoteNumber (key, channel + 1);
+                if (optionalNoteName.has_value())
+                    noteNameInfoCached.push_back ({ *optionalNoteName, (int16_t) key, (int16_t) channel });
+            }
+        }
+
+        return static_cast<uint32_t> (noteNameInfoCached.size());
+    }
+
+    bool noteNameGet(uint32_t index, clap_note_name *noteName) noexcept override
+    {
+        if (index >= noteNameInfoCached.size())
+            return false;
+
+        const auto& noteNameInfo = noteNameInfoCached[index];
+        noteNameInfo.name.copyToUTF8 (noteName->name, CLAP_NAME_SIZE);
+        noteName->key = noteNameInfo.key;
+        noteName->channel = noteNameInfo.channel;
+        noteName->port = -1;
+        return true;
+    }
+#else
     bool implementsNoteName() const noexcept override
     {
         if (processorAsClapExtensions)
@@ -1073,6 +1116,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             return processorAsClapExtensions->noteNameGet(index, noteName);
         return false;
     }
+#endif
 
     bool implementsTrackInfo() const noexcept override { return true; }
 
@@ -2305,6 +2349,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             return false;
         }
 
+        // On newer JUCE versions we can use chunkMemory.isEmpty(), but older JUCE didn't have that
+        if (chunkMemory.getSize() == 0)
+            return false;
+
         // JUCE has no way to report an unstream error; setStateInformation is void
         // So we just have to assume it works.
         processor->setStateInformation(chunkMemory.getData(), (int)chunkMemory.getSize());
@@ -2387,6 +2435,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     const clap_event_transport *transportInfo{nullptr};
     bool hasTransportInfo{false};
+
+    struct NoteNameInfo
+    {
+        juce::String name {};
+        int16_t key = -1;
+        int16_t channel = -1;
+    };
+    std::vector<NoteNameInfo> noteNameInfoCached {};
 };
 
 JUCE_END_IGNORE_WARNINGS_GCC_LIKE

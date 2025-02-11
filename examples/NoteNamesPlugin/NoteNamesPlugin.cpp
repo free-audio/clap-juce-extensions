@@ -41,6 +41,21 @@ juce::AudioProcessorValueTreeState::ParameterLayout NoteNamesPlugin::createParam
     return {params.begin(), params.end()};
 }
 
+#if JUCE_VERSION >= 0x080005
+std::optional<juce::String> NoteNamesPlugin::getNameForMidiNoteNumber (int noteNumber, [[maybe_unused]] int midiChannel)
+{
+    const auto noteNamesIndex = static_cast<size_t>(noteNamesParam->load());
+    const auto &noteMap = noteMaps[noteNamesIndex];
+
+    for (const auto& note : noteMap)
+    {
+        if (note.key == noteNumber)
+            return note.name;
+    }
+
+    return std::nullopt;
+}
+#else
 int NoteNamesPlugin::noteNameCount() noexcept
 {
     const auto noteNamesIndex = static_cast<size_t>(noteNamesParam->load());
@@ -63,6 +78,7 @@ bool NoteNamesPlugin::noteNameGet(int index, clap_note_name *noteName) noexcept
 
     return false;
 }
+#endif
 
 bool NoteNamesPlugin::isBusesLayoutSupported(const juce::AudioProcessor::BusesLayout &) const
 {

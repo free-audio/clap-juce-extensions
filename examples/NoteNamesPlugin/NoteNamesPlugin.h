@@ -13,9 +13,13 @@ class NoteNamesPlugin : public juce::AudioProcessor,
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameters();
 
+#if JUCE_VERSION >= 0x080005
+    std::optional<juce::String> getNameForMidiNoteNumber (int note, int midiChannel) override;
+#else
     bool supportsNoteName() const noexcept override { return true; }
     int noteNameCount() noexcept override;
     bool noteNameGet(int index, clap_note_name *noteName) noexcept override;
+#endif
 
     const juce::String getName() const override { return JucePlugin_Name; }
     bool acceptsMidi() const override { return true; }
