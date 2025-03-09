@@ -17,8 +17,8 @@ class NoteNamesPlugin : public juce::AudioProcessor,
     std::optional<juce::String> getNameForMidiNoteNumber (int note, int midiChannel) override;
 #else
     bool supportsNoteName() const noexcept override { return true; }
-    int noteNameCount() noexcept override;
-    bool noteNameGet(int index, clap_note_name *noteName) noexcept override;
+    uint32_t noteNameCount() noexcept override;
+    bool noteNameGet(uint32_t index, clap_note_name *noteName) noexcept override;
 #endif
 
     const juce::String getName() const override { return JucePlugin_Name; }
