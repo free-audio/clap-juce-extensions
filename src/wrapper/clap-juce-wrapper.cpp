@@ -1055,14 +1055,22 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return Plugin::voiceInfoGet(info);
     }
 
-#if JUCE_VERSION >= 0x080005
     bool implementsNoteName() const noexcept override
     {
+#if JUCE_VERSION < 0x080005
+        if (processorAsClapExtensions)
+            return processorAsClapExtensions->supportsNoteName();
+#endif
+
         return true;
     }
 
     uint32_t noteNameCount() noexcept override
     {
+        if (processorAsClapExtensions && processorAsClapExtensions->supportsNoteName())
+            return processorAsClapExtensions->noteNameCount();
+
+#if JUCE_VERSION >= 0x080005
         noteNameInfoCached.clear();
 
         // The JUCE docs say that plugins need to be able to handle
@@ -1081,10 +1089,17 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         }
 
         return static_cast<uint32_t> (noteNameInfoCached.size());
+#else
+        return 0;
+#endif
     }
 
     bool noteNameGet(uint32_t index, clap_note_name *noteName) noexcept override
     {
+        if (processorAsClapExtensions && processorAsClapExtensions->supportsNoteName())
+            return processorAsClapExtensions->noteNameGet (index, noteName);
+
+#if JUCE_VERSION >= 0x080005
         if (index >= noteNameInfoCached.size())
             return false;
 
@@ -1094,29 +1109,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         noteName->channel = noteNameInfo.channel;
         noteName->port = -1;
         return true;
-    }
 #else
-    bool implementsNoteName() const noexcept override
-    {
-        if (processorAsClapExtensions)
-            return processorAsClapExtensions->supportsNoteName();
         return false;
-    }
-
-    uint32_t noteNameCount() noexcept override
-    {
-        if (processorAsClapExtensions)
-            return processorAsClapExtensions->noteNameCount();
-        return 0;
-    }
-
-    bool noteNameGet(uint32_t index, clap_note_name *noteName) noexcept override
-    {
-        if (processorAsClapExtensions)
-            return processorAsClapExtensions->noteNameGet(index, noteName);
-        return false;
-    }
 #endif
+    }
 
     bool implementsTrackInfo() const noexcept override { return true; }
 

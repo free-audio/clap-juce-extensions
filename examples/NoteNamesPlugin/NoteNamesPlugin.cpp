@@ -56,17 +56,17 @@ std::optional<juce::String> NoteNamesPlugin::getNameForMidiNoteNumber (int noteN
     return std::nullopt;
 }
 #else
-int NoteNamesPlugin::noteNameCount() noexcept
+uint32_t NoteNamesPlugin::noteNameCount() noexcept
 {
     const auto noteNamesIndex = static_cast<size_t>(noteNamesParam->load());
-    return (int)noteMaps[noteNamesIndex].size();
+    return static_cast<uint32_t>(noteMaps[noteNamesIndex].size());
 }
 
-bool NoteNamesPlugin::noteNameGet(int index, clap_note_name *noteName) noexcept
+bool NoteNamesPlugin::noteNameGet(uint32_t index, clap_note_name *noteName) noexcept
 {
     const auto noteNamesIndex = static_cast<size_t>(noteNamesParam->load());
     const auto &noteMap = noteMaps[noteNamesIndex];
-    if (index < (int)noteMap.size())
+    if (index < noteMap.size())
     {
         const auto &note = noteMap[(size_t)index];
         strcpy(noteName->name, note.name.getCharPointer());
