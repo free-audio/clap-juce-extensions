@@ -240,8 +240,8 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
                 item.itemID = ++menuIDCounter;
                 item.text = juce::CharPointer_UTF8(entry->label);
                 item.isEnabled = entry->is_enabled;
-                item.action = [&host = this->host, target = *this->menuTarget,
-                               id = entry->action_id] { host.contextMenuPerform(&target, id); };
+                item.action = [&hostRef = this->host, target = *this->menuTarget,
+                               id = entry->action_id] { hostRef.contextMenuPerform(&target, id); };
 
                 currentMenu.addItem(item);
             }
@@ -254,8 +254,8 @@ class EditorContextMenu : public juce::HostProvidedContextMenu
                 item.text = juce::CharPointer_UTF8(entry->label);
                 item.isEnabled = entry->is_enabled;
                 item.isTicked = entry->is_checked;
-                item.action = [&host = this->host, target = *this->menuTarget,
-                               id = entry->action_id] { host.contextMenuPerform(&target, id); };
+                item.action = [&hostRef = this->host, target = *this->menuTarget,
+                               id = entry->action_id] { hostRef.contextMenuPerform(&target, id); };
 
                 currentMenu.addItem(item);
             }
