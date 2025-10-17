@@ -3,6 +3,7 @@
  *
  * Released under the MIT License, as described in LICENSE.md in this repository
  */
+
 #if _WIN32
 #define _CRT_SECURE_NO_WARNINGS 1
 #endif
@@ -53,7 +54,10 @@ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 
 #if JUCE_LINUX
 #if JUCE_VERSION >= 0x070006
+#include <vector>
+#include <juce_events/native/juce_EventLoopInternal_linux.h>
 #include <juce_audio_plugin_client/detail/juce_LinuxMessageThread.h>
+#define HAS_LINUX_FD 1
 #elif JUCE_VERSION > 0x060008
 #include <juce_audio_plugin_client/utility/juce_LinuxMessageThread.h>
 #endif
@@ -384,6 +388,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                         public juce::AudioProcessorListener,
                         public juce::AudioPlayHead,
                         public juce::AudioProcessorParameter::Listener,
+#if HAS_LINUX_FD
+                        public juce::LinuxEventLoopInternal::Listener,
+#endif
                         public juce::ComponentListener
 {
   public:
@@ -492,6 +499,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                 dynamic_cast<clap_juce_extensions::clap_juce_parameter_capabilities *>(juceParam)};
             clapIDByParamPtr[juceParam] = clapID;
         }
+
+#if HAS_LINUX_FD
+        juce::LinuxEventLoopInternal::registerLinuxEventLoopListener(*this);
+#endif
     }
 
     ~ClapJuceWrapper() override
@@ -501,6 +512,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         {
             _host.timerSupportUnregister(idleTimer);
         }
+
+#if HAS_LINUX_FD
+        juce::LinuxEventLoopInternal::deregisterLinuxEventLoopListener(*this);
+        unregisterExtantFDs();
+#endif
 #endif
     }
 
@@ -517,10 +533,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         return true;
     }
 
-    void reset() noexcept override
-    {
-        processor->reset();
-    }
+    void reset() noexcept override { processor->reset(); }
 
   public:
     bool implementsTimerSupport() const noexcept override { return true; }
@@ -545,6 +558,40 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 #endif
 #endif
     }
+
+#if HAS_LINUX_FD 
+    std::vector<int> registeredFDs;
+    void fdCallbacksChanged() override
+    {
+        unregisterExtantFDs();
+        registeredFDs = juce::LinuxEventLoopInternal::getRegisteredFds();
+        if (_host.canUsePosixFdSupport())
+        {
+            for (auto &fd : registeredFDs)
+            {
+                _host.posixFdSupportRegister(fd, CLAP_POSIX_FD_READ | CLAP_POSIX_FD_ERROR);
+            }
+        }
+    }
+    void unregisterExtantFDs()
+    {
+        if (_host.canUsePosixFdSupport())
+        {
+            for (auto &fd : registeredFDs)
+            {
+                _host.posixFdSupportUnregister(fd);
+            }
+        }
+        registeredFDs.clear();
+    }
+
+    bool implementsPosixFdSupport() const noexcept override { return true; }
+    void onPosixFd(int fd, clap_posix_fd_flags_t /* flags */) noexcept override
+    {
+        juce::LinuxEventLoopInternal::invokeEventLoopCallbackForFd(fd);
+    }
+
+#endif
 
     clap_id idleTimer{0};
 
@@ -795,10 +842,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                                        CLAP_BEATTIME_FACTOR);
                 posinfo.setPpqPositionOfLastBarStart(1.0 * (double)transportInfo->bar_start /
                                                      CLAP_BEATTIME_FACTOR);
-                juce::AudioPlayHead::LoopPoints loopPoints {
-                    1.0 * (double) transportInfo->loop_start_beats / CLAP_BEATTIME_FACTOR,
-                    1.0 * (double) transportInfo->loop_end_beats / CLAP_BEATTIME_FACTOR
-                };
+                juce::AudioPlayHead::LoopPoints loopPoints{
+                    1.0 * (double)transportInfo->loop_start_beats / CLAP_BEATTIME_FACTOR,
+                    1.0 * (double)transportInfo->loop_end_beats / CLAP_BEATTIME_FACTOR};
                 posinfo.setLoopPoints(loopPoints);
             }
             if (flags & CLAP_TRANSPORT_HAS_SECONDS_TIMELINE)
@@ -1082,13 +1128,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             // CLAP expects MIDI channels in range [0, 15].
             for (int channel = 0; channel < 16; ++channel)
             {
-                const auto optionalNoteName = processor->getNameForMidiNoteNumber (key, channel + 1);
+                const auto optionalNoteName = processor->getNameForMidiNoteNumber(key, channel + 1);
                 if (optionalNoteName.has_value())
-                    noteNameInfoCached.push_back ({ *optionalNoteName, (int16_t) key, (int16_t) channel });
+                    noteNameInfoCached.push_back(
+                        {*optionalNoteName, (int16_t)key, (int16_t)channel});
             }
         }
 
-        return static_cast<uint32_t> (noteNameInfoCached.size());
+        return static_cast<uint32_t>(noteNameInfoCached.size());
 #else
         return 0;
 #endif
@@ -1097,14 +1144,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     bool noteNameGet(uint32_t index, clap_note_name *noteName) noexcept override
     {
         if (processorAsClapExtensions && processorAsClapExtensions->supportsNoteName())
-            return processorAsClapExtensions->noteNameGet (index, noteName);
+            return processorAsClapExtensions->noteNameGet(index, noteName);
 
 #if JUCE_VERSION >= 0x080005
         if (index >= noteNameInfoCached.size())
             return false;
 
-        const auto& noteNameInfo = noteNameInfoCached[index];
-        noteNameInfo.name.copyToUTF8 (noteName->name, CLAP_NAME_SIZE);
+        const auto &noteNameInfo = noteNameInfoCached[index];
+        noteNameInfo.name.copyToUTF8(noteName->name, CLAP_NAME_SIZE);
         noteName->key = noteNameInfo.key;
         noteName->channel = noteNameInfo.channel;
         noteName->port = -1;
@@ -1118,7 +1165,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     void trackInfoChanged() noexcept override
     {
-        clap_track_info clapTrackInfo {};
+        clap_track_info clapTrackInfo{};
         if (_host.trackInfoGet(&clapTrackInfo))
         {
             juce::AudioProcessor::TrackProperties juceTrackInfo{};
@@ -1429,10 +1476,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         param.processorParam->setValue(newValue);
 
 #if 0 // PARAM_LISTENERS_ON_MAIN_THREAD
-        // we want to trigger the parameter listener callbacks on the main thread,
-        // but MessageManager::callAsync is not safe to call from the audio thread.
-        // This assumption though turns out to be wrong. We want to call the listener
-        // from the audio thread and leave it up to the pugin to be smart.
+      // we want to trigger the parameter listener callbacks on the main thread,
+      // but MessageManager::callAsync is not safe to call from the audio thread.
+      // This assumption though turns out to be wrong. We want to call the listener
+      // from the audio thread and leave it up to the pugin to be smart.
         audioThreadParamListenerQ.push(ParamListenerCall{param.processorParam, newValue});
         _host.requestCallback();
 #else
@@ -1441,13 +1488,12 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             param.processorParam->sendValueChangedMessageToListeners(newValue);
         }
 #endif
-
     }
 
     void onMainThread() noexcept override
     {
 #if 0 // PARAM_LISTENERS_ON_MAIN_THREAD
-        // handle parameter change listener callbacks
+      // handle parameter change listener callbacks
         juce::ScopedValueSetter<bool> suppressCallbacks{supressParameterChangeMessages, true};
         ParamListenerCall listenerCall{};
         while (audioThreadParamListenerQ.pop(listenerCall))
@@ -1694,7 +1740,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             if (hostCalledWithDouble)
             {
                 juce::AudioBuffer<double> buffer(doubleBusses.data(), (int)totalChans,
-                                                numSamplesToProcess);
+                                                 numSamplesToProcess);
 
                 if (processor->isSuspended())
                 {
@@ -1721,7 +1767,6 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                     processor->processBlock(buffer, midiBuffer);
                 }
             }
-
 
             if (processorAsClapExtensions && processorAsClapExtensions->supportsOutboundEvents())
             {
@@ -2434,11 +2479,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     struct NoteNameInfo
     {
-        juce::String name {};
+        juce::String name{};
         int16_t key = -1;
         int16_t channel = -1;
     };
-    std::vector<NoteNameInfo> noteNameInfoCached {};
+    std::vector<NoteNameInfo> noteNameInfoCached{};
 };
 
 JUCE_END_IGNORE_WARNINGS_GCC_LIKE
