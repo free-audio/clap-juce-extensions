@@ -19,15 +19,15 @@ jobs:
       matrix:
         include:
         # note: the github runners don't have enough old mac juce to compile 6 and 7 easily
-          - os: ubunutu-22.04
+          - os: ubuntu-22.04
             juce_version: 6.0.7
-          - os: ubunutu-22.04
+          - os: ubuntu-22.04
             juce_version: 6.1.6
-          - os: ubunutu-22.04
+          - os: ubuntu-22.04
             juce_version: 7.0.0
-          - os: ubunutu-22.04
+          - os: ubuntu-22.04
             juce_version: 7.0.12 
-          - os: ubunutu-22.04
+          - os: ubuntu-22.04
             juce_version: 8.0.10
 
           - os: windows-latest
