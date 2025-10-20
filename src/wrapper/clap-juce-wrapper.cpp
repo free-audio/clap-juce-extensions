@@ -569,7 +569,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         {
             for (auto &fd : registeredFDs)
             {
-                _host.posixFdSupportRegister(fd, CLAP_POSIX_FD_READ | CLAP_POSIX_FD_ERROR);
+                _host.posixFdSupportRegister(fd, CLAP_POSIX_FD_READ | CLAP_POSIX_FD_WRITE | CLAP_POSIX_FD_ERROR);
             }
         }
     }
@@ -588,6 +588,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     bool implementsPosixFdSupport() const noexcept override { return true; }
     void onPosixFd(int fd, clap_posix_fd_flags_t /* flags */) noexcept override
     {
+        juce::ScopedJuceInitialiser_GUI libraryInitialiser;
+        const juce::MessageManagerLock mmLock;
+
         juce::LinuxEventLoopInternal::invokeEventLoopCallbackForFd(fd);
     }
 
