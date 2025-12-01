@@ -85,7 +85,7 @@ jobs:
 
       - name: Resave jucer
         shell: bash
-        run: $PROJUCER --resave examples/GainPlugin/GainPlugin.jucer
+        run: $PROJUCER --resave examples/GainPlugin/GainPlugin.jucer --fix-missing-dependencies
         env:
           PROJUCER: ${{ matrix.jucer }}
 
