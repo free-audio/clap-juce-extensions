@@ -64,7 +64,10 @@ PluginEditor::PluginEditor(GainPlugin &plug) : juce::AudioProcessorEditor(plug),
     setConstrainer (&constrainer);
 
     plugin.updateEditor = [this] {
-#if JUCE_VERSION >= 0x080005
+#if JUCE_VERSION >= 0x08000B
+        if (const auto argb = plugin.getTrackProperties().colourARGB)
+            gainSlider->setColour (juce::Slider::rotarySliderFillColourId, juce::Colour (*argb));
+#elif JUCE_VERSION >= 0x080005
         const auto newColour = plugin.getTrackProperties().colour;
         if (newColour.has_value())
             gainSlider->setColour (juce::Slider::rotarySliderFillColourId, *newColour);
