@@ -27,7 +27,7 @@ jobs:
             jucer: build/_deps/juce-src/extras/Projucer/Builds/MacOSX/build/Debug/Projucer.app/Contents/MacOS/Projucer
             clap_gen: "Xcode"
             xcode_version: latest-stable
-            juce_version: "8.0.10"
+            juce_version: "8.0.11"
             cxx_standard: 17
           - os: windows-2022
             jucer: build/_deps/juce-src/extras/Projucer/Builds/VisualStudio2019/x64/Debug/App/Projucer.exe
@@ -41,8 +41,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt install libasound2-dev libcurl4-openssl-dev libx11-dev libxinerama-dev libxext-dev libfreetype6-dev libwebkit2gtk-4.0-dev libglu1-mesa-dev libjack-jackd2-dev libxml2-utils
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11
 
       - name: Add msbuild to PATH
         if: runner.os == 'Windows'
@@ -85,7 +85,7 @@ jobs:
 
       - name: Resave jucer
         shell: bash
-        run: $PROJUCER --resave examples/GainPlugin/GainPlugin.jucer
+        run: $PROJUCER --resave examples/GainPlugin/GainPlugin.jucer --fix-missing-dependencies
         env:
           PROJUCER: ${{ matrix.jucer }}
 

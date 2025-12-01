@@ -19,7 +19,13 @@
 #include <juce_core/system/juce_TargetPlatform.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
+
+#if JUCE_VERSION >= 0x08000B
+#include <juce_audio_processors_headless/juce_audio_processors_headless.h>
+#include <juce_audio_processors_headless/format_types/juce_LegacyAudioParameter.h>
+#else
 #include <juce_audio_processors/format_types/juce_LegacyAudioParameter.cpp>
+#endif
 
 #if JUCE_VERSION >= 0x070006
 #include <juce_audio_plugin_client/detail/juce_IncludeSystemHeaders.h>
@@ -559,7 +565,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 #endif
     }
 
-#if HAS_LINUX_FD 
+#if HAS_LINUX_FD
     std::vector<int> registeredFDs;
     void fdCallbacksChanged() override
     {
@@ -1179,7 +1185,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             }
             if (clapTrackInfo.flags & CLAP_TRACK_INFO_HAS_TRACK_COLOR)
             {
+#if JUCE_VERSION >= 0x08000B
+                juceTrackInfo.colourARGB = clapColourToJUCEColour(clapTrackInfo.color).getARGB();
+#else
                 juceTrackInfo.colour = clapColourToJUCEColour(clapTrackInfo.color);
+#endif
             }
 
             processor->updateTrackProperties(juceTrackInfo);

@@ -26,21 +26,25 @@ jobs:
           - os: ubuntu-22.04
             juce_version: 7.0.0
           - os: ubuntu-22.04
-            juce_version: 7.0.12 
+            juce_version: 7.0.12
           - os: ubuntu-22.04
             juce_version: 8.0.10
+          - os: ubuntu-22.04
+            juce_version: 8.0.11
 
           - os: windows-latest
             juce_version: 6.1.6
           - os: windows-latest
             juce_version: 7.0.0
           - os: windows-latest
-            juce_version: 7.0.12 
+            juce_version: 7.0.12
           - os: windows-latest
             juce_version: 8.0.10
+          - os: windows-latest
+            juce_version: 8.0.11
 
           - os: macOS-latest
-            juce_version: 8.0.10
+            juce_version: 8.0.11
 
     steps:
       - name: Install Linux Deps
