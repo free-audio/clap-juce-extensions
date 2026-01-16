@@ -451,6 +451,17 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                         _host.remoteControlsChanged();
                 });
             };
+
+            processorAsClapExtensions->voiceInfoChangedSignal = [this]() {
+                runOnMainThread([this] {
+                    if (isBeingDestroyed())
+                        return;
+
+                    if (_host.canUseVoiceInfo())
+                        _host.voiceInfoChanged();
+                });
+            };
+
             processorAsClapExtensions->suggestRemoteControlsPageSignal = [this](uint32_t pageID) {
                 runOnMainThread([this, pageID] {
                     if (isBeingDestroyed())
@@ -575,7 +586,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         {
             for (auto &fd : registeredFDs)
             {
-                _host.posixFdSupportRegister(fd, CLAP_POSIX_FD_READ | CLAP_POSIX_FD_WRITE | CLAP_POSIX_FD_ERROR);
+                _host.posixFdSupportRegister(fd, CLAP_POSIX_FD_READ | CLAP_POSIX_FD_WRITE |
+                                                     CLAP_POSIX_FD_ERROR);
             }
         }
     }

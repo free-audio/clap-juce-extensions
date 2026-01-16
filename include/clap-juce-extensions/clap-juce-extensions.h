@@ -89,6 +89,13 @@ struct clap_juce_audio_processor_capabilities
     virtual bool supportsVoiceInfo() { return false; }
     virtual bool voiceInfoGet(clap_voice_info * /*info*/) { return false; }
 
+    /** Plugins should call this method from main thread when their voice info have changed. */
+    void voiceInfoChanged()
+    {
+        if (voiceInfoChangedSignal != nullptr)
+            voiceInfoChangedSignal();
+    }
+
     /*
      * Do you want to receive note expression messages? Note that if you return true
      * here and don't implement supportsDirectProcess, the note expression messages will
@@ -346,6 +353,7 @@ struct clap_juce_audio_processor_capabilities
     std::function<JUCEParameterVariant *(clap_id)> lookupParamByID = nullptr;
     std::function<void()> noteNamesChangedSignal = nullptr;
     std::function<void()> remoteControlsChangedSignal = nullptr;
+    std::function<void()> voiceInfoChangedSignal = nullptr;
     std::function<void(uint32_t)> suggestRemoteControlsPageSignal = nullptr;
     std::function<void(uint32_t location_kind, const char *location, const char *load_key,
                        int32_t os_error, const juce::String &msg)>
