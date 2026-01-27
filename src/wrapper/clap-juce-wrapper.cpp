@@ -410,6 +410,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         nullptr};
 
     bool usingLegacyParameterAPI{false};
+    std::atomic<bool> callLatencyChangeOnNextActivate{false};
 
     ClapJuceWrapper(const clap_host *host, juce::AudioProcessor *p)
         : clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::CLAP_MISBEHAVIOUR_HANDLER_LEVEL,
@@ -634,7 +635,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                     return;
 
                 if (_host.canUseLatency())
-                    _host.latencyChanged();
+                {
+                    callLatencyChangeOnNextActivate = true;
+                    _host.requestRestart();
+                }
             });
         }
         if (details.programChanged)
@@ -902,6 +906,12 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                   uint32_t maxFrameCount) noexcept override
     {
         juce::ignoreUnused(minFrameCount);
+
+        if (callLatencyChangeOnNextActivate && _host.canUseLatency()) {
+            _host.latencyChanged();
+            callLatencyChangeOnNextActivate = false;
+        }
+
         processor->setRateAndBufferSizeDetails(sampleRate, (int)maxFrameCount);
         processor->prepareToPlay(sampleRate, (int)maxFrameCount);
         midiBuffer.ensureSize(2048);
