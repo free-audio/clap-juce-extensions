@@ -635,8 +635,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                     return;
 
                 if (_host.canUseLatency())
+                {
                     callLatencyChangeOnNextActivate = true;
                     _host.requestRestart();
+                }
             });
         }
         if (details.programChanged)
