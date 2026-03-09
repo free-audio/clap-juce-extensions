@@ -587,8 +587,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         {
             for (auto &fd : registeredFDs)
             {
-                _host.posixFdSupportRegister(fd, CLAP_POSIX_FD_READ | CLAP_POSIX_FD_WRITE |
-                                                     CLAP_POSIX_FD_ERROR);
+                _host.posixFdSupportRegister(fd, CLAP_POSIX_FD_READ);
             }
         }
     }
