@@ -20,7 +20,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/format_types/juce_LegacyAudioParameter.cpp>
 
-#if JUCE_WINDOWS
+#if JUCE_WINDOWS && JUCE_VERSION >= 0x070006
 #include <juce_gui_basics/native/juce_WindowsHooks_windows.h>
 #endif
 
@@ -1971,7 +1971,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
       private:
         juce::Rectangle<int> lastBounds;
         bool resizingChild = false, resizingParent = false;
-#if JUCE_WINDOWS
+#if JUCE_WINDOWS && JUCE_VERSION >= 0x070006
         juce::detail::WindowsHooks hooks;
 #endif
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EditorWrapperComponent)
