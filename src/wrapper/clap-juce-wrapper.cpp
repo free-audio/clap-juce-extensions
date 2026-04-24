@@ -27,6 +27,10 @@
 #include <juce_audio_processors/format_types/juce_LegacyAudioParameter.cpp>
 #endif
 
+#if JUCE_WINDOWS && JUCE_VERSION >= 0x070006
+#include <juce_gui_basics/native/juce_WindowsHooks_windows.h>
+#endif
+
 #if JUCE_VERSION >= 0x070006
 #include <juce_audio_plugin_client/detail/juce_IncludeSystemHeaders.h>
 #include <juce_audio_plugin_client/detail/juce_PluginUtilities.h>
@@ -2187,6 +2191,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
       private:
         juce::Rectangle<int> lastBounds;
         bool resizingChild = false, resizingParent = false;
+#if JUCE_WINDOWS && JUCE_VERSION >= 0x070006
+        juce::detail::WindowsHooks hooks;
+#endif
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EditorWrapperComponent)
     };
     std::unique_ptr<EditorWrapperComponent> editorWrapper;
