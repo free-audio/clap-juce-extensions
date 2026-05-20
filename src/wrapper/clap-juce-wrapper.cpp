@@ -1826,6 +1826,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                         evt.header.flags = 0;
                         evt.port_index = 0;
                         memcpy(&evt.data, msg.getRawData(), msgSize * sizeof(uint8_t));
+                        if (msgSize == 2) {
+                          evt.data[2] = 0;
+                        }
                         ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
                     }
                 }
