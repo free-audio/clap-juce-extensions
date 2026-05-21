@@ -1816,7 +1816,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                 for (auto meta : midiBuffer)
                 {
                     auto msg = meta.getMessage();
-                    auto msgSize = msg.getRawDataSize();
+                    size_t msgSize = msg.getRawDataSize();
                     if (msgSize == 2 || msgSize == 3)
                     {
                         auto evt = clap_event_midi();
