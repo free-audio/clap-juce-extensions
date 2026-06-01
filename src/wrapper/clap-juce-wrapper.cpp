@@ -1826,7 +1826,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                         evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
                         evt.header.flags = 0;
                         evt.port_index = 0;
-                        memcpy(&evt.data, msg.getRawData(), msgSize * sizeof(uint8_t));
+                        memcpy(&evt.data, msg.getRawData(), static_cast<size_t>(msgSize) * sizeof(uint8_t));
                         if (msgSize == 2) {
                           evt.data[2] = 0;
                         }
