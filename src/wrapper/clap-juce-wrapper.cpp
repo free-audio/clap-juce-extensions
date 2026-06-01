@@ -1816,7 +1816,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                 for (auto meta : midiBuffer)
                 {
                     auto msg = meta.getMessage();
-                    if (msg.getRawDataSize() == 3)
+                    auto msgSize = msg.getRawDataSize();
+                    if (msgSize == 2 || msgSize == 3)
                     {
                         auto evt = clap_event_midi();
                         evt.header.size = sizeof(clap_event_midi);
@@ -1825,7 +1826,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                         evt.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
                         evt.header.flags = 0;
                         evt.port_index = 0;
-                        memcpy(&evt.data, msg.getRawData(), 3 * sizeof(uint8_t));
+                        memcpy(&evt.data, msg.getRawData(), static_cast<size_t>(msgSize) * sizeof(uint8_t));
+                        if (msgSize == 2) {
+                          evt.data[2] = 0;
+                        }
                         ov->try_push(ov, reinterpret_cast<const clap_event_header *>(&evt));
                     }
                 }
