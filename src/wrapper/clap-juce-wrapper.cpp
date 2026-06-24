@@ -1320,15 +1320,17 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                                    .getGroupsForParameter(paramVariant.processorParam)
                                    .getLast();
         juce::String group = "";
+
         while (parameterGroup && parameterGroup->getParent() &&
-               parameterGroup->getParent()->getName().isNotEmpty())
+               parameterGroup->getParent() != nullptr)
         {
-            group = parameterGroup->getName() + "/" + group;
+            if (group.isNotEmpty())
+                group = parameterGroup->getName() + "/" + group;
+            else
+                group = parameterGroup->getName();
+
             parameterGroup = parameterGroup->getParent();
         }
-
-        if (group.isNotEmpty())
-            group = "/" + group;
 
         // Fixme - using parameter groups here would be lovely but until then
         info->id = paramID;
