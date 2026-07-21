@@ -998,7 +998,7 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         };
 
         info->id = getPortID(isInput, index);
-        strncpy(info->name, bus->getName().toRawUTF8(), sizeof(info->name));
+        snprintf(info->name, sizeof(info->name), "%s", bus->getName().toRawUTF8());
 
         bool couldBeMain = true;
         if (isInput && processorAsClapExtensions)
@@ -1369,9 +1369,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         // Fixme - using parameter groups here would be lovely but until then
         info->id = paramID;
-        strncpy(info->name, (paramVariant.processorParam->getName(CLAP_NAME_SIZE)).toRawUTF8(),
-                CLAP_NAME_SIZE);
-        strncpy(info->module, group.toRawUTF8(), CLAP_NAME_SIZE);
+        snprintf(info->name, CLAP_NAME_SIZE, "%s",
+                 (paramVariant.processorParam->getName(CLAP_NAME_SIZE)).toRawUTF8());
+        snprintf(info->module, CLAP_NAME_SIZE, "%s", group.toRawUTF8());
 
 #if CLAP_USE_JUCE_PARAMETER_RANGES != CLAP_USE_JUCE_PARAMETER_RANGES_OFF
         // For discrete parameters, JUCE uses ranges [0, N], so we'll report that
