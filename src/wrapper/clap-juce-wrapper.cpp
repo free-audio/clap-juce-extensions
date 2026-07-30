@@ -2483,6 +2483,12 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         auto *display = juce::XWindowSystem::getInstance()->getDisplay();
         juce::X11Symbols::getInstance()->xReparentWindow(
             display, (Window)editorWrapper->getWindowHandle(), window, 0, 0);
+#if JUCE_VERSION >= 0x090000
+        if (auto *peer = editorWrapper->getPeer()) {
+            peer->setCustomPlatformScaleFactor(1.0);
+            peer->updateBounds();
+        }
+#endif
         editorWrapper->setVisible(true);
         return true;
     }
@@ -2494,6 +2500,12 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         editorWrapper->setVisible(false);
         editorWrapper->setTopLeftPosition(0, 0);
         editorWrapper->addToDesktop(0, (void *)window);
+#if JUCE_VERSION >= 0x090000
+        if (auto *peer = editorWrapper->getPeer()) {
+            peer->setCustomPlatformScaleFactor(1.0);
+            peer->updateBounds();
+        }
+#endif
         editorWrapper->setVisible(true);
         return true;
     }
