@@ -2480,6 +2480,19 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         const juce::MessageManagerLock mmLock;
         editorWrapper->setVisible(false);
         editorWrapper->addToDesktop(0, (void *)window);
+#if JUCE_VERSION >= 0x090000
+        // JUCE 9 embedded peers follow the host window's DPI on their own. This
+        // wrapper scales via the editor transform and reports transform-inflated
+        // bounds, so the peer must stay 1:1 or the scale is applied twice. The
+        // override alone does not resize the native window addToDesktop just
+        // created at the native scale, and that stale size flows back into the
+        // component on the first window event — push the geometry to match.
+        if (auto *peer = editorWrapper->getPeer())
+        {
+            peer->setCustomPlatformScaleFactor(1.0);
+            peer->setBounds(editorWrapper->getBounds(), false);
+        }
+#endif
         auto *display = juce::XWindowSystem::getInstance()->getDisplay();
         juce::X11Symbols::getInstance()->xReparentWindow(
             display, (Window)editorWrapper->getWindowHandle(), window, 0, 0);
@@ -2494,6 +2507,19 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         editorWrapper->setVisible(false);
         editorWrapper->setTopLeftPosition(0, 0);
         editorWrapper->addToDesktop(0, (void *)window);
+#if JUCE_VERSION >= 0x090000
+        // JUCE 9 embedded peers follow the host window's DPI on their own. This
+        // wrapper scales via the editor transform and reports transform-inflated
+        // bounds, so the peer must stay 1:1 or the scale is applied twice. The
+        // override alone does not resize the native window addToDesktop just
+        // created at the native scale, and that stale size flows back into the
+        // component on the first window event — push the geometry to match.
+        if (auto *peer = editorWrapper->getPeer())
+        {
+            peer->setCustomPlatformScaleFactor(1.0);
+            peer->setBounds(editorWrapper->getBounds(), false);
+        }
+#endif
         editorWrapper->setVisible(true);
         return true;
     }
