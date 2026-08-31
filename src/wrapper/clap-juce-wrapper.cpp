@@ -2073,9 +2073,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                     std::make_unique<EditorHostContext>(host, clapWrapper.clapIDByParamPtr);
                 editor->setHostContext(editorHostContext.get());
 #endif
-#if !JUCE_MAC
-                editor->setScaleFactor(clapWrapper.guiScaleFactor);
-#endif
+                // [OSKILLATOR PATCH 1/8] The host scale now lives on the ComponentPeer,
+                // not on an editor AffineTransform. Re-applying it here would resurrect
+                // the compounding across a gui_destroy/gui_create cycle. macOS was
+                // already excluded by the old #if !JUCE_MAC, so nothing changes there.
 
                 addAndMakeVisible(editor.get());
                 editor->setTopLeftPosition(0, 0);
@@ -2103,30 +2104,82 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             return {};
         }
 
+        /*  [OSKILLATOR PATCH 2/8]
+            Physical pixels per JUCE logical pixel for the window we are embedded in.
+
+            clap/ext/gui.h fixes the unit at the WINDOW API, not at the function:
+            CLAP_WINDOW_API_WIN32 and _X11 are documented "uses physical size", _COCOA
+            "uses logical size, don't call set_scale()". JUCE Component bounds are always
+            logical, so on win32/x11 every size exchanged with the host must go through
+            this factor. Without it the host is told 880x520 while the child HWND is
+            1320x780 at 150%, and the editor is clipped to 1/scale of both dimensions.
+
+            The peer is the authority: an embedded HWNDComponentPeer takes its scale from
+            the PARENT (host) window's DPI (juce_Windowing_windows.cpp:1967-1985) and
+            applies it in setBounds (same file:1394). NSViewComponentPeer never overrides
+            getPlatformScaleFactor(), so this is 1.0 on macOS, and it is 1.0 at 100%
+            scaling -- in both cases every conversion below is the identity.
+
+            get_size() may be called before set_parent(), so there may be no peer yet;
+            fall back to the host-supplied scale. */
+        float getHostPixelScale() const
+        {
+#if JUCE_MAC
+            return 1.0f;
+#else
+            if (auto *peer = getPeer())
+                return getDesktopScaleFactor() * (float)peer->getPlatformScaleFactor();
+
+            return clapWrapper.guiScaleFactor;
+#endif
+        }
+
+        juce::Rectangle<int> localToHostBounds(juce::Rectangle<int> localRect) const
+        {
+            const auto scale = getHostPixelScale();
+
+            if (juce::isWithin(scale, 1.0f, 1.0e-3f))
+                return localRect;
+
+            return (localRect.toFloat() * scale).toNearestInt();
+        }
+
+        juce::Rectangle<int> hostToLocalBounds(juce::Rectangle<int> hostRect) const
+        {
+            const auto scale = getHostPixelScale();
+
+            if (juce::isWithin(scale, 1.0f, 1.0e-3f))
+                return hostRect;
+
+            return (hostRect.toFloat() / scale).toNearestInt();
+        }
+
+        /*  Editor coordinates -> host window coordinates. getLocalArea() folds in any
+            AffineTransform left on the editor by setEditorScaleFactor() (the macOS path);
+            localToHostBounds() then adds the display scale the peer applies. */
         juce::Rectangle<int> convertToHostBounds(juce::Rectangle<int> pluginRect)
         {
-            const auto desktopScale = clapWrapper.guiScaleFactor;
-            if (juce::isWithin(desktopScale, 1.0f, 1.0e-3f))
-                return pluginRect;
+            if (editor == nullptr)
+                return localToHostBounds(pluginRect);
 
-            return {juce::roundToInt((float)pluginRect.getX() * desktopScale),
-                    juce::roundToInt((float)pluginRect.getY() * desktopScale),
-                    juce::roundToInt((float)pluginRect.getWidth() * desktopScale),
-                    juce::roundToInt((float)pluginRect.getHeight() * desktopScale)};
+            return localToHostBounds(getLocalArea(editor.get(), pluginRect));
         }
 
         void resizeHostWindow()
         {
             if (editor != nullptr)
             {
+                // [OSKILLATOR PATCH 3/8] request_resize is the plugin->host counterpart of
+                // set_size and carries the same units, so it must be converted too.
                 auto editorBounds = getSizeToContainChild().withPosition(0, 0);
+                auto hostBounds = localToHostBounds(editorBounds);
                 {
                     const juce::ScopedValueSetter<bool> resizingParentSetter(resizingParent, true);
-                    host.guiRequestResize((uint32_t)editorBounds.getWidth(),
-                                          (uint32_t)editorBounds.getHeight());
+                    host.guiRequestResize((uint32_t)hostBounds.getWidth(),
+                                          (uint32_t)hostBounds.getHeight());
                 }
 
-                setBounds(editorBounds.withPosition(0, 0));
+                setBounds(editorBounds);
             }
         }
 
@@ -2206,6 +2259,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     bool guiParentAttached{false};
     float guiScaleFactor = 1.0f;
+    // [OSKILLATOR PATCH 4/8] Did the HOST supply a scale? If so it REPLACES the display
+    // scale the peer reads from the parent window; it never stacks with it.
+    bool guiScaleFactorSetByHost = false;
     bool guiCreate(const char *api, bool isFloating) noexcept override
     {
         juce::ignoreUnused(api);
@@ -2277,13 +2333,38 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         }
         guiScaleFactor = static_cast<float>(scale);
 
+        // [OSKILLATOR PATCH 4/8]
+#if JUCE_MAC
+        // Cocoa uses LOGICAL size and gui.h says hosts should not call set_scale there at
+        // all. Unchanged behaviour.
+        if (editorWrapper != nullptr)
+            editorWrapper->setEditorScaleFactor(guiScaleFactor);
+        return true;
+#else
+        // win32/x11: JUCE's peer ALREADY scales the native window by the display scale it
+        // reads from the parent window. Mirror JuceVST3Editor::setContentScaleFactor()
+        // (which ends in peer->setCustomPlatformScaleFactor()) and OVERRIDE that scale
+        // rather than adding a second scaling layer on top of it. Deliberately does NOT
+        // call setEditorScaleFactor(): the editor AffineTransform and the peer scale are
+        // independent multipliers, and applying both is exactly what rendered a 1.5x host
+        // scale at 2.25x on a 150% display (measured 2026-08-31 before this patch).
+        guiScaleFactorSetByHost = true;
+
         if (editorWrapper != nullptr)
         {
-            editorWrapper->setEditorScaleFactor(guiScaleFactor);
-            return true;
+            if (auto *peer = editorWrapper->getPeer())
+            {
+                peer->setCustomPlatformScaleFactor((double)guiScaleFactor);
+                // The override does not resize the HWND (juce_Windowing_windows.cpp:
+                // 1995-2006 only invalidates and notifies), so push the geometry.
+                peer->setBounds(editorWrapper->getBounds(), false);
+                editorWrapper->resizeHostWindow();
+            }
+            // Not attached yet: applied in guiWin32Attach()/guiX11Attach(). Meanwhile
+            // getHostPixelScale()'s no-peer fallback already reports it to get_size().
         }
-
         return true;
+#endif
     }
 
     /*
@@ -2352,7 +2433,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         if (!editorWrapper->editor->isResizable())
             return false;
 
-        const auto b = juce::Rectangle{(int)width, (int)height};
+        // [OSKILLATOR PATCH 5/8] The host speaks physical pixels on win32/x11; the
+        // editor speaks logical. Convert in, or a resizable editor round-trips wrong.
+        const auto b = editorWrapper->hostToLocalBounds({(int)width, (int)height});
         editorWrapper->setSize(b.getWidth(), b.getHeight());
         return true;
     }
@@ -2362,7 +2445,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         const juce::MessageManagerLock mmLock;
         if (editorWrapper != nullptr && editorWrapper->editor != nullptr)
         {
-            const auto b = editorWrapper->getBounds();
+            // [OSKILLATOR PATCH 6/8] THE HEADLINE FIX. This returned the editor's
+            // LOGICAL bounds while JUCE's peer had already sized the native window
+            // PHYSICALLY, so a Windows host at 150% built an 880x520 window around a
+            // 1320x780 editor and clipped it to the top-left two-thirds.
+            // getLocalBounds() rather than getBounds() so the origin is zero and only
+            // width/height are scaled.
+            const auto b = editorWrapper->localToHostBounds(editorWrapper->getLocalBounds());
             *width = (uint32_t)b.getWidth();
             *height = (uint32_t)b.getHeight();
             return true;
@@ -2480,23 +2569,25 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         const juce::MessageManagerLock mmLock;
         editorWrapper->setVisible(false);
         editorWrapper->addToDesktop(0, (void *)window);
-#if JUCE_VERSION >= 0x090000
-        // JUCE 9 embedded peers follow the host window's DPI on their own. This
-        // wrapper scales via the editor transform and reports transform-inflated
-        // bounds, so the peer must stay 1:1 or the scale is applied twice. The
-        // override alone does not resize the native window addToDesktop just
-        // created at the native scale, and that stale size flows back into the
-        // component on the first window event — push the geometry to match.
-        if (auto *peer = editorWrapper->getPeer())
+        // [OSKILLATOR PATCH 8/8] Mirror of the win32 path. x11 is also declared "uses
+        // physical size" by clap/ext/gui.h, and the X11 peer implements both
+        // getPlatformScaleFactor and the override. NOT TESTED ON LINUX -- included for
+        // consistency, because guiSetScale's non-macOS branch already covers x11 and
+        // leaving this half unchanged would be an incoherent state, not a safer one.
+        if (guiScaleFactorSetByHost)
         {
-            peer->setCustomPlatformScaleFactor(1.0);
-            peer->setBounds(editorWrapper->getBounds(), false);
+            if (auto *peer = editorWrapper->getPeer())
+            {
+                peer->setCustomPlatformScaleFactor((double)guiScaleFactor);
+                peer->setBounds(editorWrapper->getBounds(), false);
+            }
         }
-#endif
+
         auto *display = juce::XWindowSystem::getInstance()->getDisplay();
         juce::X11Symbols::getInstance()->xReparentWindow(
             display, (Window)editorWrapper->getWindowHandle(), window, 0, 0);
         editorWrapper->setVisible(true);
+        editorWrapper->resizeHostWindow();
         return true;
     }
 #endif
@@ -2507,20 +2598,30 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         editorWrapper->setVisible(false);
         editorWrapper->setTopLeftPosition(0, 0);
         editorWrapper->addToDesktop(0, (void *)window);
-#if JUCE_VERSION >= 0x090000
-        // JUCE 9 embedded peers follow the host window's DPI on their own. This
-        // wrapper scales via the editor transform and reports transform-inflated
-        // bounds, so the peer must stay 1:1 or the scale is applied twice. The
-        // override alone does not resize the native window addToDesktop just
-        // created at the native scale, and that stale size flows back into the
-        // component on the first window event — push the geometry to match.
-        if (auto *peer = editorWrapper->getPeer())
+        // [OSKILLATOR PATCH 7/8] The old block here was gated on JUCE_VERSION >= 0x090000
+        // and pinned the peer to 1.0 unconditionally, because the wrapper used to scale
+        // via an editor transform. It never ran on JUCE 8 -- which is where the clipping
+        // lived -- and the version was never the real question. The real question is
+        // whether the HOST supplied a scale.
+        if (guiScaleFactorSetByHost)
         {
-            peer->setCustomPlatformScaleFactor(1.0);
-            peer->setBounds(editorWrapper->getBounds(), false);
+            // The host told us the scale, so it REPLACES the display scale the peer read
+            // from the parent window -- it never stacks with it.
+            if (auto *peer = editorWrapper->getPeer())
+            {
+                peer->setCustomPlatformScaleFactor((double)guiScaleFactor);
+                peer->setBounds(editorWrapper->getBounds(), false);
+            }
         }
-#endif
+
         editorWrapper->setVisible(true);
+
+        // get_size() runs before set_parent(), i.e. before the display scale is knowable.
+        // Now that the peer exists, report the true physical size -- the same post-attach
+        // correction JuceVST3Editor::attached() makes via resizeHostWindow() ->
+        // IPlugFrame::resizeView(). This is what makes a host that never calls set_scale
+        // (Bitwig on Windows) open at the correct size instead of clipped.
+        editorWrapper->resizeHostWindow();
         return true;
     }
 #endif
