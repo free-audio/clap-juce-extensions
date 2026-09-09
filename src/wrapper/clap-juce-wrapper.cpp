@@ -837,7 +837,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             {
                 info.timeInSeconds =
                     1.0 * (double)transportInfo->song_pos_seconds / CLAP_SECTIME_FACTOR;
-                info.timeInSamples = (int64_t)(info.timeInSeconds * sampleRate());
+                // Round rather than truncate: song_pos_seconds is fixed point, so
+                // seconds * sampleRate lands a hair under the true sample on about
+                // half of all blocks and truncation reports them one sample early.
+                info.timeInSamples = (int64_t)std::llround(info.timeInSeconds * sampleRate());
             }
             info.isPlaying = flags & CLAP_TRANSPORT_IS_PLAYING;
             info.isRecording = flags & CLAP_TRANSPORT_IS_RECORDING;
@@ -880,7 +883,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                 auto timeInSeconds =
                     1.0 * (double)transportInfo->song_pos_seconds / CLAP_SECTIME_FACTOR;
                 posinfo.setTimeInSeconds(timeInSeconds);
-                posinfo.setTimeInSamples((int64_t)(timeInSeconds * sampleRate()));
+                // Round rather than truncate: song_pos_seconds is fixed point, so
+                // seconds * sampleRate lands a hair under the true sample on about
+                // half of all blocks and truncation reports them one sample early.
+                posinfo.setTimeInSamples((int64_t)std::llround(timeInSeconds * sampleRate()));
             }
             posinfo.setIsPlaying(flags & CLAP_TRANSPORT_IS_PLAYING);
             posinfo.setIsRecording(flags & CLAP_TRANSPORT_IS_RECORDING);
