@@ -415,6 +415,8 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
     bool usingLegacyParameterAPI{false};
     std::atomic<bool> callLatencyChangeOnNextActivate{false};
+    bool insideActivate{false};
+    bool latencyChangedDuringActivate{false};
 
     ClapJuceWrapper(const clap_host *host, juce::AudioProcessor *p)
         : clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::CLAP_MISBEHAVIOUR_HANDLER_LEVEL,
@@ -633,6 +635,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         juce::ignoreUnused(proc);
         if (details.latencyChanged)
         {
+            // A latency change made inside activate() (e.g. from prepareToPlay) must be reported with
+            // latency_changed() during that activate(), not with request_restart().
+            if (insideActivate)
+            {
+                latencyChangedDuringActivate = true;
+                return;
+            }
             runOnMainThread([this] {
                 if (isBeingDestroyed())
                     return;
@@ -916,13 +925,15 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     {
         juce::ignoreUnused(minFrameCount);
 
-        if (callLatencyChangeOnNextActivate && _host.canUseLatency()) {
-            _host.latencyChanged();
-            callLatencyChangeOnNextActivate = false;
-        }
-
+        insideActivate = true;
         processor->setRateAndBufferSizeDetails(sampleRate, (int)maxFrameCount);
         processor->prepareToPlay(sampleRate, (int)maxFrameCount);
+        insideActivate = false;
+
+        if ((callLatencyChangeOnNextActivate || latencyChangedDuringActivate) && _host.canUseLatency())
+            _host.latencyChanged();
+        callLatencyChangeOnNextActivate = false;
+        latencyChangedDuringActivate = false;
         midiBuffer.ensureSize(2048);
         midiBuffer.clear();
 
