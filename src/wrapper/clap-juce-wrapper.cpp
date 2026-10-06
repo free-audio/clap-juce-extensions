@@ -1960,7 +1960,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         break;
         case CLAP_EVENT_TRANSPORT:
         {
-            // handle this case
+            // The block is split at transport events: from here on the play head reports this transport (e.g. a
+            // loop wrap in the middle of the host's buffer). The event lives until process() returns.
+            transportInfo = reinterpret_cast<const clap_event_transport *>(event);
+            hasTransportInfo = true;
         }
         break;
         case CLAP_EVENT_PARAM_VALUE:
