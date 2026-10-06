@@ -2143,8 +2143,9 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                 auto editorBounds = getSizeToContainChild().withPosition(0, 0);
                 {
                     const juce::ScopedValueSetter<bool> resizingParentSetter(resizingParent, true);
-                    host.guiRequestResize((uint32_t)editorBounds.getWidth(),
-                                          (uint32_t)editorBounds.getHeight());
+                    if (host.canUseGui())
+                        host.guiRequestResize((uint32_t)editorBounds.getWidth(),
+                                              (uint32_t)editorBounds.getHeight());
                 }
 
                 setBounds(editorBounds.withPosition(0, 0));
