@@ -2467,6 +2467,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         // So we just have to assume it works.
         processor->setStateInformation(chunkMemory.getData(), (int)chunkMemory.getSize());
         chunkMemory.reset();
+        // A load reaches the host only as output events on its next flush; CLAP asks for a values
+        // rescan instead (params.h, "Loading a preset"). load and rescan are both main-thread.
+        if (_host.canUseParams())
+            _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES);
         return true;
     }
 
