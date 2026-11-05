@@ -2467,6 +2467,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         // So we just have to assume it works.
         processor->setStateInformation(chunkMemory.getData(), (int)chunkMemory.getSize());
         chunkMemory.reset();
+
+        // Loading a state can change parameter values outside of the process calls, so the
+        // host must re-read them (clap/ext/params.h, CLAP_PARAM_RESCAN_VALUES: "eg. after
+        // loading a preset"). state.load() runs on the main thread, so request it directly.
+        if (_host.canUseParams())
+            _host.paramsRescan(CLAP_PARAM_RESCAN_VALUES);
+
         return true;
     }
 
