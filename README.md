@@ -126,9 +126,18 @@ create_jucer_clap_target(
    post-build step triggered from the Projucer:
 
 ```bash
-cmake -Bbuild-clap -G<generator> -DCMAKE_BUILD_TYPE=<Debug|Release>
+# multi-config generators (Visual Studio, Xcode, Ninja Multi-Config)
+cmake -Bbuild-clap -G<generator>
 cmake --build build-clap --config <Debug|Release>
+
+# single-config generators (Unix Makefiles, Ninja)
+cmake -Bbuild-clap -G<generator> -DCMAKE_BUILD_TYPE=<Debug|Release>
+cmake --build build-clap
 ```
+
+The configuration is selected at build time, so one configure step can serve both `Debug` and
+`Release` builds on a multi-config generator. Make sure the matching Projucer configuration has
+been built, since the CLAP links against its "Shared Code" library.
 
 The resulting builds will be located in `build-clap/MyPlugin_artefacts`.
 

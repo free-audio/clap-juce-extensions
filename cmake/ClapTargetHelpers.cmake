@@ -151,7 +151,7 @@ function(clap_juce_extensions_plugin_internal)
         # the plugin with the extensions... however, we still need to compile
         # the extensions, since we'll get a linker error otherwise.
         target_link_libraries(${claptarget} PUBLIC clap_juce_extensions)
-        target_link_libraries(${claptarget} PUBLIC ${CJA_TARGET_PATH})
+        target_link_libraries(${claptarget} PUBLIC "${CJA_TARGET_PATH}")
     else()
         target_link_libraries(${target} PUBLIC clap_juce_extensions)
         target_link_libraries(${claptarget} PUBLIC ${target})
