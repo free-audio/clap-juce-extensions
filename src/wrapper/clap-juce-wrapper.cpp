@@ -976,6 +976,81 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         const auto success = processor->setBusesLayout(requested);
         jassert(success); // failed to set default bus layout!
         juce::ignoreUnused(success);
+
+        definePortsConfigs(requested);
+    }
+
+    // The mono and stereo main ports the processor accepts, every other bus at its default, that a
+    // host can select through clap.audio-ports-config.
+    std::vector<juce::AudioProcessor::BusesLayout> portsConfigs;
+
+    void definePortsConfigs(const juce::AudioProcessor::BusesLayout &defaults)
+    {
+        portsConfigs.clear();
+        const auto hasMainInput = hasMainPort(true);
+        const auto hasMainOutput = hasMainPort(false);
+        if (!hasMainInput && !hasMainOutput)
+            return;
+
+        const std::vector<juce::AudioChannelSet> monoOrStereo{juce::AudioChannelSet::mono(),
+                                                              juce::AudioChannelSet::stereo()};
+        const std::vector<juce::AudioChannelSet> noMainPort{juce::AudioChannelSet::disabled()};
+
+        for (const auto &input : hasMainInput ? monoOrStereo : noMainPort)
+        {
+            for (const auto &output : hasMainOutput ? monoOrStereo : noMainPort)
+            {
+                auto layout = defaults;
+                if (hasMainInput)
+                    layout.getChannelSet(true, 0) = input;
+                if (hasMainOutput)
+                    layout.getChannelSet(false, 0) = output;
+
+                // With more input than output channels the wrapper would hand the plugin the
+                // host's input buffer for the extra channels, which CLAP makes read-only.
+                if (numChannels(layout.inputBuses) > numChannels(layout.outputBuses))
+                    continue;
+
+                if (processor->checkBusesLayoutSupported(layout) && isPreferredLayout(layout))
+                    portsConfigs.push_back(layout);
+            }
+        }
+    }
+
+    static int numChannels(const juce::Array<juce::AudioChannelSet> &buses)
+    {
+        int channels = 0;
+        for (const auto &bus : buses)
+            channels += bus.size();
+        return channels;
+    }
+
+    // JUCE's own wrappers refuse a layout outside this list, when the plugin defines one.
+    static bool isPreferredLayout(const juce::AudioProcessor::BusesLayout &layout)
+    {
+#ifdef JucePlugin_PreferredChannelConfigurations
+        const short configs[][2] = {JucePlugin_PreferredChannelConfigurations};
+        return juce::AudioProcessor::containsLayout(layout, configs);
+#else
+        juce::ignoreUnused(layout);
+        return true;
+#endif
+    }
+
+    bool hasMainPort(bool isInput) const
+    {
+        if (processor->getBusCount(isInput) == 0)
+            return false;
+        return !isInput || !processorAsClapExtensions || processorAsClapExtensions->isInputMain(0);
+    }
+
+    static const char *portTypeOf(const juce::AudioChannelSet &channels)
+    {
+        if (channels == juce::AudioChannelSet::mono())
+            return CLAP_PORT_MONO;
+        if (channels == juce::AudioChannelSet::stereo())
+            return CLAP_PORT_STEREO;
+        return nullptr;
     }
 
   protected:
@@ -1005,11 +1080,12 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     {
         // For now hardcode to stereo out. Fix this obviously.
         const auto bus = processor->getBus(isInput, (int)index);
-        const auto busDefaultLayout = bus->getDefaultLayout();
+        // The current layout: a host may have picked another through clap.audio-ports-config.
+        const auto busLayout = bus->getCurrentLayout();
 
         // For now we only support mono or stereo buses
-        jassert(busDefaultLayout == juce::AudioChannelSet::mono() ||
-                busDefaultLayout == juce::AudioChannelSet::stereo());
+        jassert(busLayout == juce::AudioChannelSet::mono() ||
+                busLayout == juce::AudioChannelSet::stereo());
 
         auto getPortID = [](bool isPortInput, uint32_t portIndex) {
             return (isPortInput ? 1 << 15 : 1) + portIndex;
@@ -1037,22 +1113,25 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
             info->flags |= CLAP_AUDIO_PORT_REQUIRES_COMMON_SAMPLE_SIZE;
         }
 
-        if (processor->getBus(!isInput, (int)index) != nullptr)
+        const auto pairedBus = processor->getBus(!isInput, (int)index);
+        if (pairedBus != nullptr && pairedBus->getCurrentLayout() == busLayout)
         {
-            // this bus has a corresponding bus on the other side, so it can do in-place processing
+            // this bus has a corresponding bus on the other side with the same layout, so it can
+            // do in-place processing
             info->in_place_pair = getPortID(!isInput, index);
         }
         else
         {
-            // this bus has no corresponding bus, so it can't do in-place processing
+            // this bus has no corresponding bus with the same layout, so it can't do in-place
+            // processing
             info->in_place_pair = CLAP_INVALID_ID;
         }
 
-        info->channel_count = (uint32_t)busDefaultLayout.size();
+        info->channel_count = (uint32_t)busLayout.size();
 
-        if (busDefaultLayout == juce::AudioChannelSet::mono())
+        if (busLayout == juce::AudioChannelSet::mono())
             info->port_type = CLAP_PORT_MONO;
-        else if (busDefaultLayout == juce::AudioChannelSet::stereo())
+        else if (busLayout == juce::AudioChannelSet::stereo())
             info->port_type = CLAP_PORT_STEREO;
         else
             jassertfalse; // @TODO: implement CLAP_PORT_SURROUND and CLAP_PORT_AMBISONIC through
@@ -1060,17 +1139,46 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
 
         return true;
     }
+    bool implementsAudioPortsConfig() const noexcept override { return true; }
     uint32_t audioPortsConfigCount() const noexcept override
     {
-        DBG("audioPortsConfigCount CALLED - returning 0");
-        return 0;
+        return (uint32_t)portsConfigs.size();
     }
-    bool audioPortsGetConfig(uint32_t /*index*/,
-                             clap_audio_ports_config * /*config*/) const noexcept override
+    bool audioPortsGetConfig(uint32_t index,
+                             clap_audio_ports_config *config) const noexcept override
     {
-        return false;
+        if (index >= portsConfigs.size())
+            return false;
+
+        const auto &layout = portsConfigs[index];
+        const auto hasMainInput = hasMainPort(true);
+        const auto hasMainOutput = hasMainPort(false);
+        const auto input = hasMainInput ? layout.getChannelSet(true, 0) : juce::AudioChannelSet();
+        const auto output =
+            hasMainOutput ? layout.getChannelSet(false, 0) : juce::AudioChannelSet();
+
+        auto name = hasMainOutput ? output.getDescription() : input.getDescription();
+        if (hasMainInput && hasMainOutput && input != output)
+            name = input.getDescription() + " to " + output.getDescription();
+
+        config->id = index;
+        snprintf(config->name, sizeof(config->name), "%s", name.toRawUTF8());
+        config->input_port_count = (uint32_t)layout.inputBuses.size();
+        config->output_port_count = (uint32_t)layout.outputBuses.size();
+        config->has_main_input = hasMainInput;
+        config->main_input_channel_count = (uint32_t)input.size();
+        config->main_input_port_type = portTypeOf(input);
+        config->has_main_output = hasMainOutput;
+        config->main_output_channel_count = (uint32_t)output.size();
+        config->main_output_port_type = portTypeOf(output);
+        return true;
     }
-    bool audioPortsSetConfig(clap_id /*configId*/) noexcept override { return false; }
+    bool audioPortsSetConfig(clap_id configId) noexcept override
+    {
+        if (configId >= portsConfigs.size())
+            return false;
+        return processor->setBusesLayout(portsConfigs[configId]);
+    }
 
     bool implementsNotePorts() const noexcept override { return true; }
     uint32_t notePortsCount(bool is_input) const noexcept override
