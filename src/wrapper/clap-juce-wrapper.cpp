@@ -937,6 +937,11 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
         midiBuffer.ensureSize(2048);
         midiBuffer.clear();
 
+        const auto numInputChannels = processor->getTotalNumInputChannels();
+        inputCopies.setSize(numInputChannels, (int)maxFrameCount);
+        if (processor->supportsDoublePrecisionProcessing())
+            doubleInputCopies.setSize(numInputChannels, (int)maxFrameCount);
+
         cacheHostCanUseThreadCheck = _host.canUseThreadCheck();
         if (!cacheHostCanUseThreadCheck)
         {
@@ -1596,6 +1601,10 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
     }
 
     juce::MidiBuffer midiBuffer;
+    // CLAP's input buffers are read-only, so input channels past the outputs reach the processor
+    // as copies, sized in activate()
+    juce::AudioBuffer<float> inputCopies;
+    juce::AudioBuffer<double> doubleInputCopies;
 
     clap_process_status process(const clap_process *process) noexcept override
     {
@@ -1764,6 +1773,14 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                                                                   numSamplesToProcess);
                             }
                         }
+                        else if ((int)inputChannels < doubleInputCopies.getNumChannels() &&
+                                 numSamplesToProcess <= doubleInputCopies.getNumSamples())
+                        {
+                            doubleBusses[inputChannels] =
+                                doubleInputCopies.getWritePointer((int)inputChannels);
+                            juce::FloatVectorOperations::copy(doubleBusses[inputChannels], ic,
+                                                              numSamplesToProcess);
+                        }
                         else
                         {
                             doubleBusses[inputChannels] = ic;
@@ -1784,6 +1801,13 @@ class ClapJuceWrapper : public clap::helpers::Plugin<
                                 juce::FloatVectorOperations::copy(busses[inputChannels], ic,
                                                                   numSamplesToProcess);
                             }
+                        }
+                        else if ((int)inputChannels < inputCopies.getNumChannels() &&
+                                 numSamplesToProcess <= inputCopies.getNumSamples())
+                        {
+                            busses[inputChannels] = inputCopies.getWritePointer((int)inputChannels);
+                            juce::FloatVectorOperations::copy(busses[inputChannels], ic,
+                                                              numSamplesToProcess);
                         }
                         else
                         {
