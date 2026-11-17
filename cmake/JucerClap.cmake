@@ -66,6 +66,18 @@ function(create_jucer_clap_target)
             JucePlugin_Desc=""
     )
 
+    # The wrapper offers only the layouts on the Projucer's "Plugin Channel Configurations" list
+    file(GLOB jucer_files "${CMAKE_CURRENT_SOURCE_DIR}/*.jucer")
+    foreach(jucer_file IN LISTS jucer_files)
+        file(READ "${jucer_file}" jucer_project)
+        if(jucer_project MATCHES "pluginChannelConfigs=\"([^\"]+)\"")
+            target_compile_definitions(${clap_target}
+                PRIVATE
+                    "JucePlugin_PreferredChannelConfigurations=${CMAKE_MATCH_1}"
+            )
+        endif()
+    endforeach()
+
     if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
         target_compile_definitions(${clap_target}
             PRIVATE
