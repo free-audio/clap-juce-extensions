@@ -9,26 +9,21 @@ function(create_jucer_clap_target)
         set(CJA_BINARY_NAME "${CJA_TARGET}")
     endif()
 
-    if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
+    get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    if(NOT is_multi_config AND "${CMAKE_BUILD_TYPE}" STREQUAL "")
         message(WARNING "CMAKE_BUILD_TYPE not set... using Release by default")
-        set(CMAKE_BUILD_TYPE "Release")
+        set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build" FORCE)
     endif()
 
-    if("${JUCER_GENERATOR}" STREQUAL "VisualStudio2019")
-        find_library(PLUGIN_LIBRARY_PATH ${CJA_TARGET} "Builds/VisualStudio2019/x64/${CMAKE_BUILD_TYPE}/Shared Code")
-    elseif("${JUCER_GENERATOR}" STREQUAL "VisualStudio2017")
-        find_library(PLUGIN_LIBRARY_PATH ${CJA_TARGET} "Builds/VisualStudio2017/x64/${CMAKE_BUILD_TYPE}/Shared Code")
-    elseif("${JUCER_GENERATOR}" STREQUAL "VisualStudio2015")
-        find_library(PLUGIN_LIBRARY_PATH ${CJA_TARGET} "Builds/VisualStudio2015/x64/${CMAKE_BUILD_TYPE}/Shared Code")
-    elseif("${JUCER_GENERATOR}" STREQUAL "VisualStudio2022")
-        find_library(PLUGIN_LIBRARY_PATH ${CJA_TARGET} "Builds/VisualStudio2022/x64/${CMAKE_BUILD_TYPE}/Shared Code")
+    # multi-config support by using $<CONFIG> in the library names
+    set(jucer_builds_dir "${CMAKE_CURRENT_SOURCE_DIR}/Builds")
+    if("${JUCER_GENERATOR}" MATCHES "^VisualStudio(2015|2017|2019|2022)$")
+        set(PLUGIN_LIBRARY_PATH "${jucer_builds_dir}/${JUCER_GENERATOR}/x64/$<CONFIG>/Shared Code/${CJA_TARGET}.lib")
     elseif("${JUCER_GENERATOR}" STREQUAL "Xcode")
-        find_library(PLUGIN_LIBRARY_PATH ${CJA_TARGET} "Builds/MacOSX/build/${CMAKE_BUILD_TYPE}")
+        set(PLUGIN_LIBRARY_PATH "${jucer_builds_dir}/MacOSX/build/$<CONFIG>/lib${CJA_TARGET}.a")
     elseif("${JUCER_GENERATOR}" STREQUAL "LinuxMakefile")
-        # for some reason Projucer makes a lib called "PluginName.a", but find_library needs "libPluginName.a"
-        set(LINUX_LIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Builds/LinuxMakefile/build")
-        configure_file("${LINUX_LIB_PATH}/${CJA_TARGET}.a" "${LINUX_LIB_PATH}/lib${CJA_TARGET}.a" COPYONLY)
-        find_library(PLUGIN_LIBRARY_PATH ${CJA_TARGET} "${LINUX_LIB_PATH}")
+        # the Makefile exporter is single-config, and makes a lib called "PluginName.a"
+        set(PLUGIN_LIBRARY_PATH "${jucer_builds_dir}/LinuxMakefile/build/${CJA_TARGET}.a")
     elseif("${JUCER_GENERATOR}" STREQUAL "")
         message(FATAL_ERROR "JUCER_GENERATOR variable must be set!")
     else()
@@ -66,19 +61,11 @@ function(create_jucer_clap_target)
             JucePlugin_Desc=""
     )
 
-    if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-        target_compile_definitions(${clap_target}
-            PRIVATE
-                DEBUG=1
-                _DEBUG=1
-        )
-    else()
-        target_compile_definitions(${clap_target}
-            PRIVATE
-                NDEBUG=1
-                _NDEBUG=1
-        )
-    endif()
+    target_compile_definitions(${clap_target}
+        PRIVATE
+            "$<$<CONFIG:Debug>:DEBUG=1;_DEBUG=1>"
+            "$<$<NOT:$<CONFIG:Debug>>:NDEBUG=1;_NDEBUG=1>"
+    )
 
     if("${CJA_CLAP_FEATURES}" MATCHES "^instrument.*")
         message(STATUS "Detected plugin category: instrument")
